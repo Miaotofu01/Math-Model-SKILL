@@ -1,0 +1,33 @@
+{
+  "name": "math-model",
+  "description": "数学建模国赛全流程 AI 编排插件——两阶段架构：阶段一主 agent 纯编排(输入提纯→并行审题→选题推荐)，阶段二 Workflow 确定性执行(文献局限分析→Gap驱动建模+4人评审团⇄修订→求解⇄验证loop→叙事大纲+交叉审查→终审摘要打磨+数字溯源+LaTeX)。三种模式(quick~20/standard~250/thorough~600-1000 agents)，正确性第一+数据说话，创新有根有据、摘要一锤定音。",
+  "version": "2.0.0",
+  "author": {
+    "name": "红豆",
+    "email": "wsy20050511@gmail.com"
+  },
+  "homepage": "https://github.com/hongdou/math-model",
+  "repository": "https://github.com/hongdou/math-model",
+  "license": "MIT",
+  "keywords": [
+    "math-modeling",
+    "cumcm",
+    "mcm",
+    "competition",
+    "workflow",
+    "agent-orchestration",
+    "latex",
+    "adversarial-review",
+    "loop-until-dry",
+    "baseline-comparison",
+    "data-traceability"
+  ],
+  "dependencies": {
+    "system": [
+      "pdftotext (poppler-utils) — PDF 文字提取",
+      "xelatex + ctex — LaTeX 论文排版（standard/thorough 模式）",
+      "python3 + numpy/scipy/pandas/matplotlib — 求解代码执行"
+    ],
+    "claude-code": ">=1.0.0"
+  }
+}

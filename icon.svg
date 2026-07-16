@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e94560"/>
+      <stop offset="100%" stop-color="#ff6b6b"/>
+    </linearGradient>
+    <linearGradient id="secondary" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#533483"/>
+      <stop offset="100%" stop-color="#7b68ee"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded rect -->
+  <rect x="8" y="8" width="240" height="240" rx="48" ry="48" fill="url(#bg)" stroke="#2a2a4a" stroke-width="3"/>
+
+  <!-- Inner subtle grid pattern -->
+  <g opacity="0.08" stroke="#fff" stroke-width="0.5">
+    <line x1="8" y1="64" x2="248" y2="64"/><line x1="8" y1="128" x2="248" y2="128"/><line x1="8" y1="192" x2="248" y2="192"/>
+    <line x1="64" y1="8" x2="64" y2="248"/><line x1="128" y1="8" x2="128" y2="248"/><line x1="192" y1="8" x2="192" y2="248"/>
+  </g>
+
+  <!-- Function curve: f(x) = sin(x) + x/4 style wave, representing math modeling -->
+  <!-- Paths drawn as a continuous ribbon -->
+  <g transform="translate(12, 12)">
+    <!-- Primary curve - the math function -->
+    <path d="M20 160
+             C30 130, 40 80, 55 95
+             C70 110, 80 140, 95 115
+             C110 90, 120 70, 135 85
+             C150 100, 160 120, 175 100
+             C190 80, 200 60, 216 70"
+          fill="none" stroke="url(#accent)" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Secondary envelope curve -->
+    <path d="M20 160
+             C40 120, 60 75, 80 95
+             C110 128, 130 80, 155 90
+             C175 98, 195 65, 216 70
+             C195 50, 175 45, 155 55
+             C130 68, 110 88, 80 55
+             C60 35, 40 90, 20 100 Z"
+          fill="url(#accent)" opacity="0.12"/>
+
+    <!-- Derivative control points hint -->
+    <circle cx="55" cy="95" r="4" fill="#0f3460" stroke="url(#accent)" stroke-width="2.5"/>
+    <circle cx="135" cy="85" r="4" fill="#0f3460" stroke="url(#accent)" stroke-width="2.5"/>
+    <circle cx="216" cy="70" r="4" fill="#0f3460" stroke="url(#accent)" stroke-width="2.5"/>
+
+    <!-- Workflow nodes connected above the curve -->
+    <g stroke="url(#secondary)" stroke-width="2" fill="none" opacity="0.7">
+      <line x1="55" y1="95" x2="55" y2="52"/>
+      <line x1="55" y1="52" x2="95" y2="52"/>
+      <line x1="95" y1="52" x2="95" y2="78"/>
+      <line x1="135" y1="85" x2="135" y2="45"/>
+      <line x1="135" y1="45" x2="175" y2="45"/>
+      <line x1="175" y1="45" x2="175" y2="72"/>
+    </g>
+
+    <!-- Small workflow nodes -->
+    <circle cx="55" cy="52" r="5" fill="#533483" stroke="url(#secondary)" stroke-width="2" opacity="0.9"/>
+    <circle cx="95" cy="52" r="5" fill="#533483" stroke="url(#secondary)" stroke-width="2" opacity="0.9"/>
+    <circle cx="95" cy="78" r="4" fill="#533483" stroke="url(#secondary)" stroke-width="1.5" opacity="0.6"/>
+    <circle cx="135" cy="45" r="5" fill="#533483" stroke="url(#secondary)" stroke-width="2" opacity="0.9"/>
+    <circle cx="175" cy="45" r="5" fill="#533483" stroke="url(#secondary)" stroke-width="2" opacity="0.9"/>
+    <circle cx="175" cy="72" r="4" fill="#533483" stroke="url(#secondary)" stroke-width="1.5" opacity="0.6"/>
+  </g>
+
+  <!-- Sigma sum notation in top-right, subtle -->
+  <text x="210" y="46" font-family="serif" font-size="28" font-style="italic" fill="url(#secondary)" opacity="0.4">Σ</text>
+</svg>
