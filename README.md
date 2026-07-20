@@ -10,7 +10,9 @@
 
 一个基于 Claude Code 的 AI Agent 编排插件，为**数学建模竞赛（国赛 CUMCM / 美赛 MCM）**提供从审题、选题、文献调研、建模方案设计、求解验证到论文写作的端到端全流程自动化支持。
 
-> **v2.0.0** | 两阶段架构 | 三种模式（quick ~20 / standard ~250 / thorough ~600-1000 agents）
+> **v2.2.0** | 两阶段架构 | 主 agent 编排 + Workflow 全自动执行
+
+> ⚠️ **关于"三种模式"**：早期 README 宣传 quick/standard/thorough 三种深度。实际代码中 `mode` 参数已接受但**尚未实现差异化**--无论传哪种 mode，workflow 都跑同一套完整流程（cfg 硬编码）。三种深度为规划中的能力，下文相关描述为设计目标而非当前行为。
 
 ---
 
@@ -163,12 +165,15 @@ flowchart TB
 | Claude Code ≥ 1.0.0 | 插件运行平台 | 不可用 |
 | `pdftotext` (poppler-utils) | 从 PDF 提取题目文字 | 无法用 `/math-model ~/题.pdf`，需手动粘贴题目 |
 | `xelatex` + `ctex` | standard/thorough 模式编译 LaTeX → PDF | 只能产出 Markdown（quick 模式不受影响） |
-| `python3` + numpy/scipy/pandas/matplotlib/openpyxl | 求解代码执行 | 无法执行求解，只能产出算法方案 |
+| `python3` + numpy/scipy/pandas/matplotlib/openpyxl/statsmodels/scikit-learn | 求解代码执行 | 无法执行求解，只能产出算法方案 |
+| 中文字体 (fonts-noto-cjk) | 国赛论文排版 | 国赛 LaTeX 编译可能失败 |
+
+> 使用 `bash env-check.sh` 一键检测所有依赖。
 
 ### 一键安装
 
 ```bash
-git clone https://github.com/hongdou/math-model.git
+git clone https://github.com/Miaotofu01/Math-Model-SKILL.git
 cd math-model
 ./install.sh
 ```
@@ -178,26 +183,30 @@ cd math-model
 1. **检查系统依赖**：逐项列出 `pdftotext`、`xelatex`、`python3` 和 Python 科学计算库的安装状态，给出缺失项的安装命令
 2. **复制插件文件**：
    - `skills/math-model/SKILL.md` → `~/.claude/skills/math-model/SKILL.md`
-   - `workflows/math-model.js` → `~/.claude/workflows/math-model.js`
+   - `workflows/math-model.js` → `~/.claude/workflows/math-model.js`（含 `lib/` 子目录全部模块）
+   - `env-check.sh` → `~/.claude/skills/math-model/env-check.sh`
+3. **自动运行环境检测**并输出结果
 
 ### 手动安装
 
 ```bash
 # 安装系统依赖（Ubuntu/Debian）
-sudo apt install poppler-utils texlive-xetex texlive-lang-chinese python3 python3-pip
-pip3 install numpy scipy pandas matplotlib openpyxl
+sudo apt install poppler-utils texlive-xetex texlive-lang-chinese python3 python3-pip fonts-noto-cjk
+pip3 install numpy scipy pandas matplotlib openpyxl scikit-learn statsmodels
 
 # 安装插件文件
 PLUGIN_DIR="$(pwd)"
 mkdir -p ~/.claude/skills/math-model ~/.claude/workflows
 cp "$PLUGIN_DIR/skills/math-model/SKILL.md" ~/.claude/skills/math-model/SKILL.md
 cp "$PLUGIN_DIR/workflows/math-model.js" ~/.claude/workflows/math-model.js
+cp -r "$PLUGIN_DIR/workflows/lib" ~/.claude/workflows/lib
+cp "$PLUGIN_DIR/env-check.sh" ~/.claude/skills/math-model/env-check.sh
 ```
 
 ### 卸载
 
 ```bash
-rm ~/.claude/skills/math-model/SKILL.md ~/.claude/workflows/math-model.js
+rm -rf ~/.claude/skills/math-model ~/.claude/workflows/math-model.js ~/.claude/workflows/lib
 ```
 
 ---
@@ -232,6 +241,19 @@ rm ~/.claude/skills/math-model/SKILL.md ~/.claude/workflows/math-model.js
 | （默认） | standard | 正常比赛 |
 | "正式" / "冲奖" / "仔细" | thorough | 火力全开，最严格的质控 |
 
+### 高级参数
+
+Workflow 启动时可传入以下参数进行精细控制：
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `dryRun` | boolean | `false` | 仅执行审题+选题阶段，输出执行计划后退出 |
+| `innovationStrictness` | string | `'standard'` | 创新必要性阈值：`'strict'`（≥10%）/ `'standard'`（≥5%）/ `'loose'`（≥2%） |
+| `resumeFrom` | string | — | 断点续跑，如 `'phase4-modeling'` 从建模阶段继续 |
+| `skipPhases` | string[] | — | 跳过已完成的 phase，如 `['literature', 'modeling']` |
+| `userFeedback` | string | — | 用户偏好或方向性指示，注入到建模/写作 prompt |
+| `userIntervention` | boolean | `false` | 每个 phase 完成后输出摘要到 intermediates/ |
+
 ### 完整示例
 
 ```bash
@@ -255,6 +277,19 @@ rm ~/.claude/skills/math-model/SKILL.md ~/.claude/workflows/math-model.js
 
 # 6. 查看最终产出
 ```
+
+### Dry-run 模式
+
+想先验证流程能否跑通，而不真正运行耗时建模求解？使用 `dryRun: true`：
+
+```bash
+/math-model
+题目A: ...
+附件: ...
+dryRun: true
+```
+
+dry-run 会执行审题、选题推荐、生成完整执行计划（含预计耗时、phase 列表、依赖检查结果），输出到 `intermediates/execution-plan.md`。审查计划后再去掉 `dryRun` 正式运行。
 
 ### 输出位置
 
@@ -311,3 +346,58 @@ MIT © 红豆
 <p align="center">
   <sub>Built for CUMCM & MCM competitors who want to focus on ideas, not boilerplate.</sub>
 </p>
+
+---
+
+## 故障排查
+
+### LaTeX 编译失败
+
+**症状**：standard/thorough 模式最终没有产出 PDF，只有 Markdown。
+**原因**：`xelatex` 未安装、缺少中文字体、或 ctex 宏包不完整。
+**解决**：
+```bash
+sudo apt install texlive-xetex texlive-lang-chinese fonts-noto-cjk
+# 安装后重新运行即可（Workflow 会自动重试编译）
+```
+
+### Python 求解代码报错
+
+**症状**：Phase 5-6 循环中代码运行失败。
+**原因**：缺少 Python 依赖库。
+**解决**：
+```bash
+pip3 install numpy scipy pandas matplotlib openpyxl scikit-learn statsmodels
+```
+
+### PDF 题目提取为空
+
+**症状**：`pdftotext` 运行后题目原文为空。
+**原因**：扫描型 PDF 没有内嵌文字层（图片式 PDF）。
+**解决**：手动粘贴题目文字即可，或先用 OCR 工具（如 `tesseract`）识别。
+
+### 模型反思循环（FUNDAMENTAL_FLAW）
+
+**症状**：Phase 5-6 反复触发模型反思，不断回到 Phase 4 重设计。
+**原因**：建模方案与题目不匹配 — 可能是方法选择不当或假设过于理想。
+**解决**：
+- 如果已经重设计 2 次以上，考虑在 `userFeedback` 中给出方向性建议
+- 或使用 `innovationStrictness: 'loose'` 降低创新门槛，优先保证方案可行
+- 下次运行可加 `skipPhases: ['modeling']` 复用已有 checkpoint
+
+### 写作章节缺失/空白
+
+**症状**：Phase 7 完成后章节数量少于预期，或内容为空白。
+**原因**：agent 调用超时或上下文溢出。
+**解决**：`resumeFrom: 'phase7-writing'` 续跑写作阶段，Workflow 会基于已有 checkpoint 重试缺失章节。
+
+### Wish to skip a phase and resume?
+
+Use the `skipPhases` and `resumeFrom` parameters together:
+```bash
+# 假设 Phase 3 之前已完成，从 Phase 4 恢复
+resumeFrom: 'phase4-modeling'
+# 仅运行 Phase 4 和后续阶段
+```
+
+> 注意：跳过的 phase 必须有对应 checkpoint 文件存在，否则会报错提示先完整运行一次。

@@ -5,7 +5,7 @@ PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_DIR="${HOME}/.claude/skills"
 WORKFLOWS_DIR="${HOME}/.claude/workflows"
 
-echo "==> 安装 math-model v2.0.0"
+echo "==> 安装 math-model v2.2.0"
 
 # ═══ System dependency checks ═══
 echo ""
@@ -83,9 +83,22 @@ echo "── 安装插件文件 ──"
 mkdir -p "${SKILLS_DIR}/math-model" "${WORKFLOWS_DIR}"
 cp "${PLUGIN_DIR}/skills/math-model/SKILL.md" "${SKILLS_DIR}/math-model/SKILL.md"
 echo "  ✓ skill → ${SKILLS_DIR}/math-model/SKILL.md"
-cp "${PLUGIN_DIR}/workflows/math-model.js" "${WORKFLOWS_DIR}/math-model.js"
-echo "  ✓ workflow → ${WORKFLOWS_DIR}/math-model.js ($(wc -l < ${WORKFLOWS_DIR}/math-model.js) 行)"
+# 安装整个 workflows/ 目录（主脚本 + lib/ 模块）
+rm -f "${WORKFLOWS_DIR}/math-model.js"          # 移除旧版单文件
+rm -rf "${WORKFLOWS_DIR}/lib"                     # 移除旧版 lib（如有）
+cp -r "${PLUGIN_DIR}/workflows/." "${WORKFLOWS_DIR}/"
+echo "  ✓ workflow → ${WORKFLOWS_DIR}/math-model.js + lib/ ($(wc -l < ${WORKFLOWS_DIR}/math-model.js) 行主脚本, $(find ${WORKFLOWS_DIR}/lib -name '*.js' | wc -l) 个模块)"
+# 安装 env-check.sh
+cp "${PLUGIN_DIR}/env-check.sh" "${SKILLS_DIR}/math-model/env-check.sh"
+chmod +x "${SKILLS_DIR}/math-model/env-check.sh"
+echo "  ✓ env-check.sh → ${SKILLS_DIR}/math-model/env-check.sh"
+
+# ═══ Auto-run env check ═══
+echo ""
+echo "── 运行环境检测 ──"
+bash "${SKILLS_DIR}/math-model/env-check.sh"
 
 echo ""
+echo ""
 echo "安装完成！/math-model 已就绪。"
-echo "卸载：rm ${SKILLS_DIR}/math-model/SKILL.md ${WORKFLOWS_DIR}/math-model.js"
+echo "卸载：rm -rf ${SKILLS_DIR}/math-model ${WORKFLOWS_DIR}/math-model.js ${WORKFLOWS_DIR}/lib"
