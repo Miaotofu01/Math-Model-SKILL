@@ -129,6 +129,23 @@ Workflow 返回后汇报：建模概要+创新、baseline 对比、迭代轮数�
 - 附录含支撑材料列表 + 全部可运行源代码（缺失可能取消评奖资格）
 - 任何地方不得有参赛者身份/学校/赛区信息；引用按科技论文规范
 
+## 论文模板（2026-08 实战经验固化）
+
+**模板文件：** `templates/cumcm-paper.tex` + `templates/assemble_from_template.py`（skill 自带）
+
+**模板要点（踩坑教训固化）：**
+1. **摘要用 `\section*{摘 要}`**（章节式标题、无编号）——**禁止用 `abstract` 环境**（环境自动标题与章节标题重复 = "双摘要"事故）
+2. **章节标题居中**：article+ctex 组合用 titlesec（`\ctexset` 在该组合下无效，ctexart 类才可用）
+3. **参考文献**：thebibliography 环境**自带"参考文献"标题**——前面不要再加 `\section*{参考文献}`（"参考文献双标题"事故）
+4. **附录用 `\appendix` + 全部计数器独立**：附录节自动编号 A/B/C，且表/图/公式编号也独立（`\setcounter{table}{0}` 等重置 + `\renewcommand{\thetable}{\Alph{section}.\arabic{table}}`，显示为 B.1/B.2——注意计数器须置 0 而非 1，`\caption` 会先 step 再显示）；附录图表用 `[H]`，正文用 `[htbp]`
+5. **代码附录**：`\lstinputlisting[style=pythonstyle]` 彩色高亮直接引用 code/ 文件；代码文件必须清理身份信息（校名/绝对路径→`~`展开）和 Unicode 数学符号（θ→theta 等，缺失字符渲染为空白）
+6. **关键答案加粗**：摘要/正文关键数值用 `$\bm{...}$`（需 `\usepackage{bm}`）；只加粗答案，不加粗整句
+7. **支撑材料清单为真实交付物模板**（非占位式："共若干张"类表述会被合规审查抓为 P2）
+8. **名单表 caption 中下划线必须转义**（`数据1_Q1` → `数据1\_Q1`，否则 "Missing $ inserted"）
+
+**组装方式：** `python3 templates/assemble_from_template.py --template templates/cumcm-paper.tex --sections <sections目录> --output paper/paper.tex [--references ...] [--suspect-json ...] [--code-dir ...] [--materials ...]`
+占位符：`@TITLE@/@PAPER_TITLE@/@SUBTITLE@/@ABSTRACT@/@BODY@/@REFERENCES@/@MATERIALS@/@SUSPECT_LISTS@/@CODE_ENTRIES@`；模板头部注释中的说明文字**不得含 @ 包裹的占位符**（replace 会污染注释区）。
+
 ## 创新链条
 
 文献局限分析 → Gap分析 → 多角度方案提案 → 评委评审⇄修订loop → 模型适配性预检 → baseline对比(量化证明) → 求解验证(趋势收敛) → 创新追溯矩阵 → 叙事大纲 → 交叉审查⇄修复loop → 终审。**每步喂给下一步，创新贯穿始终而非 Phase 7 硬贴。**

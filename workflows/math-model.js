@@ -13,7 +13,7 @@ export const meta = {
     { title: '建模方案', detail: 'Gap分析(含方向筛选) → 3角度创新提案 → 综合 → 4人评审团 ⇄ 修订(max 6轮)' },
     { title: '求解', detail: '算法设计 → 代码实现 → baseline对比 → 迭代修复' },
     { title: '验证', detail: '灵敏度 + 边界 + 对抗 + 数据验证' },
-    { title: '写作', detail: '叙事大纲 → 并行撰写 → 交叉一致性检查' },
+    { title: '写作', detail: '事实源表 → 叙事大纲 → 顺序主编撰写 → 交叉审查(统一修复)' },
     { title: '终审', detail: '摘要数字溯源+修复 + 一致性检查 + 评委自评 + LaTeX编译' },
   ],
 }
@@ -1932,7 +1932,7 @@ async function phase5_6_solve_verify(ctx) {
 // INLINED: lib/phase7-writing.js
 // ═══════════════════════════════════════════════════════════════
 
-// ═══ Phase 7: 写作 — 创新追溯矩阵 → 叙事大纲 → 并行写作 → 交叉审查 ═══
+// ═══ Phase 7: 写作 — 事实源表 → 叙事大纲 → 顺序主编撰写 → 交叉审查(统一修复) ═══
 // Depends on: agent(), parallel(), log(), phase() — workflow globals
 // Depends on: ctx.saveToFile, ctx.subQuestions
 
@@ -2077,7 +2077,7 @@ async function phase7_writing(ctx) {
     const problemBackground = (chosenAnalysis?.background || '').slice(0, 300)
     styleGuide = await agent(
       "## 论文写作风格指南\n\n" +
-      "你是数模论文写作专家。根据题目信息和领域特征，生成一份写作风格指南，用于指导多个并行的写作 agent 保持一致的风格。\n\n" +
+      "你是数模论文写作专家。根据题目信息和领域特征，生成一份写作风格指南，用于指导顺序撰写的主编写作 agent 保持全篇一致的风格（主编后续章节必须遵守，交叉审查与修复同样以本指南为基准）。\n\n" +
       "## 题目信息\n" +
       "- 领域: " + problemDomain + "\n" +
       "- 背景: " + problemBackground + "\n" +
@@ -2110,6 +2110,42 @@ async function phase7_writing(ctx) {
     if (styleGuide) {
       log("[Phase 7/8] 风格指南完成 — " + (styleGuide.termTable ? styleGuide.termTable.length + ' 个术语' : ''))
     }
+  }
+
+  // ── Step 7.1c: 事实源表（单一事实源，冻结最终结果）──
+  // 从最终求解结果/模型方案中提取"论文事实表"：所有关键数字、符号、口径、引用键。
+  // 后续所有章节撰写与修复必须以此表为唯一数字来源，杜绝"不同章节用了不同版本数字"。
+  let factSheet = null
+  {
+    const res = currentSolution?.results || {}
+    factSheet = await agent(
+      "## 论文事实源表构建（单一事实源）\n\n" +
+      "你是数字审计员。从以下**最终运行结果**中提取论文将要引用的全部关键事实，输出结构化 JSON。这些事实将作为全篇写作的唯一数字来源——任何章节不得使用本表之外的数字。\n\n" +
+      "## 最终求解结果（唯一权威）\n" + JSON.stringify(res, null, 2).slice(0, 8000) + "\n\n" +
+      "## 最终模型方案（符号与公式权威）\n" + JSON.stringify(finalModel, null, 2).slice(0, 4000) + "\n\n" +
+      (baselineResult ? "## Baseline 对比（唯一权威）\n" + JSON.stringify(baselineResult, null, 2).slice(0, 3000) + "\n\n" : "") +
+      "## 输出要求（JSON）\n" +
+      "1. **keyNumbers**: 论文将引用的全部关键数字。每项 { number(精确数值), label(如'数据1θ1%'), context(在哪个子问题/场景使用), sourcePath(在results中的路径) }。覆盖：阈值、档位户数、名单数、评分、比例/百分比、负值/截断计数、损失额、Jaccard/相关系数、置信区间、权重（如峰:平:谷=3:1.5:1）、用户数口径（各数据集唯一用户数）等。\n" +
+      "2. **symbols**: 核心符号及其含义、LaTeX写法（如 score_u = min(1, 0.8S_self + 0.2S_cross)）。\n" +
+      "3. **caliberNotes**: 口径注意事项（如'名单=预算定容30户，非全量高档全集'、'损失为相对损失指数无单位'、'报表1与报表2需分别标注'）。\n" +
+      "4. **datasetFacts**: 各数据集的事实（文件数、用户数、时间范围、负值数、截断数等画像数字）。\n\n" +
+      "⚠️ 只提取结果数据中**真实存在**的数字；不要补全、不要推测、不要写早期版本的数字。\nStructured output only." + ctx.saveToFile("07-fact-sheet.json"),
+      {
+        label: "fact-sheet",
+        phase: "写作",
+        schema: {
+          type: "object",
+          required: ["keyNumbers", "symbols", "caliberNotes", "datasetFacts"],
+          properties: {
+            keyNumbers: { type: "array", items: { type: "object", properties: { number: { type: "string" }, label: { type: "string" }, context: { type: "string" }, sourcePath: { type: "string" } } } },
+            symbols: { type: "array", items: { type: "object", properties: { symbol: { type: "string" }, meaning: { type: "string" }, latex: { type: "string" } } } },
+            caliberNotes: { type: "array", items: { type: "string" } },
+            datasetFacts: { type: "array", items: { type: "object", properties: { dataset: { type: "string" }, facts: { type: "string" } } } },
+          },
+        },
+      }
+    )
+    if (factSheet) log("[Phase 7/8] 事实源表完成 — " + (factSheet.keyNumbers ? factSheet.keyNumbers.length + ' 个关键数字' : ''))
   }
 
   // ── Step 7.2: 章节定义 ──
@@ -2153,7 +2189,7 @@ async function phase7_writing(ctx) {
 
   const EXPECTED_SECTION_COUNT = sectionDefs.length
 
-  // ── Step 7.2: 各章节并行撰写 ──
+  // ── Step 7.2: 各章节顺序撰写（主编视角，详见下方实现）──
   const subQuestionWritingGuide = subQuestions && subQuestions.length > 0
     ? "\n\n## ⚠️ 多子问题结构要求\n本题包含" + subQuestions.length + "个子问题：" +
       subQuestions.map(q => q.label + "：" + q.summary).join("；") + "\n" +
@@ -2169,25 +2205,52 @@ async function phase7_writing(ctx) {
     "4. 跨问题的综合图表（fig_cross_*）放在综合分析章节\n" +
     "5. 确保 `" + figuresDir + "` 中每个文件都在论文中被 `\\includegraphics{...}` 引用"
 
-  const paperSections = safeFilter(await parallel(
-    sectionDefs.map(s => () => {
-      const sectionContext = selectContextForSection(s.id, cleanContext)
-      const sectionContextStr = buildContextStr(sectionContext, WRITING_PRIORITY, cfg.contextBudget, { summarizeLongFields: true })
-      return agent(
-        "## 论文撰写: " + s.label + "\n\n" +
-        "## ⚠️ 论文格式规则（必须严格遵守）\n" + currentRules.rules + "\n" +
-        (chosenAnalysis._paperRules ? "\n### 题目特定补充规则\n" + chosenAnalysis._paperRules + "\n" : "") + "\n" +
-        "## 叙事大纲\n" + (narrativeOutline ? (typeof narrativeOutline === "string" ? narrativeOutline.slice(0, 3000) : "") : "（无叙事大纲，请自行组织）") + "\n\n" +
-        subQuestionWritingGuide +
-        figureLayoutGuide + "\n\n" +
-        (styleGuide ? "## 写作风格指南（所有章节必须遵守）\n" + JSON.stringify(styleGuide, null, 2).slice(0, 2000) + "\n\n" : "") +
-        "## 以下是你撰写本章节所需的相关上下文（已裁剪无关内容）\n" + sectionContextStr + "\n\n" +
-        "## 任务\n" + s.prompt + formatGuide + "\n\n" +
-        "本章节应自包含但注意上下文连贯。\n\nStructured output only." + ctx.saveToFile("05-writing/section-" + s.id + ".json"),
-        { label: "write:" + s.id, phase: "写作", schema: PAPER_SECTION_SCHEMA }
-      )
-    })
-  ), "写作-paperSections")
+  // ── 数字纪律指令（所有章节/修复 agent 必须遵守；事实源表为唯一数字来源）──
+  const factSheetStr = factSheet ? JSON.stringify(factSheet, null, 2).slice(0, 6000) : "（无事实源表）"
+  const NUMBER_DISCIPLINE = "\n\n## ⚠️ 数字纪律（最高优先级，违反即重写）\n" +
+    "论文中的**每一个数值声明**必须来自下方【最终事实源表】。严格禁止：\n" +
+    "1. 使用事实源表之外的数字（包括记忆中的、推测的、早期运行版本的数字）\n" +
+    "2. 自行计算、推导或"补全"新数字\n" +
+    "3. 同一数字在不同章节写不同值（如用户数、阈值、户数、百分比）\n" +
+    "若事实源表中没有你需要的数字：跳过该声明，绝不编造；若必须引用，写[待定]并标注。\n" +
+    "数字的精确写法（小数位数、单位、口径）以事实源表为准，全篇统一。"
+
+  // ── Step 7.2: 各章节顺序撰写（单主编视角：每章可见全部已有章节+事实源表，口径天然统一）──
+  // 顺序而非并行：后写章节强制读取前面已写章节，杜绝"不同章节不同口径"；
+  // 每个 writer 都是同一"主编"的延续视角（注入全篇+事实表），而非隔离的独立 agent。
+  const paperSections = []
+  for (let si = 0; si < sectionDefs.length; si++) {
+    const s = sectionDefs[si]
+    const previousContent = paperSections.map(ps => "### " + ps.section + "\n" + (ps.content || "").slice(0, 1800)).join("\n\n")
+    const sectionContextStr = buildContextStr(cleanContext, WRITING_PRIORITY, cfg.contextBudget, { summarizeLongFields: true })
+    const writeOne = (standalone) => agent(
+      "## 论文撰写: " + s.label + (standalone ? "（重试：前序章节不可用，独立撰写）" : "") + "\n\n" +
+      "## ⚠️ 论文格式规则（必须严格遵守）\n" + currentRules.rules + "\n" +
+      (chosenAnalysis._paperRules ? "\n### 题目特定补充规则\n" + chosenAnalysis._paperRules + "\n" : "") + "\n" +
+      "## 【最终事实源表】（本论文唯一数字来源，必须逐条遵守）\n" + factSheetStr + "\n\n" +
+      NUMBER_DISCIPLINE + "\n\n" +
+      "## 叙事大纲\n" + (narrativeOutline ? (typeof narrativeOutline === "string" ? narrativeOutline.slice(0, 3000) : "") : "（无叙事大纲，请自行组织）") + "\n\n" +
+      subQuestionWritingGuide +
+      figureLayoutGuide + "\n\n" +
+      (styleGuide ? "## 写作风格指南（全篇必须遵守）\n" + JSON.stringify(styleGuide, null, 2).slice(0, 2000) + "\n\n" : "") +
+      (previousContent && !standalone ? "## ✅ 已完成的先前章节（必须通读：符号、数字、口径、术语以它们为准并保持一致；你在其后的章节中延续同一体系）\n" + previousContent.slice(0, 12000) + "\n\n" : "") +
+      "## 建模与求解上下文（完整，含最终结果）\n" + sectionContextStr + "\n\n" +
+      "## 任务\n" + s.prompt + formatGuide + "\n\n" +
+      "本章节应与先前章节口径完全一致（同一符号、同一数字、同一术语）。\n\nStructured output only." + ctx.saveToFile("05-writing/section-" + s.id + ".json"),
+      { label: "write:" + s.id, phase: "写作", schema: PAPER_SECTION_SCHEMA }
+    )
+    let section = await writeOne(false)
+    if (!section) {
+      log("[Phase 7/8] 章节 " + s.id + " 首次撰写失败，独立模式重试")
+      section = await writeOne(true)
+    }
+    if (section) {
+      paperSections.push(section)
+      log("[Phase 7/8] 章节 " + s.id + " (" + s.label + ") 完成 (" + (si + 1) + "/" + sectionDefs.length + ")")
+    } else {
+      log("[Phase 7/8] ⚠️ 章节 " + s.id + " 撰写失败（两次尝试），跳过")
+    }
+  }
 
   log("[Phase 7/8] 完成 " + paperSections.length + "/" + EXPECTED_SECTION_COUNT + " 个章节")
 
@@ -2274,51 +2337,61 @@ async function phase7_writing(ctx) {
       const p0Lines = combinedIssues.split("\n").filter(l => /\[P0\]/.test(l))
       if (p0Lines.length > 0) {
         const p0Only = p0Lines.join("\n")
-        const fixPrompts = paperSections.map(s => () =>
-          agent(
+        let fixedCount = 0
+        for (let fi = 0; fi < paperSections.length; fi++) {
+          const s = paperSections[fi]
+          const allCurrent = paperSections.map(ps => "### " + ps.section + "\n" + (ps.content || "").slice(0, 1200)).join("\n\n")
+          const fixed = await agent(
             "## 最终 P0 修复: " + s.section + "\n\n" +
+            "## 【最终事实源表】（数字唯一权威）\n" + factSheetStr + "\n\n" +
             "## 你的章节内容\n" + (s.content || "").slice(0, 5000) + "\n\n" +
             "## ⚠️ 只修复这些 P0 问题（其他忽略）\n" +
             p0Only.slice(0, 6000) + "\n\n" +
+            "## ✅ 全篇其他章节当前内容（修复时保持与全篇一致）\n" +
+            allCurrent.slice(0, 12000) + "\n\n" +
             "## 修复要求\n" +
             "只修复 P0 问题。这是最后一轮，不做大改——精准修复，不重写章节。\n" +
+            "数字以事实源表为准，其他章节已统一的口径不得破坏。\n" +
             "输出修改后的完整 content。Structured output only.",
             { label: "final-fix:" + s.id, phase: "写作", schema: PAPER_SECTION_SCHEMA }
-          ).then(fixed => fixed || s)
-        )
-        const fixedSections = safeFilter(await parallel(fixPrompts), "写作-fix")
-        for (const fs of fixedSections) {
-          const idx = paperSections.findIndex(s => s.section === fs.section)
-          if (idx >= 0) paperSections[idx] = fs
+          )
+          if (fixed) { paperSections[fi] = fixed; fixedCount++ }
         }
-        log("最终 P0 修复完成: " + fixedSections.length + " 个章节已更新")
+        log("最终 P0 修复完成: " + fixedCount + "/" + paperSections.length + " 个章节已顺序更新")
       }
       break
     }
 
-    // 修复
+    // 修复 —— 顺序主编统一修复（单主编视角：每个修复 agent 看到全篇+事实源表+全部问题，
+    // 且能查看前面已修复章节的最新内容，保证跨章节同步修改、杜绝"这章改了那章没改"的版本分叉）
     const combinedIssues = crossText + "\n" + judgeText
-    const fixPrompts = paperSections.map(s => () =>
-      agent(
-        "## 章节修复: " + s.section + " (第" + writingRound + "轮)\n\n" +
-        "## 你的章节内容\n" + (s.content || "").slice(0, 5000) + "\n\n" +
-        "## 审查发现的问题（只修复与你章节相关的，其他忽略）\n" +
+    let fixedCount = 0
+    for (let fi = 0; fi < paperSections.length; fi++) {
+      const s = paperSections[fi]
+      const allCurrent = paperSections.map(ps => "### " + ps.section + "\n" + (ps.content || "").slice(0, 1500)).join("\n\n")
+      const fixed = await agent(
+        "## 章节统一修复: " + s.section + " (第" + writingRound + "轮, " + (fi + 1) + "/" + paperSections.length + ")\n\n" +
+        "## 【最终事实源表】（数字的唯一权威；修复时若发现你的章节数字与它不符，以它为准）\n" + factSheetStr + "\n\n" +
+        "## 你要修复的章节（当前内容）\n" + (s.content || "").slice(0, 5000) + "\n\n" +
+        "## 审查发现的问题（全文问题列表，只处理与你章节相关的；涉及其他章节的问题由对应轮次处理）\n" +
         combinedIssues.slice(0, 8000) + "\n\n" +
+        "## ✅ 全篇所有章节当前内容（含此前已修复的章节——修复你这一章时必须与全篇保持一致：同一符号、同一数字、同一口径；若发现其他章节与事实源表冲突，在回复的 keyPoints 中报告，不要代改）\n" +
+        allCurrent.slice(0, 14000) + "\n\n" +
         "## 修复要求\n" +
         "- 只修改审查报告中指出的问题（符号、数字、逻辑衔接、创新呼应、图表引用、结构排序）\n" +
         "- 不要重写整个章节——精准手术，不是开膛\n" +
         "- 如果某个问题不涉及你的章节，忽略它\n" +
         "- **特别注意**：如果问题涉及摘要数字无出处，要么补推导，要么删数字\n" +
+        "- **数字纪律**：你的章节中所有数字必须与事实源表一致（number 字段精确匹配）；不一致的以事实源表修正\n" +
         "输出修改后的完整 content。Structured output only.",
         { label: "fix:" + s.id + "-r" + writingRound, phase: "写作", schema: PAPER_SECTION_SCHEMA }
-      ).then(fixed => fixed || s)
-    )
-    const fixedSections = safeFilter(await parallel(fixPrompts), "写作-fix")
-    for (const fs of fixedSections) {
-      const idx = paperSections.findIndex(s => s.section === fs.section)
-      if (idx >= 0) paperSections[idx] = fs
+      )
+      if (fixed) {
+        paperSections[fi] = fixed
+        fixedCount++
+      }
     }
-    log("修复完成 r" + writingRound + ": " + fixedSections.length + " 个章节已更新")
+    log("修复完成 r" + writingRound + ": " + fixedCount + "/" + paperSections.length + " 个章节已顺序更新")
   }
 
   log("[Phase 7/8] 写作完成 ✓ — " + paperSections.length + "/" + EXPECTED_SECTION_COUNT + " 个章节, " + (narrativeOutline ? "叙事大纲 ✓" : "") + (innovationMatrix ? ", 创新矩阵 ✓" : "") + (crossSectionReview ? ", 交叉审查 ✓" : ""))
@@ -2662,47 +2735,15 @@ async function phase8_final(ctx) {
       "\\end{document}\n"
     )
   } else {
-    abstractBlock = (
-      "\\begin{abstract}\n" + abstractBody + "\n\\end{abstract}\n\n" +
-      (keywords ? "\\noindent\\textbf{关键词：}" + keywords.replace(/[；;]/g, "；") + "\n\n\\newpage\n\n" : "\\newpage\n\n")
-    )
-    appendixHeader = (
-      "\n\n\\newpage\n" +
-      "\\begin{appendices}\n" +
-      "\\section{支撑材料清单}\n" +
-      "根据全国大学生数学建模竞赛论文格式规范（2025年修订稿）第五条要求，本论文附录包含以下支撑材料：\n" +
-      "\\begin{itemize}\n" +
-      "  \\item 原始数据文件（附件1--4）\n" +
-      "  \\item 求解程序（共5个Python脚本，位于 code/ 目录）\n" +
-      "  \\item 图表文件（共若干张，位于 figures/ 目录）\n" +
-      "  \\item 输出结果（results.json, sensitivity*.json）\n" +
-      "\\end{itemize}\n" +
-      "\n\n\\newpage\n" +
-      "\\section{建模过程图表}\n" +
-      "以下为建模、求解和验证过程中生成的全部图表，按子问题组织。\n\n" +
-      "\\section{源程序代码}\n" +
-      "以下为建模求解所用全部完整可运行的源程序代码（CUMC 规范第5条要求）。\n\n"
-    )
-    texContent = (
-      preamble +
-      abstractBlock +
-      bodySections +
-      "\n\n\\section{参考文献}\n" +
-      "% 参考文献列表（由写作 agent 生成）\n" +
-      "\\begin{thebibliography}{99}\n" +
-      "\\end{thebibliography}\n" +
-      "\n\n\\newpage\n" +
-      "\\begin{appendices}\n" +
-      "\\section{支撑材料清单}\n" +
-      "根据全国大学生数学建模竞赛论文格式规范（2025年修订稿）第五条要求，本论文附录包含以下支撑材料：原始数据文件、求解程序（位于 code/ 目录）、图表文件（位于 figures/ 目录）、输出结果文件。\n" +
-      "\n\n\\newpage\n" +
-      "\\section{建模过程图表}\n" +
-      "以下为建模、求解和验证过程中生成的全部图表，按子问题组织。\n\n" +
-      "\\section{源程序代码}\n" +
-      "以下为建模求解所用全部完整可运行的源程序代码（CUMC 规范第5条要求）。\n\n" +
-      "\\end{appendices}\n" +
-      "\\end{document}\n"
-    )
+    // CUMCM: 使用 skill 模板组装（templates/cumcm-paper.tex + assemble_from_template.py）
+    // 模板内置 2026-08 实战经验：摘要 \section*（无 abstract 环境，避免双摘要）、
+    // 章节标题居中、参考文献单标题（thebibliography 自带标题）、附录 A/B/C 字母编号、
+    // 代码彩色样式 pythonstyle、bm 加粗、支撑材料清单真实模板。
+    // 组装在 compile agent 的第 0.5 步执行（提取 cite 键 → 生成参考文献 → 跑组装脚本）。
+    abstractBlock = ""   // 由模板组装处理
+    appendixHeader = ""  // 由模板组装处理
+    texContent = null    // 由 compile agent 调用组装脚本生成（非内联拼接）
+    texPreambleBody = "（模板组装：见编译步骤第0.5步）"
   }
 
   const texPreambleBody = preamble + abstractBlock + bodySections
@@ -2722,53 +2763,77 @@ async function phase8_final(ctx) {
     "- Markdown 表格或对账清单（如「数字修正清单对账」「| 摘要中原值 | 代码 stdout 值 |」等）\n" +
     "- 重复的摘要文本（abstract 之后的正文开头不应再次出现摘要全文）\n" +
     "- 任何看起来像 Agent 间通信内容而非论文正文的文字\n" +
+    "- 章节内容中自带的 thebibliography 环境（参考文献统一由组装步骤生成，章节内出现必须删除）\n" +
     "清理后的 body 只保留论文章节内容。\n\n" +
-    "### 第1步：写入 preamble + 正文 body\n" +
-    "先用 `mkdir -p " + outputDir + "/paper` 创建目录，" +
-    "然后用 Write 工具将以下 LaTeX 源码写入 `" + texFilePath + "`：\n\n" +
-    "```latex\n" + texPreambleBody + "\n```\n" +
-    (texPreambleBody.length > 40000
-      ? "\n**注意**：内容完整，直接写入文件，不要在上下文中评估全文。确保所有内容都被写入（可以用 Write 分块，或检查文件大小）。\n\n"
-      : "\n") +
+    (isMcm
+      ? "### 第1步：写入 preamble + 正文 body（MCM 手动拼接）\n" +
+        "先用 `mkdir -p " + outputDir + "/paper` 创建目录，" +
+        "然后用 Write 工具将以下 LaTeX 源码写入 `" + texFilePath + "`：\n\n" +
+        "```latex\n" + texPreambleBody + "\n```\n" +
+        (texPreambleBody.length > 40000
+          ? "\n**注意**：内容完整，直接写入文件，不要在上下文中评估全文。确保所有内容都被写入（可以用 Write 分块，或检查文件大小）。\n\n"
+          : "\n") +
+        "### 第2步：验证 body 完整性\n" +
+        "读取 `" + texFilePath + "` 的最后几行，确认最后一段没有在公式中间截断" +
+        "（不以 `$`、`\\[`、`\\begin{...}` 等未闭合的环境结尾）。" +
+        "如果文件内容完整，继续下一步。\n\n" +
+        "### 第3步：追加附录头\n" +
+        "用 Bash append 将以下 appendix header 追加到 `" + texFilePath + "`：\n\n" +
+        "```bash\ncat >> " + texFilePath + " << 'APPEOF'\n" + appendixHeader + "APPEOF\n```\n\n"
+      : "### 第0.5步：用 skill 模板组装（CUMCM，不要手工拼接 preamble）\n" +
+        "使用模板组装脚本生成 `" + texFilePath + "`（模板已内置全部规范：摘要节、标题居中、参考文献单标题、附录 A/B/C、代码彩色样式、bm 加粗）：\n" +
+        "1. **提取引用键**：`grep -ho '\\\\cite{[^}]*}' " + intermediatesDir + "/05-writing/section-*.json 2>/dev/null | grep -o '{[^}]*}' | tr -d '{}' | tr ',' '\\n' | sort -u`\n" +
+        "2. **生成参考文献**：为每个键生成规范 bibitem（中文文献：作者.题名.刊名,年份,卷(期):页码；英文同理；AI 工具键 `ai_tool` 固定用：AI工具使用声明：大语言模型辅助写作工具（Claude, 版本2026, Anthropic公司, 使用日期2026-08）[Z]. 使用详情见支撑材料《AI工具使用详情》。），包进 \\\\begin{thebibliography}{N}...\\\\end{thebibliography}，写入 /tmp/refs.tex\n" +
+        "3. **运行组装**：\n" +
+        "```bash\nmkdir -p " + outputDir + "/paper\npython3 /home/tofu/.claude/skills/math-model/templates/assemble_from_template.py \\\n" +
+        "  --template /home/tofu/.claude/skills/math-model/templates/cumcm-paper.tex \\\n" +
+        "  --sections " + intermediatesDir + "/05-writing \\\n" +
+        "  --output " + texFilePath + " \\\n" +
+        "  --title \\\"" + TITLE + "\\\" \\\n" +
+        "  --paper-title \\\"<从题目原文提取的论文题目，如：窃电用户识别与反窃电措施建议>\\\" \\\n" +
+        "  --subtitle \\\"<一句话方法名副标题>\\\" \\\n" +
+        "  --references \\\"$(cat /tmp/refs.tex)\\\" \\\n" +
+        "  --code-dir " + codeDir + " \\\n" +
+        "  --materials \\\"\\\\item 求解程序（完整可运行，位于支撑材料 code/ 目录）\\\" \\\n" +
+        "  --materials \\\"\\\\item 结果数据（results.json 等，位于 data/ 目录）\\\" \\\n" +
+        "  --materials \\\"\\\\item 图表文件（位于 figures/ 目录，均在正文引用）\\\" \\\n" +
+        "  --materials \\\"\\\\item AI工具使用详情（AI 工具使用详情.pdf，按《全国大学生数学建模竞赛人工智能工具使用规定》第4(2)条要求）\\\" \\\n" +
+        "  --materials \\\"\\\\item 赛题原始数据由竞赛提供，按规范第十一条不包含在支撑材料中；全部结果可由上述源程序直接复算\\\"\n```\n" +
+        "   如果存在疑似名单数据（`" + outputDir + "/data/suspect_lists.json`），追加 `--suspect-json " + outputDir + "/data/suspect_lists.json`。\n" +
+        "4. **组装后检查**：`grep -n 'section*{摘' " + texFilePath + "` 确认摘要用 `\\\\section*`（无编号）；`grep -c 'begin{thebibliography}' " + texFilePath + "` 必须为 1（单一参考文献）；`grep -n 'appendix' " + texFilePath + "` 确认附录从 \\\\appendix 开始（A/B/C 编号）。\n" +
+        "5. **章节名兼容**：若组装脚本报「未找到章节」，用 `ls " + intermediatesDir + "/05-writing/` 核对 section-*.json 的 section 名（脚本按 摘要/问题重述/问题重述与分析/模型假设与符号说明/模型假设与符号/模型建立与求解/结果分析与验证/结论与改进 顺序匹配；不匹配时把 JSON 的 section 字段改为脚本期望名）。\n\n") +
 
-    "### 第2步：验证 body 完整性\n" +
-    "读取 `" + texFilePath + "` 的最后几行，确认最后一段没有在公式中间截断" +
-    "（不以 `$`、`\\[`、`\\begin{...}` 等未闭合的环境结尾）。" +
-    "如果文件内容完整，继续下一步。\n\n" +
-
-    "### 第3步：追加附录头\n" +
-    "用 Bash append 将以下 appendix header 追加到 `" + texFilePath + "`：\n\n" +
-    "```bash\ncat >> " + texFilePath + " << 'APPEOF'\n" + appendixHeader + "APPEOF\n```\n\n" +
-
-    "### 第3.5步：嵌入图表到附录\n" +
-    "在写入源程序代码之前，先嵌入图表。\n" +
-    "1. 列出 `" + figuresDir + "` 目录中的所有 .png/.pdf 文件：`ls " + figuresDir + "`\n" +
-    "2. 按子问题分类（文件名含 Q1/Q2/Q3/cross），将每个图片用以下格式嵌入附录的" + (isMcm ? "Figures" : "建模过程图表") + "节：\n" +
-    "   ```latex\n" +
-    "   \\begin{figure}[H]\n" +
-    "     \\centering\n" +
-    "     \\includegraphics[width=0.9\\textwidth]{" + figuresDir + "/fig_xxx.png}\n" +
-    "     \\caption{图片描述——根据文件名推断内容}\n" +
-    "   \\end{figure}\n" +
-    "   ```\n" +
-    "   ⚠️ **附录图表必须用 `[H]`（强制就位）**，禁止用 `[htbp]`。附录图表数量多（>10张）时连续 `[htbp]` 会导致浮动体堆积丢失。正文图表仍用 `[htbp]`。需要 `\\usepackage{float}`（已在 preamble 中包含）。\n" +
-    "   ⚠️ **子问题图表数量 >5 时，每 4-5 张图后插入 `\\clearpage`** 防止同子问题内浮动体堆积。\n" +
-    "3. 用 Write 工具将图表 LaTeX 追加到 `" + texFilePath + "`（在 " + (isMcm ? "`\\section{Figures}`" : "`\\section{建模过程图表}`") + " 之后、" + (isMcm ? "`\\section{Source Code}`" : "`\\section{源程序代码}`") + " 之前）。\n" +
-"   ⚠️ **严禁向摘要区域插入图表**：任何自动化编辑 paper.tex 的操作必须验证插入位置不在 `\\begin{abstract}...\\end{abstract}` 范围内。曾因脚本匹配关键词时未做上下文检查，将图表误插入摘要内部→图片出现在论文第一页。\n" +
-    "4. 如果 `" + figuresDir + "` 目录为空或不存在，在对应节中写" + (isMcm ? "「No figures were used.」" : "「本论文未使用图表。」") + "\n\n" +
-    "### 第4步：嵌入源程序代码\n" +
-    "从 `" + codeDir + "` 目录读取所有 .py/.m/.jl 源程序文件，" +
-    "将其内容嵌入附录 `\\section{" + (isMcm ? "Source Code" : "源程序代码") + "}` 中。" +
-    " 每个文件用一个 `\\subsection{文件名}` + `\\begin{lstlisting}...\\end{lstlisting}`。" +
-    " 如果目录为空或没有代码文件，在附录中写\"" + (isMcm ? "No source code was used in this paper." : "本论文没有用到程序") + "\"（" + (isMcm ? "MCM/ICM" : "CUMC") + " 规范要求）。" +
-    " 用 Write 工具追加到 `" + texFilePath + "`。\n\n" +
-
-    "### 第5步：结束文件\n" +
-    "用 Bash 追加末尾标签：\n" +
-    "```bash\n" +
-    "echo '\\end{appendices}' >> " + texFilePath + "\n" +
-    "echo '\\end{document}' >> " + texFilePath + "\n" +
-    "```\n\n" +
+    (isMcm
+      ? "### 第3.5步：嵌入图表到附录\n" +
+        "在写入源程序代码之前，先嵌入图表。\n" +
+        "1. 列出 `" + figuresDir + "` 目录中的所有 .png/.pdf 文件：`ls " + figuresDir + "`\n" +
+        "2. 按子问题分类（文件名含 Q1/Q2/Q3/cross），将每个图片用以下格式嵌入附录的 Figures 节：\n" +
+        "   ```latex\n" +
+        "   \\begin{figure}[H]\n" +
+        "     \\centering\n" +
+        "     \\includegraphics[width=0.9\\textwidth]{" + figuresDir + "/fig_xxx.png}\n" +
+        "     \\caption{图片描述——根据文件名推断内容}\n" +
+        "   \\end{figure}\n" +
+        "   ```\n" +
+        "   ⚠️ **附录图表必须用 `[H]`（强制就位）**，禁止用 `[htbp]`。附录图表数量多（>10张）时连续 `[htbp]` 会导致浮动体堆积丢失。正文图表仍用 `[htbp]`。需要 `\\usepackage{float}`（已在 preamble 中包含）。\n" +
+        "   ⚠️ **子问题图表数量 >5 时，每 4-5 张图后插入 `\\clearpage`** 防止同子问题内浮动体堆积。\n" +
+        "3. 用 Write 工具将图表 LaTeX 追加到 `" + texFilePath + "`（在 `\\section{Figures}` 之后、`\\section{Source Code}` 之前）。\n" +
+        "   ⚠️ **严禁向摘要区域插入图表**：任何自动化编辑 paper.tex 的操作必须验证插入位置不在 `\\begin{abstract}...\\end{abstract}` 范围内。曾因脚本匹配关键词时未做上下文检查，将图表误插入摘要内部→图片出现在论文第一页。\n" +
+        "4. 如果 `" + figuresDir + "` 目录为空或不存在，在对应节中写「No figures were used.」\n\n" +
+        "### 第4步：嵌入源程序代码（MCM）\n" +
+        "从 `" + codeDir + "` 目录读取所有 .py/.m/.jl 源程序文件，" +
+        "将其内容嵌入附录 `\\section{Source Code}` 中。" +
+        " 每个文件用一个 `\\subsection{文件名}` + `\\begin{lstlisting}...\\end{lstlisting}`。" +
+        " 如果目录为空或没有代码文件，在附录中写\"No source code was used in this paper.\"（MCM/ICM 规范要求）。" +
+        " 用 Write 工具追加到 `" + texFilePath + "`。\n\n" +
+        "### 第5步：结束文件（MCM）\n" +
+        "用 Bash 追加末尾标签：\n" +
+        "```bash\n" +
+        "echo '\\end{appendices}' >> " + texFilePath + "\n" +
+        "echo '\\end{document}' >> " + texFilePath + "\n" +
+        "```\n\n"
+      : "### 第3.5-5步（CUMCM）\n" +
+        "跳过：模板组装已包含附录图表、代码附录与结尾标签。若正文需要补充附录图表，直接编辑 `" + texFilePath + "` 在对应附录节内插入 `\\begin{figure}[H]...\\end{figure}`（附录用 [H]，正文用 [htbp]）。\n\n") +
 
     "### 第6步：编译\n" +
     "```bash\ncd " + outputDir + " && xelatex -interaction=nonstopmode -file-line-error paper.tex 2>&1 | tail -100\n```\n\n" +
@@ -3125,7 +3190,7 @@ if (DRY_RUN) {
     "| 3. 文献调研 | 多角度搜索 → 精读 → 局限分析 | 5-10 min | 找出标准方法共同局限 |",
     "| 4. 建模方案 | Gap分析 → 创新提案 → 评审团⇄修订(max 6轮) → 适配性预检 | 10-15 min | 正确性第一,低于阈值打回 |",
     "| 5⇄6. 求解⇄验证 | 算法→实现→baseline对比→5维验证→迭代修复→趋势退出 | 15-30 min | 数据说话;趋势恶化自动退出 |",
-    "| 7. 写作 | 叙事大纲→风格指南→并行写作→交叉审查⇄修复(max 3轮) | 10-15 min | 质量门:章节/摘要数字/图表引用 |",
+    "| 7. 写作 | 事实源表→叙事大纲→风格指南→顺序主编撰写→交叉审查⇄统一修复(max 3轮) | 15-25 min | 质量门:章节/摘要数字/图表引用/数字纪律 |",
     "| 8. 终审 | 摘要数字溯源→验证→LaTeX编译→评委自评 | 5-10 min | 摘要数字须有正文出处 |",
     "",
     "### 配置参数",
