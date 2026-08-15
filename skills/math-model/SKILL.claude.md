@@ -1,7 +1,6 @@
 ---
 name: math-model
 description: 当用户需要完成数学建模竞赛（国赛CUMCM/美赛MCM）的完整或部分流程时使用。触发词：/math-model、数模、数学建模、国赛、美赛、建模比赛。症状：审题无从下手、数据画像缺失、求解验证脱节、摘要数字无出处、论文格式不合规。
-disable-model-invocation: true
 ---
 
 # 数学建模工作流
@@ -18,14 +17,14 @@ disable-model-invocation: true
 |-------|------|----------|
 | 1-2. 审题+选题 | 并行提取原文→审题→选题推荐→等用户确认 | 主 agent 不读题，只做编排 |
 | 3. 文献调研 | 多角度搜索→精读→提取模型/claim→局限分析 | 为创新提供合法来源 |
-| 4. 建模方案 | Gap分析→多角度创新提案→评委评审⇄修订(max 6轮)→适配性预检 | 低于阈值 → 预检终止并提示（换方向/放宽严格度后重跑） |
+| 4. 建模方案 | Gap分析→多角度创新提案→评委评审⇄修订(max 6轮)→适配性预检 | 低于阈值打回重设计 |
 | 5⇄6. 求解⇄验证 | 算法→实现→baseline对比→验证(5维度)→投票→反思checkpoint | 趋势退出+dry收敛；根基问题自动回溯 |
 | 7. 写作 | 事实源表→叙事大纲→顺序主编撰写→交叉审查统一修复(max 3轮 dry=2) | 质量门：章节/排序/溯源/图表/P0；全篇数字以事实源表为唯一权威 |
-| 8. 终审 | 摘要数字溯源→验证→评委意见→一次限定修复→(LaTeX编译) | 摘要定生死；每个数字需正文出处 |
+| 8. 终审 | 摘要数字溯源→验证→(LaTeX编译)→评委自评 | 摘要定生死；每个数字需正文出处 |
 
 ## Core Pattern
 
-**架构原则：主 agent 在阶段一不解读、不润色题目与数据——只机械透传原文、分派 sub-agent、汇总呈现（附件存在性验证与阶段三的代码-论文对账除外，这两步必须由主 agent 亲自执行）。** 每道题的输入由一个 sub-agent 提纯，主 agent 没有机会"润色"原文。
+**架构原则：主 agent 不读题、不读数据、不跑命令——只分派 sub-agent、传递结果、汇总呈现。** 每道题的输入由一个 sub-agent 提纯，主 agent 没有机会"润色"原文。
 
 阶段一（主 agent 编排）：Step 1 并行提纯 → Step 2 并行审题 → Step 3 选题推荐 → Step 4 等用户选择。
 阶段二（Workflow 全自动）：Phase 3-8 文献→建模→求解⇄验证→写作→终审，收敛控制+趋势退出+数字溯源全部内置。
@@ -34,7 +33,7 @@ disable-model-invocation: true
 
 ### 阶段一：审题 + 选题
 
-**Step 1: 输入提纯（每道题一个 Agent，并行）** — 提取题目文字 + 侦察附件数据 + 论文规则。Prompt: [`prompts/step1-extraction.md`](prompts/step1-extraction.md)。主 agent **不解读、不润色**提纯结果，直接传给 Step 2。
+**Step 1: 输入提纯（每道题一个 Agent，并行）** — 提取题目文字 + 侦察附件数据 + 论文规则。Prompt: [`prompts/step1-extraction.md`](prompts/step1-extraction.md)。主 agent **不读**提纯结果，直接传给 Step 2。
 
 **Step 2: 并行审题（每道题一个 Agent）** — 输入 Step 1 原始输出。Prompt: [`prompts/step2-analysis.md`](prompts/step2-analysis.md)。`dataSufficiency` 必须基于数据画像**实际内容**判断，不能基于题目文字猜测。
 
@@ -42,50 +41,35 @@ disable-model-invocation: true
 
 **Step 4: 等用户选择** — 列出利弊、子问题数量和复杂度。**停在这里，等用户选择。**
 
-### 阶段二：执行 Workflow（DSH 版）
+### 阶段二：执行 Workflow
 
-用户选定后，**必须用 `workflow` 工具**执行 Phase 3~8。**禁止手动编排 agent**——Workflow 脚本包含收敛控制、评审⇄修订 loop、趋势退出、数字溯源，手动跑会丢失。
+用户选定后，**必须用 Workflow 工具**执行 Phase 3~8。**禁止手动编排 agent**——Workflow 脚本包含收敛控制、评审⇄修订 loop、趋势退出、数字溯源，手动跑会丢失。
 
-DSH 的 `workflow` 工具参数为 `meta`（身份数据）+ `script`（纯 JS 脚本正文，**不含** `export const meta`）+ `args`（JSON 对象）。本 skill 已附编排脚本：
-
-- **script**：用 `read` 工具读取本 skill 目录下 `workflows/math-model.js` 的**完整正文**（该文件约 3400 行，read 默认 limit 2000，需分两次读取：第一次 `offset 1`、第二次 `offset 2001`）。**注意**：文件开头含 `export const meta = {...}` 块（约第 5~19 行，供 Claude Code 安装直接使用）——DSH 运行时**跳过该块**（从 `export const meta = {` 到其闭合的 `}`），只把其余正文作为 `script` 参数传入
-- **meta**：读取 `workflows/meta.json`（含 `name`/`description`/`whenToUse`/`phases`），作为 `meta` 参数传入（与脚本头部 `export const meta` 块内容一致）
-- **args**：
-
-```json
-{
-  "selectedProblem": "A",
-  "competition": "cumcm",
-  "mode": "full",
-  "templateDir": "<本 skill 的 templates 目录绝对路径>",
-  "problem": {
-    "id": "A",
-    "description": "<Step 1 \"=== 题目原文 ===\" 机械提取>",
-    "dataProfile": "<Step 1 \"=== 附件清单 ===\" + \"=== 附件数据画像 ===\">",
-    "paperRules": "<Step 1 \"=== 论文规则 ===\">",
-    "analysis": "<Step 2 完整 JSON>"
-  },
-  "outputDir": "./math-model-output",
-  "attachments": ["<从 Step 1 附件清单逐行复制的绝对路径>"]
-}
+```js
+Workflow({
+  scriptPath: '/home/tofu/.claude/workflows/math-model.js',
+  args: {
+    selectedProblem: 'A',
+    problem: {
+      id: 'A',
+      description: '<Step 1 "=== 题目原文 ===" 机械提取>',
+      dataProfile: '<Step 1 "=== 附件清单 ===" + "=== 附件数据画像 ===">',
+      paperRules: '<Step 1 "=== 论文规则 ===">',
+      analysis: '<Step 2 完整 JSON>',
+    },
+    outputDir: './math-model-output',
+    attachments: ['<从 Step 1 附件清单逐行复制的绝对路径>'],
+  }
+})
 ```
 
 参数要点：
-- `competition`：`"cumcm"`（国赛，默认）或 `"mcm"`（美赛——英文写作、Summary Sheet、letterpaper 版式、APA 风格引用）
-- `mode`：`"full"`（默认，评审/求解/写作完整迭代，110~160+ 个子 agent）或 `"quick"`（评审 1 轮、求解 dry=1、写作 1 轮，约 30~40 个子 agent，适合赶时间或初步验证）
-- `templateDir`：本 skill 的 `templates/` 目录绝对路径（技能加载时给出的资源基底即为 skill 目录）；不传则编译 agent 自动探测 `~/.dsh` 与 `~/.claude` 下的技能副本
-- `problem.description`：从 Step 1 `=== 题目原文 ===` 标记段机械提取，不解读内容，直接粘贴
+- `problem.description`：从 Step 1 `=== 题目原文 ===` 标记段机械提取，不读内容直接粘贴
 - `problem.dataProfile`：从 Step 1 `=== 附件清单 ===` + `=== 附件数据画像 ===` 提取，无附件则 `"无附件"`
 - `problem.paperRules`：从 Step 1 `=== 论文规则 ===` 提取，无则 `"无单独论文规则"`
 - `problem.analysis`：Step 2 完整 JSON（含 `subQuestions` 数组——后续所有 phase 从该数组获取子问题列表）
 - `attachments`：从 Step 1 附件清单逐行复制绝对路径，**不做任何路径拼接或改写**（路径含空格保持原样）。传参前逐文件验证：`for f in <路径1> <路径2>; do test -f "$f" || echo "MISSING: $f"; done`
-
-**运行预期（务必转告用户）：**
-- **耗时 30 分钟 ~ 10 小时不等**，主要取决于建模评审 loop 与代码求解阶段的时间复杂度（问题越难、迭代轮数越多越久），full 模式通常以小时计
-- Workflow 在前台运行，父级轮次会阻塞到整个工作流结算——**期间不要打断、不要刷新页面**；结束后返回结果
-- **脚本全文（约 4.5 万 token）会注入主 agent 历史并随每次请求重放**，这是固定编排开销（与运行规模无关），子 agent 不接触脚本本体
-- **中途中断**：checkpoint 已保证已完成的 phase 落盘；恢复时在 args 里加 `resumeFrom: "<已完成的最新 phase 名>"`（如 `"phase4-modeling"`）即可跳过已完成阶段续跑（也可配合 `skipPhases`）
-- **可选拆段运行**：把一次大 workflow 拆成多次调用（每段 `resumeFrom` 衔接），每段阻塞 5~15 分钟，段间可检查 `outputDir/intermediates/` 并人工干预；代价是每段都要重新传脚本（重复固定入场费）
+- Workflow 跑在后台，不要打断；结束后返回结果
 
 ### 阶段三：汇报 + 阶段二失败备用
 
@@ -114,7 +98,7 @@ Workflow 返回后汇报：建模概要+创新、baseline 对比、迭代轮数�
 | 失败模式 | 症状 | 防护 |
 |----------|------|------|
 | 求解loop不收敛 | dry 永远=0 | 趋势退出：新问题数连续2轮超上轮1.1×→退出 |
-| 模型全是FLAW | 11/11 次反思 FUNDAMENTAL_FLAW | Phase 4.5 预检终止（提示换方向/放宽严格度） |
+| 模型全是FLAW | 11/11 次反思 FUNDAMENTAL_FLAW | Phase 4.5 预检打回 |
 | 图表未引用 | 生成图但论文没用 | Phase 7 图表引用检查 |
 | 创新矩阵闲置 | innovationMatrix 未喂给写作 | allContext 含 innovationMatrix |
 | 标签式强调 | 「创新点：」等使论文像技术报告 | 禁止标签；创新自然融入描述 |
@@ -180,7 +164,7 @@ outputDir/
 
 ## 注意事项
 
-- PDF 用 pdftotext，不用 read 工具；阶段一等确认，阶段二不打断
-- Workflow 内 agent 失败 → 降级继续；**不要编辑 workflow 脚本**（脚本内容以文件为准，改了不会自动同步给后续运行）
+- PDF 用 pdftotext，不用 Read；阶段一等确认，阶段二不打断
+- Workflow 内 agent 失败 → 降级继续；**不要编辑 workflow 脚本**（缓存失效）
 - 各 phase 中间产物存 `outputDir/intermediates/`；摘要数字需正文出处
-- 阶段一大量使用并行 sub-agent 编排（DSH subagent 工具支持后台并行，见 dsh-tool-subagent）；主 agent 只编排、不读题
+- **REQUIRED BACKGROUND:** You MUST understand superpowers:dispatching-parallel-agents —— 阶段一大量使用并行 sub-agent 编排

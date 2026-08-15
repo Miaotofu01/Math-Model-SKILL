@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CUMCM 论文组装脚本（math-model skill 内置，配合 cumcm-paper.tex 模板）。
+r"""CUMCM 论文组装脚本（math-model skill 内置，配合 cumcm-paper.tex 模板）。
 
 用法:
     python3 assemble_from_template.py \
@@ -10,6 +10,7 @@
         [--paper-title "论文题目"] \
         [--subtitle "基于XX的方法"] \
         [--suspect-json <名单 JSON 路径>] \
+        [--suspect-title "附录B 节标题（默认：疑似名单）"] \
         [--code-dir <code 目录>] \
         [--code-entries "subsection名|文件路径" 可多次] \
         [--materials "支撑材料 item 文本" 可多次]
@@ -18,7 +19,8 @@
 1. 读模板，替换 @TITLE@/@ABSTRACT@/@BODY@ 等占位符
 2. 摘要：自动剥离内容开头的 \section{摘 要} 章节编号（改 \section*），
    避免与模板的摘要节标题重复
-3. 名单 JSON → LaTeX 表（budget-定容名单，含档位/判定通道）
+3. 名单 JSON → LaTeX 表（通用渲染：列名取自数据行键，支持任意赛题名单；
+   无名单时附录 B 整节删除）
 4. code 目录 → \lstinputlisting[style=pythonstyle] 条目
 """
 import argparse, glob, json, os, re, sys
@@ -39,12 +41,21 @@ def load_sections(sections_dir):
 
 
 def fix_abstract(body):
-    """摘要内容：\section{摘 要} → \section*{摘 要}（无编号，与模板同款实现）。"""
+    r"""摘要内容：\section{摘 要} → \section*{摘 要}（无编号，与模板同款实现）。"""
     return re.sub(r'\\section\{摘\\quad 要\}\s*', r'\\section*{摘\\quad 要}\n', body, count=1)
 
 
+def _fmt(v):
+    """单元格格式化：float 保留 3 位小数，其余转字符串并转义下划线。"""
+    if isinstance(v, bool):
+        return '是' if v else '否'
+    if isinstance(v, (int, float)):
+        return f'{v:.3f}' if isinstance(v, float) else str(v)
+    return str(v).replace('_', r'\_')
+
+
 def suspect_to_latex(suspect_path):
-    """名单 JSON → LaTeX 表（每数据集一个 table）。"""
+    """名单 JSON → LaTeX 表（通用：列名取自首行键，含排名列；支持 dict/标量行）。"""
     if not suspect_path or not os.path.exists(suspect_path):
         return ''
     suspect = json.load(open(suspect_path, encoding='utf-8'))
@@ -52,29 +63,39 @@ def suspect_to_latex(suspect_path):
     for i, (label, rows) in enumerate(suspect.items()):
         if not rows:
             continue
-        safe_label = str(label).replace('_', '\\_')
+        safe_label = str(label).replace('_', r'\_')
+        # 列结构：优先按首行 dict 的键；标量行退化为单列"值"
+        if isinstance(rows[0], dict):
+            keys = list(rows[0].keys())
+            cols = ['l'] + ['c'] * len(keys)
+            header = '排名 & ' + ' & '.join(k.replace('_', r'\_') for k in keys) + r' \\'
+            body_lines = []
+            for rank, r in enumerate(rows, 1):
+                cells = [str(rank)] + [_fmt(r.get(k)) for k in keys]
+                body_lines.append(' & '.join(cells) + r' \\')
+        else:
+            cols = ['l', 'l']
+            header = '排名 & 值 \\\\'
+            body_lines = [f'{rank} & {_fmt(v)} \\\\' for rank, v in enumerate(rows, 1)]
         parts.append(f"""\\begin{{table}}[H]
 \\centering
 \\small
-\\caption{{疑似窃电用户名单（{safe_label}，按嫌疑评分降序，共{len(rows)}户）}}
+\\caption{{名单（{safe_label}，按嫌疑评分降序，共{len(rows)}行）}}
 \\label{{tab:suspect_{i}}}
-\\begin{{tabular}}{{{'l' + 'c'*4 + 'l'}}}
+\\begin{{tabular}}{{{''.join(cols)}}}
 \\toprule
-排名 & 用户编号 & 嫌疑评分 & 档位 & 判定通道 \\\\
-\\midrule""")
-        for rank, r in enumerate(rows, 1):
-            tier = '高嫌疑' if str(r.get('tier', '')).startswith('高') else '中嫌疑'
-            chan = r.get('chan') or '一般降幅通道'
-            parts.append(f"{rank} & {r['uid']} & {r['score']:.3f} & {tier} & {chan} \\\\")
-        parts.append("""\\bottomrule
-\\end{tabular}
-\\end{table}
+{header}
+\\midrule
+{chr(10).join(body_lines)}
+\\bottomrule
+\\end{{tabular}}
+\\end{{table}}
 """)
     return '\n'.join(parts)
 
 
 def code_entries(code_dir, code_files):
-    """code 目录文件 → \subsection + \lstinputlisting 条目。"""
+    r"""code 目录文件 → \subsection + \lstinputlisting 条目。"""
     if code_dir and os.path.isdir(code_dir):
         files = sorted(os.listdir(code_dir))
         files = [f for f in files if f.endswith(('.py', '.m', '.jl', '.R')) and '__pycache__' not in f]
@@ -101,6 +122,7 @@ def main():
     ap.add_argument('--paper-title', default='')
     ap.add_argument('--subtitle', default='')
     ap.add_argument('--suspect-json', default='')
+    ap.add_argument('--suspect-title', default='', help='附录B 节标题（默认：疑似名单）')
     ap.add_argument('--code-dir', default='')
     ap.add_argument('--code-entries', action='append', default=[])
     ap.add_argument('--materials', action='append', default=[])
@@ -129,6 +151,16 @@ def main():
 
     # 名单/代码/支撑材料
     suspect_tex = suspect_to_latex(args.suspect_json)
+    # 附录B 整节由脚本生成：有名单才输出（含前后分页），无名单整节删除
+    suspect_section = ''
+    if suspect_tex:
+        title = args.suspect_title or '疑似名单'
+        suspect_section = (
+            f'\\newpage\n'
+            f'\\section{{{title}}}\n'
+            f'以下为按嫌疑评分降序输出的名单，字段含义见正文。\n\n'
+            f'{suspect_tex}\n'
+        )
     code_tex = code_entries(args.code_dir, [tuple(e.split('|', 1)) for e in args.code_entries])
     materials = args.materials or [
         '\\item 求解程序（完整可运行，位于支撑材料 code/ 目录）',
@@ -150,12 +182,13 @@ def main():
     out = out.replace('@BODY@', body)
     out = out.replace('@REFERENCES@', references)
     out = out.replace('@MATERIALS@', '\n'.join(materials))
-    out = out.replace('@SUSPECT_LISTS@', suspect_tex)
+    out = out.replace('@SUSPECT_SECTION@', suspect_section)
     out = out.replace('@CODE_ENTRIES@', code_tex)
     out = out.replace('@CODE_DIR@', args.code_dir)
 
-    # 残留占位符检查
-    leftovers = re.findall(r'@[A-Z_]+@', out)
+    # 残留占位符检查（忽略 %% 注释行：注释里的 @XXX@ 是说明性示例）
+    leftovers = re.findall(r'@[A-Z_]+@', '\n'.join(
+        ln for ln in out.split('\n') if not ln.strip().startswith('%')))
     if leftovers:
         print(f'⚠️ 未替换占位符: {set(leftovers)}', file=sys.stderr)
 

@@ -684,7 +684,7 @@ async function saveCheckpoint(ctx, phaseName, data) {
   const { intermediatesDir } = ctx
   const timestamp = "N/A"
   const serialized = JSON.stringify(data)
-  const checkpoint = { phase: phaseName, timestamp, version: '1.0', sha256: cpHash(serialized), data }
+  const checkpoint = { phase: phaseName, timestamp, version: '1.0', runFingerprint: ctx.runFingerprint || null, sha256: cpHash(serialized), data }
   const filePath = `${intermediatesDir}/${phaseName}-checkpoint.json`
   try {
     await agent(
@@ -714,6 +714,10 @@ async function loadCheckpoint(ctx, phaseName) {
       const serialized = JSON.stringify(parsed.data)
       if (cpHash(serialized) !== parsed.sha256) {
         logError(ErrorLevel.WARNING, phaseName, 'checkpoint hash mismatch, data may be corrupted')
+        return null
+      }
+      if (parsed.runFingerprint && ctx.runFingerprint && parsed.runFingerprint !== ctx.runFingerprint) {
+        logError(ErrorLevel.WARNING, phaseName, 'checkpoint belongs to a different run (fingerprint mismatch), ignoring')
         return null
       }
       log(`Checkpoint loaded: ${phaseName} (${parsed.timestamp})`)
@@ -772,6 +776,33 @@ async function writeIntermediateSummary(ctx, phaseName, title, summary) {
     logError(ErrorLevel.WARNING, phaseName, `intermediate summary save failed: ${err.message}`)
   }
 }
+
+// ═══ P0-2 修复：把修复后的内存章节同步回磁盘 ═══
+// CUMCM 组装脚本从磁盘 intermediates/05-writing/section-*.json 读章节，
+// 而 phase7.3 交叉审查修复与 phase8 摘要/代码对账修复只改内存 paperSections——
+// 不落盘则修复永远进不了最终 PDF。此函数在编译前把内存 sections 覆盖写回磁盘。
+async function syncSectionsToDisk(ctx, sections) {
+  if (!Array.isArray(sections) || sections.length === 0) return
+  const { intermediatesDir } = ctx
+  const dir = `${intermediatesDir}/05-writing`
+  const blocks = sections.map((s, i) =>
+    `### 章节${i + 1}（${s.section || 'unnamed'}）\n` + (s.content || '')
+  ).join('\n\n')
+  try {
+    await agent(
+      `将下列**修复后的最终论文章节**覆盖写回磁盘 JSON（CUMCM 组装脚本从磁盘读取，内存中的修复必须先落盘才会生效）：\n` +
+      `目标目录：${dir}（先 mkdir -p ${dir}）\n` +
+      `1. 删除该目录下所有旧的 section-*.json\n` +
+      `2. 每个章节写一个文件 section-<章节名>.json，内容为 {"section":"<章节名>","content":"<该章节完整内容>"}（JSON 转义；章节名做文件名安全化：空格/斜杠/冒号等替换为 _）。用 Write 工具写入。\n\n` +
+      blocks + `\n\n全部写入后运行 ls ${dir} 确认文件数 = ${sections.length}，并把每个文件的第一行（section 名）列出来。`,
+      { label: 'sync-sections-to-disk', phase: '终审' }
+    )
+    log(`[Phase 8/8] 修复后章节已写回 ${dir}（${sections.length} 节）`)
+  } catch (err) {
+    logError(ErrorLevel.WARNING, '终审', `section sync failed: ${err.message}`)
+  }
+}
+
 
 async function runPhaseWithCheckpoint(ctx, phaseName, phaseFn, extractData, resumeFrom) {
   // 1) auto-resume via checkpoint
@@ -841,7 +872,9 @@ const CRITIQUE_PERSONAS = [
     focus: "如果竞争对手要推翻这篇论文，从哪攻击。找最薄弱的环节，不用客气。关注：更简单的baseline能否得到类似结果？有没有cherry-picking嫌疑？数值结果是否too good to be true？" },
 ]
 
-const MAX_CRITIQUE_ROUNDS = 6
+// ═══ B1: quick 模式（args.mode === 'quick'）——削减评审/求解/写作循环轮数，压缩 agent 扇出 ═══
+const QUICK_MODE = typeof args === "object" && args?.mode === "quick"
+const MAX_CRITIQUE_ROUNDS = QUICK_MODE ? 1 : 6
 
 async function critiqueLoop(model, context, ctx, opts = {}) {
   const {
@@ -860,7 +893,7 @@ async function critiqueLoop(model, context, ctx, opts = {}) {
   for (let round = 0; round < maxRounds; round++) {
     log(label + " 第" + (round + 1) + "/" + maxRounds + "轮...")
 
-    const critiques = safeFilter(await parallel(
+    const rawCritiques = await parallel(
       personas.map(p => () =>
         agent(
           "## 建模方案评审 — " + p.role + "\n\n" +
@@ -881,14 +914,18 @@ async function critiqueLoop(model, context, ctx, opts = {}) {
           "- 正文中任何位置也可能出现 PASS/REVISE，但最终判定以最后一行 VERDICT 为准。\n" +
           ctx.saveToFile(savePrefix + "-critique-" + p.id + "-r" + round + ".txt"),
           { label: label + ":" + p.id + "-r" + round, phase: phaseName }
-        )
+        ).then(r => ({ id: p.id, role: p.role, veto: p.veto, text: r }))
       )
-    ), "critique-loop")
+    )
+    const critiques = rawCritiques
+      .filter(cp => cp && typeof cp.text === "string" && cp.text.trim().length > 0)
+      .map(cp => cp.text)
 
     if (critiques.length === 0) { log(label + " 全部失败，跳过修订循环"); break }
 
-    const verdicts = critiques.map((c, ci) => {
-      const text = typeof c === "string" ? c : ""
+    const verdicts = rawCritiques.map(cp => {
+      if (!cp || typeof cp.text !== "string" || cp.text.trim().length === 0) return null
+      const text = cp.text
       // Try VERDICT: PASS/REVISE structured output first
       const tail = text.slice(-200)
       const verdictMatch = tail.match(/VERDICT:\s*(PASS|REVISE)/i)
@@ -906,6 +943,10 @@ async function critiqueLoop(model, context, ctx, opts = {}) {
       .filter(p => p.veto)
       .every(p => {
         const v = verdicts[personas.indexOf(p)]
+        if (v === null) {
+          log("⚠️ " + p.role + " 评审失败（无意见），视为未通过 veto")
+          return false
+        }
         if (v === "NEUTRAL") {
           log("⚠️ " + p.role + " 判定为 neutral（不否决）")
           return true
@@ -1313,8 +1354,8 @@ async function phase4_modeling(ctx) {
   if (fitnessCheck) {
     log("模型适配性: " + fitnessCheck.totalScore + "/12 — " + fitnessCheck.verdict + " | " + (fitnessCheck.riskSummary || ""))
     if (fitnessCheck.verdict === "STOP") {
-      log("⚠️ 模型适配性检查: STOP — 方案有结构性问题，打回 Phase 4 重新设计。")
-      return { error: "模型适配性预检 STOP (score " + fitnessCheck.totalScore + "/12)：方案有结构性问题，请回到 Phase 4 重新设计模型后再跑。当前不进入求解阶段。" }
+      log("⚠️ 模型适配性检查: STOP — 方案有结构性问题，本次运行终止。")
+      return { error: "模型适配性预检 STOP (score " + fitnessCheck.totalScore + "/12)：方案有结构性问题，本次运行终止，不进入求解阶段。建议：换一个建模方向重新设计后重跑；或用 args.innovationStrictness='loose' 放宽创新阈值后重试；不要用 resumeFrom 续跑（模型未建立，无 checkpoint 可用）。" }
     } else if (fitnessCheck.verdict === "WARN") {
       log("⚠️ 模型适配性检查: WARN — 方案有风险但可尝试求解")
     }
@@ -1686,7 +1727,10 @@ async function phase5_6_solve_verify(ctx) {
               schema: { type: "object", required: ["verdicts"], properties: { verdicts: { type: "array", items: { type: "object", required: ["index", "refuted"], properties: { index: { type: "integer" }, refuted: { type: "boolean" }, evidence: { type: "string" }, confidence: { enum: ["high", "medium", "low"] } } } } } } }
           ).then(result => {
             const verdicts = (result && result.verdicts) ? result.verdicts : (Array.isArray(result) ? result : [])
-            if (!Array.isArray(verdicts) || verdicts.length === 0) return batch.map(f => ({ ...f, confirmed: true, voteSummary: "default" }))
+            if (!Array.isArray(verdicts) || verdicts.length === 0) {
+              logError(ErrorLevel.WARNING, "验证-第" + iteration + "轮", "投票批次 " + (bi + 1) + " 无有效裁决（投票 agent 失败），本批 " + batch.length + " 条发现标记为未验证（confirmed=null），不计入问题清单")
+              return batch.map(f => ({ ...f, confirmed: null, voteSummary: "unverified" }))
+            }
             return batch.map((finding, fi) => {
               const v = verdicts.find(v => v && v.index === fi)
               const refuted = v ? v.refuted : false
@@ -1695,7 +1739,7 @@ async function phase5_6_solve_verify(ctx) {
           })
       )), "验证-votedFindings")
       const flatFindings = votedFindings.reduce(function(acc, val) { return acc.concat(val); }, [])
-      const refutedThisRound = flatFindings.filter(f => !f.confirmed)
+      const refutedThisRound = flatFindings.filter(f => f.confirmed === false)
       for (const f of refutedThisRound) {
         refutedIssues.push({ issue: f.issue, refuteReasons: f.refuteReasons || [] })
       }
@@ -1839,9 +1883,11 @@ async function phase5_6_solve_verify(ctx) {
     // ── Dry/Convergence logic + Trend exit ──
     if (newIssues.length === 0) {
       const criticalRemaining = allIssues.filter(i => i.severity === "critical").length
-      if (criticalRemaining === 0) {
+      if (criticalRemaining === 0 && findings.length > 0) {
         dry++
       log("[Phase 5-6/8] 第" + iteration + "轮: 无新问题,无critical遗留 (dry=" + dry + "/" + cfg.dryThreshold + ")")
+      } else if (findings.length === 0) {
+        logError(ErrorLevel.WARNING, "求解-第" + iteration + "轮", "本轮全部验证 agent 失败，验证产出为空，不累计 dry（防止假收敛）")
       } else {
         log("第" + iteration + "轮: 无新问题但仍有 " + criticalRemaining + " 个 critical 未修复 (dry不变=" + dry + "/" + cfg.dryThreshold + ")")
       }
@@ -2210,7 +2256,7 @@ async function phase7_writing(ctx) {
   const NUMBER_DISCIPLINE = "\n\n## ⚠️ 数字纪律（最高优先级，违反即重写）\n" +
     "论文中的**每一个数值声明**必须来自下方【最终事实源表】。严格禁止：\n" +
     "1. 使用事实源表之外的数字（包括记忆中的、推测的、早期运行版本的数字）\n" +
-    "2. 自行计算、推导或"补全"新数字\n" +
+    "2. 自行计算、推导或「补全」新数字\n" +
     "3. 同一数字在不同章节写不同值（如用户数、阈值、户数、百分比）\n" +
     "若事实源表中没有你需要的数字：跳过该声明，绝不编造；若必须引用，写[待定]并标注。\n" +
     "数字的精确写法（小数位数、单位、口径）以事实源表为准，全篇统一。"
@@ -2255,11 +2301,11 @@ async function phase7_writing(ctx) {
   log("[Phase 7/8] 完成 " + paperSections.length + "/" + EXPECTED_SECTION_COUNT + " 个章节")
 
   // ── Step 7.3: 交叉审查 ⇄ 修复 loop ──
-  const MAX_WRITING_ROUNDS = 3
+  const MAX_WRITING_ROUNDS = QUICK_MODE ? 1 : 3
   let writingRound = 0, writingDry = 0, prevWritingP0Count = Infinity
   let crossSectionReview = null
 
-  while (writingDry < 2 && writingRound < MAX_WRITING_ROUNDS) {
+  while (writingDry < (QUICK_MODE ? 1 : 2) && writingRound < MAX_WRITING_ROUNDS) {
     writingRound++
     log("[Phase 7/8] 写作审查 第" + writingRound + "/" + MAX_WRITING_ROUNDS + "轮...")
 
@@ -2316,9 +2362,12 @@ async function phase7_writing(ctx) {
     const currentP0Count = p0Matches.length
     crossSectionReview = crossText + "\n\n=== 评委视角 ===\n" + judgeText
 
-    if (allIssueLines.length === 0 || (currentP0Count === 0 && writingRound > 1)) {
+    const reviewProduced = (crossText + judgeText).trim().length > 0
+    if ((allIssueLines.length === 0 || (currentP0Count === 0 && writingRound > 1)) && reviewProduced) {
       writingDry++
       log("[Phase 7/8] 审查 r" + writingRound + ": 0 个新问题 (dry=" + writingDry + "/2)")
+    } else if (!reviewProduced) {
+      logError(ErrorLevel.WARNING, "写作", "审查 r" + writingRound + " 无有效产出（审查 agent 失败），不累计 dry（防止假收敛）")
     } else {
       if (currentP0Count >= prevWritingP0Count) {
         writingDry = 0
@@ -2441,7 +2490,7 @@ async function phase8_final(ctx) {
       formatSubQuestions(subQuestions) +
       (subQuestions && subQuestions.length > 0 ? "请逐子问题验证摘要中的每个数值声明，确认在对应子问题的章节中有出处。\n\n" : "") +
       "## 摘要\n" + polishedAbstract + "\n\n" +
-      "## 正文全文\n" + bodyText.slice(0, 15000) + "\n\n" +
+      "## 正文全文\n" + bodyText.slice(0, 60000) + (bodyText.length > 60000 ? "\n（正文超过 6 万字符，以上为前 6 万字符，数字可能位于截断区之外，请结合事实源表判断）\n" : "") + "\n\n" +
       "## 任务\n" +
       "1. 从摘要中提取所有**具体数字**（百分比、数值、时间等），忽略序号和年份\n" +
       "2. 逐一在正文中搜索每个数字的出处/推导过程\n" +
@@ -2462,7 +2511,7 @@ async function phase8_final(ctx) {
           unverifiable.map(c => "- **" + c.number + "**: " + (c.context || "无上下文")).join("\n") + "\n\n" +
           "## 正文中可用的数据（从正文提取的可靠数字）\n" +
           "如果某个数字在正文中不存在，请从以下正文片段中找最接近的可靠数据替换，或者直接删除那句声称。\n\n" +
-          bodyText.slice(0, 8000) + "\n\n" +
+          bodyText.slice(0, 30000) + "\n\n" +
           "输出修复后的完整摘要（纯文本，300-500字）。只删除/替换不可溯源的数字，不重写其他部分。" + ctx.saveToFile("06-final/abstract-fixed.txt"),
           { label: "abstract-fix", phase: "终审" }
         )
@@ -2548,7 +2597,7 @@ async function phase8_final(ctx) {
             "## 修正清单\n" + fixInstructions.join("\n") + "\n\n" +
             (codeValidationResult.missingInStdout && codeValidationResult.missingInStdout.length > 0
               ? "## 以下数字在代码 stdout 中未找到，请基于正文中可用的数据替换或删除\n" +
-                "正文片段（供参考）：\n" + bodyText.slice(0, 5000) + "\n\n"
+                "正文片段（供参考）：\n" + bodyText.slice(0, 20000) + "\n\n"
               : "") +
             "输出修复后的完整摘要（纯文本，300-500字）。" + ctx.saveToFile("06-final/abstract-code-verified.txt"),
             { label: "abstract-code-fix", phase: "终审" }
@@ -2573,17 +2622,52 @@ async function phase8_final(ctx) {
   const judgeFinalReview = await agent(
     "## 评委视角终审\n\n" +
     "你是数学建模竞赛评委，已读了100篇同题论文。读完以下论文后回答：\n\n" +
-    "## 论文\n" + fullPaperMdBody.slice(0, 15000) + "\n\n" +
+    "## 论文\n" + fullPaperMdBody.slice(0, 30000) + "\n\n" +
     (subQuestions && subQuestions.length > 0 ? "本题包含" + subQuestions.length + "个子问题。评估时检查每个子问题是否都得到了充分解答。\n\n" : "") +
     "## 问题\n" +
     "1. 这篇和另外100篇摆在一起，我为什么会对它**有印象**？（找不到就说无，建议在哪里做深/做奇创造记忆点）\n" +
     "2. 创新是否真实可信？还是看起来像硬贴的？\n" +
     "3. 最大弱点是什么？（不能是废话，要具体的）\n" +
-    "4. 你给这篇打什么等级？（国一/国二/省一/省二/省三）给理由。\n" +
-    "5. 修改**哪一个**东西能最大程度提升竞争力？\n\n" +
+    "4. 修改**哪一个**东西能最大程度提升竞争力？\n\n" +
     "返回纯文本，坦诚直接。" + ctx.saveToFile("06-final/judge-review.txt"),
     { label: "judge-review", phase: "终审" }
   )
+
+  // ── C4 修复：评委最大弱点 → 一次限定的最终修复轮（1 轮，防无界）──
+  if (judgeFinalReview && paperSections && paperSections.length > 0) {
+    const judgeFix = await agent(
+      "## 评委意见最终修复（限 1 轮）\n\n" +
+      "## 评委意见\n" + String(judgeFinalReview).slice(0, 4000) + "\n\n" +
+      "## 任务\n" +
+      "针对评委指出的最大弱点与提升建议，对**相关章节**做最小改动修复。硬性约束：\n" +
+      "- 数字必须以最终事实源表为准，**不得新造或改写数字**；只改表述、结构、遗漏的推导\n" +
+      "- 只输出实际改动的章节，未改的不要输出\n\n" +
+      "输出 JSON：{\"sections\":[{\"section\":\"<章节名，与现有一致>\",\"content\":\"<修复后完整章节内容>\"}]}\n\n" +
+      "Structured output only.",
+      { label: "judge-fix", phase: "终审",
+        schema: { type: "object", required: ["sections"], properties: { sections: { type: "array", items: { type: "object", required: ["section", "content"], properties: { section: { type: "string" }, content: { type: "string" } } } } } } }
+    )
+    if (judgeFix && Array.isArray(judgeFix.sections) && judgeFix.sections.length > 0) {
+      let applied = 0
+      for (const fix of judgeFix.sections) {
+        const idx = paperSections.findIndex(s => s.section === fix.section)
+        if (idx >= 0) { paperSections[idx].content = fix.content; applied++ }
+      }
+      const absIdx = paperSections.findIndex(s => ABSTRACT_IDS.includes(s.section))
+      if (absIdx >= 0 && paperSections[absIdx].content !== polishedAbstract) {
+        polishedAbstract = paperSections[absIdx].content
+      }
+      log("[Phase 8/8] 评委修复已应用 " + applied + "/" + judgeFix.sections.length + " 个章节")
+    } else {
+      log("[Phase 8/8] 评委未给出可应用修复（或无需改动）")
+    }
+  }
+
+  // ═══ P0-2 修复：CUMCM 组装前把内存中的修复（交叉审查/摘要/代码对账）写回磁盘 ═══
+  // MCM 路径从内存拼接 tex，无需落盘。
+  if (!isMcm && paperSections && paperSections.length > 0) {
+    await syncSectionsToDisk(ctx, paperSections)
+  }
 
   // ═══ LaTeX 编译与输出 ═══
   let finalTex = ""
@@ -2707,6 +2791,7 @@ async function phase8_final(ctx) {
   let texContent
   let abstractBlock
   let appendixHeader
+  let texPreambleBody
 
   if (isMcm) {
     abstractBlock = (
@@ -2734,6 +2819,7 @@ async function phase8_final(ctx) {
       "\\end{appendices}\n" +
       "\\end{document}\n"
     )
+    texPreambleBody = preamble + abstractBlock + bodySections
   } else {
     // CUMCM: 使用 skill 模板组装（templates/cumcm-paper.tex + assemble_from_template.py）
     // 模板内置 2026-08 实战经验：摘要 \section*（无 abstract 环境，避免双摘要）、
@@ -2745,8 +2831,6 @@ async function phase8_final(ctx) {
     texContent = null    // 由 compile agent 调用组装脚本生成（非内联拼接）
     texPreambleBody = "（模板组装：见编译步骤第0.5步）"
   }
-
-  const texPreambleBody = preamble + abstractBlock + bodySections
 
   texFilePath = outputDir + "/paper/paper.tex"
 
@@ -2785,12 +2869,18 @@ async function phase8_final(ctx) {
         "1. **提取引用键**：`grep -ho '\\\\cite{[^}]*}' " + intermediatesDir + "/05-writing/section-*.json 2>/dev/null | grep -o '{[^}]*}' | tr -d '{}' | tr ',' '\\n' | sort -u`\n" +
         "2. **生成参考文献**：为每个键生成规范 bibitem（中文文献：作者.题名.刊名,年份,卷(期):页码；英文同理；AI 工具键 `ai_tool` 固定用：AI工具使用声明：大语言模型辅助写作工具（Claude, 版本2026, Anthropic公司, 使用日期2026-08）[Z]. 使用详情见支撑材料《AI工具使用详情》。），包进 \\\\begin{thebibliography}{N}...\\\\end{thebibliography}，写入 /tmp/refs.tex\n" +
         "3. **运行组装**：\n" +
-        "```bash\nmkdir -p " + outputDir + "/paper\npython3 /home/tofu/.claude/skills/math-model/templates/assemble_from_template.py \\\n" +
-        "  --template /home/tofu/.claude/skills/math-model/templates/cumcm-paper.tex \\\n" +
+        "```bash\nmkdir -p " + outputDir + "/paper\n" +
+        "TPL_DIR=\"" + templateDir + "\"\n" +
+        "if [ -z \"$TPL_DIR\" ]; then\n" +
+        "  TPL_DIR=\"$(ls -d ~/.dsh/skills/math-model/templates ~/.claude/skills/math-model/templates 2>/dev/null | head -1)\"\n" +
+        "fi\n" +
+        "if [ -z \"$TPL_DIR\" ]; then echo \"ERROR: 找不到 math-model 模板目录，请在 args.templateDir 传入\"; exit 1; fi\n" +
+        "python3 \"$TPL_DIR/assemble_from_template.py\" \\\n" +
+        "  --template \"$TPL_DIR/cumcm-paper.tex\" \\\n" +
         "  --sections " + intermediatesDir + "/05-writing \\\n" +
         "  --output " + texFilePath + " \\\n" +
         "  --title \\\"" + TITLE + "\\\" \\\n" +
-        "  --paper-title \\\"<从题目原文提取的论文题目，如：窃电用户识别与反窃电措施建议>\\\" \\\n" +
+        "  --paper-title \\\"<从题目原文提取的论文题目，如：基于数据的异常行为识别与优化建议>\\\" \\\n" +
         "  --subtitle \\\"<一句话方法名副标题>\\\" \\\n" +
         "  --references \\\"$(cat /tmp/refs.tex)\\\" \\\n" +
         "  --code-dir " + codeDir + " \\\n" +
@@ -2835,8 +2925,8 @@ async function phase8_final(ctx) {
       : "### 第3.5-5步（CUMCM）\n" +
         "跳过：模板组装已包含附录图表、代码附录与结尾标签。若正文需要补充附录图表，直接编辑 `" + texFilePath + "` 在对应附录节内插入 `\\begin{figure}[H]...\\end{figure}`（附录用 [H]，正文用 [htbp]）。\n\n") +
 
-    "### 第6步：编译\n" +
-    "```bash\ncd " + outputDir + " && xelatex -interaction=nonstopmode -file-line-error paper.tex 2>&1 | tail -100\n```\n\n" +
+    "### 第6步：编译（两遍 xelatex：第一遍生成交叉引用与目录，第二遍解析；必须两遍都通过）\n" +
+    "```bash\ncd " + outputDir + " && xelatex -interaction=nonstopmode -file-line-error paper.tex 2>&1 | tail -60 && xelatex -interaction=nonstopmode -file-line-error paper.tex 2>&1 | tail -60\n```\n\n" +
 
     "### 第7步：错误修正与重试\n" +
     "如果出现 LaTeX 错误，分析错误原因并修正 .tex 文件，然后重新编译。最多重试 " + cfg.latexMaxRetries + " 次。\n\n" +
@@ -2877,7 +2967,7 @@ async function phase8_final(ctx) {
 // ═══ Strategy config ═══
 const cfg = {
   searchAngles: 4, maxFetch: 8,
-  dryThreshold: 3, maxIterations: 6,
+  dryThreshold: QUICK_MODE ? 1 : 3, maxIterations: QUICK_MODE ? 3 : 6,
   sectionPreset: "full",
   latexMaxRetries: 5,
   rethinkThreshold: 3,
@@ -2898,6 +2988,7 @@ log("创新必要性阈值: " + innovationThresholds.desc + " (innovationStrictn
 // ═══ Parse args ═══
 const hasArgs = _hasArgs
 const outputDir = (hasArgs && args?.outputDir) || "./math-model-output"
+const templateDir = (hasArgs && args?.templateDir) || ""   // 模板目录（assemble 脚本 + cumcm-paper.tex）；空则编译 agent 自动探测
 const codeDir = outputDir + "/code"
 const figuresDir = outputDir + "/figures"
 const attachments = (hasArgs && args?.attachments) || []
@@ -2919,7 +3010,7 @@ if (DRY_RUN) {
   log("Dry-run 模式: 仅执行审题+选题阶段，输出执行计划后退出")
 }
 
-log("竞赛模式: " + (COMPETITION === 'mcm' ? 'MCM/ICM（美赛）' : 'CUMCM（国赛）'))
+log("竞赛模式: " + (COMPETITION === 'mcm' ? 'MCM/ICM（美赛）' : 'CUMCM（国赛）') + (QUICK_MODE ? " [quick 模式：评审1轮/求解dry=1/写作1轮]" : " [full 模式]"))
 log("输出: " + outputDir)
 
 // resumeFrom: 断点续跑 — 传入已完成的 phase 名（如 'phase4-modeling'），
@@ -3156,6 +3247,11 @@ const ctx = {
   userFeedback,
   innovationStrictness: INNOVATION_STRICTNESS,
   innovationThresholds,
+  runFingerprint: JSON.stringify({
+    competition: COMPETITION, outputDir,
+    innovationStrictness: INNOVATION_STRICTNESS,
+    selectedProblem: args?.selectedProblem || null,
+  }),
   _envHasPdftotext: envHas.pdftotext,
   _envHasPython3: envHas.python3,
   _envHasXelatex: envHas.xelatex,

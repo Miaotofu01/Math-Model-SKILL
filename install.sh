@@ -1,104 +1,73 @@
 #!/usr/bin/env bash
+# math-model 一键安装
+# 用法:
+#   bash install.sh            # 默认: DSH 符号链接安装
+#   bash install.sh --dsh      # DSH 符号链接安装（推荐，享受热更新）
+#   bash install.sh --claude   # Claude Code 安装（拷贝）
+#   bash install.sh --both     # 两平台都装
 set -e
 
 PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
-SKILLS_DIR="${HOME}/.claude/skills"
-WORKFLOWS_DIR="${HOME}/.claude/workflows"
+SKILL_SRC="${PLUGIN_DIR}/skills/math-model"
 
-echo "==> 安装 math-model v2.2.0"
+echo "==> math-model v2.4.0 安装脚本"
 
-# ═══ System dependency checks ═══
+# ═══ 参数解析 ═══
+INSTALL_DSH=0
+INSTALL_CLAUDE=0
+for arg in "$@"; do
+  case "$arg" in
+    --dsh) INSTALL_DSH=1 ;;
+    --claude) INSTALL_CLAUDE=1 ;;
+    --both) INSTALL_DSH=1; INSTALL_CLAUDE=1 ;;
+    *) echo "未知参数: $arg（支持 --dsh / --claude / --both）"; exit 1 ;;
+  esac
+done
+if [[ $INSTALL_DSH -eq 0 && $INSTALL_CLAUDE -eq 0 ]]; then
+  INSTALL_DSH=1
+fi
+
+# ═══ 环境检查（可跳过功能，不影响安装）═══
 echo ""
 echo "── 环境检查 ──"
-
-MISSING=()
-
-check_cmd() {
-    if command -v "$1" &>/dev/null; then
-        echo "  ✓ $1"
-        return 0
-    else
-        echo "  ✗ $1"
-        return 1
-    fi
-}
-
-# --- pdftotext ---
-if check_cmd pdftotext; then
-    :
+if [[ -f "${PLUGIN_DIR}/env-check.sh" ]]; then
+  bash "${PLUGIN_DIR}/env-check.sh" || true
 else
-    MISSING+=("pdftotext")
-    echo "    ├─ 用途：从 PDF 提取题目文字"
-    echo "    ├─ 缺失影响：无法用 /math-model ~/题.pdf，需手动粘贴题目"
-    echo "    └─ 安装：sudo apt install poppler-utils"
+  echo "  （未找到 env-check.sh，跳过）"
 fi
 
-# --- xelatex ---
-if check_cmd xelatex; then
-    :
-else
-    MISSING+=("xelatex")
-    echo "    ├─ 用途：standard/thorough 模式编译 LaTeX 论文为 PDF"
-    echo "    ├─ 缺失影响：只能产出 Markdown（quick 模式不受影响）"
-    echo "    └─ 安装：sudo apt install texlive-xetex texlive-lang-chinese（约 500MB）"
+# ═══ DSH 安装：符号链接（单一事实源，改仓库即热更新）═══
+if [[ $INSTALL_DSH -eq 1 ]]; then
+  echo ""
+  echo "── 安装到 DeepSeek Harness（~/.dsh/skills）──"
+  mkdir -p "${HOME}/.dsh/skills"
+  if [[ -e "${HOME}/.dsh/skills/math-model" && ! -L "${HOME}/.dsh/skills/math-model" ]]; then
+    echo "  ⚠️ 检测到旧实体目录，移动到备份: ~/.dsh/skills/math-model.bak.$(date +%s)"
+    mv "${HOME}/.dsh/skills/math-model" "${HOME}/.dsh/skills/math-model.bak.$(date +%s)"
+  fi
+  ln -sfn "${SKILL_SRC}" "${HOME}/.dsh/skills/math-model"
+  echo "  ✓ ~/.dsh/skills/math-model -> ${SKILL_SRC}（热更新生效）"
 fi
 
-# --- python3 ---
-if check_cmd python3; then
-    :
-else
-    MISSING+=("python3")
-    echo "    ├─ 用途：Phase 5 求解阶段运行建模代码"
-    echo "    ├─ 缺失影响：无法执行求解，只能产出算法方案"
-    echo "    └─ 安装：sudo apt install python3 python3-pip"
+# ═══ Claude Code 安装：技能用拷贝（SKILL.md 需用 Claude 版），workflow 用符号链接 ═══
+if [[ $INSTALL_CLAUDE -eq 1 ]]; then
+  echo ""
+  echo "── 安装到 Claude Code（~/.claude）──"
+  # skill 目录：prompts/templates 链接，SKILL.md 用 Claude 版拷贝
+  mkdir -p "${HOME}/.claude/skills/math-model"
+  for d in prompts templates workflows; do
+    ln -sfn "${SKILL_SRC}/${d}" "${HOME}/.claude/skills/math-model/${d}"
+  done
+  if [[ -f "${SKILL_SRC}/SKILL.claude.md" ]]; then
+    cp "${SKILL_SRC}/SKILL.claude.md" "${HOME}/.claude/skills/math-model/SKILL.md"
+    echo "  ✓ ~/.claude/skills/math-model/SKILL.md（Claude 版）"
+  fi
+  # workflow 脚本（带 export const meta，Claude 版 Workflow scriptPath 直接可用）
+  mkdir -p "${HOME}/.claude/workflows"
+  ln -sfn "${SKILL_SRC}/workflows/math-model.js" "${HOME}/.claude/workflows/math-model.js"
+  echo "  ✓ ~/.claude/workflows/math-model.js -> 仓库（Claude 版）"
 fi
-
-# --- Python libs ---
-if python3 -c "import numpy, scipy, pandas, matplotlib, openpyxl" 2>/dev/null; then
-    echo "  ✓ numpy/scipy/pandas/matplotlib/openpyxl"
-else
-    MISSING+=("python-libs")
-    echo "  ✗ numpy/scipy/pandas/matplotlib/openpyxl"
-    echo "    ├─ 用途：数值计算、数据处理、图表生成、附件读取"
-    echo "    ├─ 缺失影响：求解代码无法运行（quick 模式可跳过求解）"
-    echo "    └─ 安装：pip3 install numpy scipy pandas matplotlib openpyxl"
-fi
-
-# --- Summary ---
-if [[ ${#MISSING[@]} -gt 0 ]]; then
-    echo ""
-    echo "── 依赖汇总 ──"
-    echo "  以下 ${#MISSING[@]} 项缺失：${MISSING[*]}"
-    echo ""
-    echo "  是否需要安装？复制上面的安装命令逐条执行即可。"
-    echo "  不装也不影响插件安装——对应功能会在运行时降级。"
-else
-    echo ""
-    echo "  ✓ 所有依赖就绪"
-fi
-
-# ═══ Install plugin files ═══
-echo ""
-echo "── 安装插件文件 ──"
-mkdir -p "${SKILLS_DIR}/math-model" "${WORKFLOWS_DIR}"
-cp "${PLUGIN_DIR}/skills/math-model/SKILL.md" "${SKILLS_DIR}/math-model/SKILL.md"
-echo "  ✓ skill → ${SKILLS_DIR}/math-model/SKILL.md"
-# 安装整个 workflows/ 目录（主脚本 + lib/ 模块）
-rm -f "${WORKFLOWS_DIR}/math-model.js"          # 移除旧版单文件
-rm -rf "${WORKFLOWS_DIR}/lib"                     # 移除旧版 lib（如有）
-cp -r "${PLUGIN_DIR}/workflows/." "${WORKFLOWS_DIR}/"
-echo "  ✓ workflow → ${WORKFLOWS_DIR}/math-model.js + lib/ ($(wc -l < ${WORKFLOWS_DIR}/math-model.js) 行主脚本, $(find ${WORKFLOWS_DIR}/lib -name '*.js' | wc -l) 个模块)"
-# 安装 env-check.sh
-cp "${PLUGIN_DIR}/env-check.sh" "${SKILLS_DIR}/math-model/env-check.sh"
-chmod +x "${SKILLS_DIR}/math-model/env-check.sh"
-echo "  ✓ env-check.sh → ${SKILLS_DIR}/math-model/env-check.sh"
-
-# ═══ Auto-run env check ═══
-echo ""
-echo "── 运行环境检测 ──"
-bash "${SKILLS_DIR}/math-model/env-check.sh"
 
 echo ""
-echo ""
-echo "安装完成！/math-model 已就绪。"
-echo "卸载：rm -rf ${SKILLS_DIR}/math-model ${WORKFLOWS_DIR}/math-model.js ${WORKFLOWS_DIR}/lib"
+echo "安装完成！DSH 里输入 /math-model 即可使用。"
+echo "卸载：rm ~/.dsh/skills/math-model 或 rm -rf ~/.claude/skills/math-model ~/.claude/workflows/math-model.js"

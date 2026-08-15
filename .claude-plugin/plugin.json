@@ -1,7 +1,7 @@
 {
   "name": "math-model",
-  "description": "数学建模国赛全流程 AI 编排插件——两阶段架构：阶段一主 agent 纯编排(输入提纯→并行审题→选题推荐)，阶段二 Workflow 确定性执行(文献局限分析→Gap驱动建模+4人评审团⇄修订→求解⇄验证loop→叙事大纲+交叉审查→终审摘要打磨+数字溯源+LaTeX)。正确性第一+数据说话，创新有根有据、摘要一锤定音。",
-  "version": "2.2.0",
+  "description": "数学建模国赛/美赛全流程 AI 编排技能（DeepSeek Harness + Claude Code 双平台）：两阶段架构——阶段一主 agent 纯编排(输入提纯→并行审题→选题推荐)，阶段二 Workflow 确定性执行(文献→Gap建模+4人评审团⇄修订→求解⇄5维验证→事实源表顺序主编写作+交叉审查→摘要数字溯源+代码对账+评委意见修复+LaTeX)。正确性第一+数据说话。",
+  "version": "2.4.0",
   "author": {
     "name": "红豆",
     "email": "wsy20050511@gmail.com"
@@ -17,10 +17,9 @@
     "workflow",
     "agent-orchestration",
     "latex",
-    "adversarial-review",
-    "loop-until-dry",
-    "baseline-comparison",
-    "data-traceability"
+    "data-traceability",
+    "dsh",
+    "deepseek-harness"
   ],
   "dependencies": {
     "system": [
@@ -28,6 +27,7 @@
       "xelatex + ctex — LaTeX 论文排版 -> PDF",
       "python3 + numpy/scipy/pandas/matplotlib — 求解代码执行"
     ],
-    "claude-code": ">=1.0.0"
+    "claude-code": ">=1.0.0",
+    "dsh": ">=1.0.0"
   }
 }
