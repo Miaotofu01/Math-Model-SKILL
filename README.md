@@ -18,6 +18,38 @@
 
 ## 工作流程（两阶段）
 
+**总览图**（`docs/workflow.png`，Mermaid 源码见 `docs/workflow.mmd`）：
+
+![math-model 工作流总览](docs/workflow.png)
+
+```mermaid
+flowchart TD
+    IN["输入：/math-model ＋ 赛题 PDF/附件目录"] --> S1
+    subgraph P1[阶段一：审题 + 选题（主 agent 纯编排，不解读不润色）]
+        S1["Step 1 输入提纯<br/>并行·每题 1 agent"] --> S2["Step 2 并行审题<br/>结构化分析"]
+        S2 --> S3["Step 3 选题推荐<br/>综合打分排名"]
+        S3 --> S4{{"Step 4 ⏸ 等用户选择<br/>唯一人工决策"}}
+    end
+    S4 -->|"selectedProblem + analysis JSON"| P3
+    subgraph P2[阶段二：Workflow 全自动（30min ~ 10h，前台阻塞勿打断）]
+        P3["P3 文献调研<br/>4 角度搜索 → 精读 → 局限分析"] --> P4
+        P4["P4 建模方案<br/>Gap 分析 → 3 角度创新提案 → 综合"] --> P56
+        P56["P5-6 求解 ⇄ 验证<br/>算法 → 实现 → baseline → 五维验证+投票"] --> P7
+        P7["P7 写作<br/>事实源表 → 叙事大纲 → 顺序主编撰写"] --> P8
+        P8["P8 终审<br/>数字溯源 → 代码对账 → 评委意见修复 → LaTeX 两遍编译"]
+        P4 -.->|"评审 ⇄ 修订 loop (max 6 轮)"| P4
+        P56 -.->|"求解 ⇄ 验证 loop<br/>dry≥3 收敛 / 趋势退出 / 重设计 max2"| P56
+        P7 -.->|"交叉审查 ⇄ 修复 loop (max 3 轮)"| P7
+    end
+    P8 --> OUT["产物：paper.pdf + code/ + figures/ + data/ + logs/ + intermediates/（含 checkpoint）"]
+    CP["checkpoint 落盘（runFingerprint 防脏数据）· 修复落盘(P0-2) · resumeFrom 断点续跑"]
+    P3 -.-> CP
+    P4 -.-> CP
+    P56 -.-> CP
+    P7 -.-> CP
+    P8 -.-> CP
+```
+
 ### 阶段一：审题 + 选题（主 agent 编排）
 
 主 agent 不解读、不润色题目与数据——只机械透传、分派 sub-agent、汇总呈现（附件验证与代码对账除外）。
