@@ -40,7 +40,7 @@ math-model 把"一个人 + 一个模型"变成"**一支编排严密的 agent 参
 
 ## 工作流程一览
 
-![math-model 工作流总览](docs/workflow.png)
+![math-model 工作流总览](docs/workflow-v2.png)
 
 **两阶段**：阶段一**审题 + 选题**（主 agent 纯编排，全程唯一人工决策 = 你选一道题）；阶段二 **Workflow 全自动**（文献 → 建模 → 求解⇄验证 → 写作 → 终审，三大迭代 loop 内置收敛控制）。
 
