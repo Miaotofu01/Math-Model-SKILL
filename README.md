@@ -72,8 +72,25 @@ bash ~/math-model-skill/install.sh        # DSH 符号链接安装，立即生�
 - **摘要数字溯源 + 代码-论文对账**：摘要每个数字必须在正文有出处，且与代码 stdout 一致
 - **修复落盘进最终 PDF**：交叉审查/数字溯源/评委意见的修复全部写回磁盘（P0-2 机制）
 - **checkpoint 断点续跑**：runFingerprint 防跨题目脏数据，中断后 `resumeFrom` 接着跑
+- **多子问题逐问处理**：题目拆解为 `subQuestions`，每问独立建模/求解/写作/溯源，对齐 CUMCM 逐问评分
+- **适配性预检**：建模方案先过 12 分自评，低于阈值终止并提示（换方向或放宽创新严格度）
+- **dry-run 模式**：开跑前先输出执行计划（选题分析 + 各 phase 预计耗时），确认后再正式执行
+- **可复现交付物**：`code/`（可运行源码）+ `data/` + `logs/` + `intermediates/` 全保留，论文结果可一键复算
 - **双平台**：DeepSeek Harness + Claude Code，一个仓库单一事实源
 - **`quick` 模式**：赶时间用（评审 1 轮 / dry=1 / 写作 1 轮，约 30-40 agents）
+
+---
+
+## 论文模板（CUMCM）
+
+内置 **`cumcm-paper.tex` 模板 + 组装脚本**，Workflow 直接产出可提交的合规 PDF——国赛格式规范不是靠模型"记得"，而是固化在模板里：
+
+- 摘要用 `\section*` 无编号章节式标题（不用 abstract 环境，规避"双摘要"事故）
+- 2.5cm 页边距、章节标题居中（titlesec，规避 article+ctex 组合的坑）
+- 附录 A/B/C 字母编号、计数器独立；代码彩色高亮 `lstinputlisting`；关键数值 `\bm{}` 加粗
+- 支撑材料清单为真实交付物模板 + AI 工具使用声明（2025 新规合规）
+- 模板已泛化：附录 B（名单类）可选、渲染通用，换赛题无需改模板
+- 美赛走独立 MCM 路径（英文、Summary Sheet、letterpaper 版式）
 
 ---
 
