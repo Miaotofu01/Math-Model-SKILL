@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>math-model 工作流</title>
+<style>
+  :root{
+    --paper:#faf9f6; --ink:#1c1a17; --gray:#8a857d; --line:#e4dfd6;
+    --blue:#3d6ea5; --blue-bg:#eef3f9; --purple:#6d5a9e; --purple-bg:#f2eff8;
+    --amber:#b4791f; --amber-bg:#f8ecda; --green:#2f7d4f; --green-bg:#e8f3ec;
+    --pink:#c0557c; --pink-bg:#f9eef2;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"Noto Sans CJK SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.55;padding:48px 24px 64px}
+  .wrap{max-width:1060px;margin:0 auto}
+  header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:8px}
+  .kicker{font-size:12px;letter-spacing:.18em;color:var(--gray);text-transform:uppercase}
+  h1{font-size:30px;font-weight:800;letter-spacing:-.01em;margin:4px 0 2px}
+  .sub{font-size:14px;color:var(--gray)}
+  .badge{display:inline-block;margin-top:8px;font-size:11px;border:1px solid var(--line);border-radius:99px;padding:2px 10px;color:var(--gray)}
+  section{margin-top:40px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .sec-no{font-size:13px;font-weight:800;color:var(--ink);border:1px solid var(--ink);border-radius:4px;padding:1px 7px}
+  .sec-title{font-size:19px;font-weight:700}
+  .sec-desc{font-size:13px;color:var(--gray);margin-left:auto}
+  .sec-line{height:1px;background:var(--line);margin:12px 0 22px}
+  .flow{display:flex;align-items:stretch;gap:10px;flex-wrap:nowrap}
+  .card{flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 12px 10px;position:relative}
+  .card .top{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+  .num{font-size:10px;font-weight:800;color:#fff;background:var(--ink);border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;flex:none}
+  .card h3{font-size:13.5px;font-weight:700}
+  .card p{font-size:11.5px;color:var(--gray);line-height:1.45}
+  .arrow{flex:none;width:26px;display:flex;align-items:center;justify-content:center;color:var(--gray)}
+  .arrow svg{width:22px;height:14px}
+  .tone-blue .num{background:var(--blue)} .tone-blue{border-top:3px solid var(--blue)}
+  .tone-purple .num{background:var(--purple)} .tone-purple{border-top:3px solid var(--purple)}
+  .tone-amber{background:var(--amber-bg);border:1.5px solid var(--amber);border-top:3px solid var(--amber)}
+  .tone-amber .num{background:var(--amber)}
+  .tone-green{background:var(--green-bg);border-top:3px solid var(--green)}
+  .tone-green .num{background:var(--green)}
+  .tag{display:inline-block;font-size:10px;border-radius:4px;padding:1px 6px;margin-top:6px;color:#fff;font-weight:600}
+  .tag.loop{background:var(--pink)}
+  .tag.ckpt{background:var(--green)}
+  .tag.p0{background:var(--blue)}
+  .bridge{display:flex;justify-content:center;padding:10px 0 4px;color:var(--amber);font-size:12.5px;font-weight:600}
+  .bridge svg{width:28px;height:26px;vertical-align:middle}
+  .loop-row{display:flex;gap:10px;margin:14px 0 2px;padding-left:2px}
+  .loop-chip{font-size:10.5px;color:var(--pink);background:var(--pink-bg);border:1px solid #e8c9d5;border-radius:99px;padding:2px 10px}
+  .ckpt-row{display:flex;gap:10px;margin:8px 0 0;padding-left:2px}
+  .ckpt-chip{font-size:10.5px;color:var(--green);background:var(--green-bg);border:1px solid #cfe5d7;border-radius:99px;padding:2px 10px}
+  footer{margin-top:46px;border-top:2px solid var(--ink);padding-top:14px;display:flex;gap:26px;flex-wrap:wrap;font-size:12px;color:var(--gray)}
+  footer b{color:var(--ink);font-weight:700}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--gray);margin-top:8px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  @media (max-width:900px){.flow{flex-wrap:wrap}.card{flex:1 1 45%}.arrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Math Modeling · Agent Orchestration</div>
+    <h1>math-model 工作流</h1>
+    <div class="sub">数学建模竞赛（国赛 CUMCM / 美赛 MCM）端到端 AI 全流程编排 · v2.4.0</div>
+    <span class="badge">两阶段架构 · 收敛控制 · 数字溯源 · 编译闭环</span>
+  </header>
+
+  <!-- 阶段一 -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">01</span>
+      <span class="sec-title">审题 + 选题</span>
+      <span class="sec-desc">主 agent 纯编排 —— 不解读、不润色，机械透传原文</span>
+    </div>
+    <div class="sec-line"></div>
+    <div class="flow">
+      <div class="card tone-blue"><div class="top"><span class="num">1</span><h3>赛题输入</h3></div><p>/math-model ＋ PDF/附件</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-blue"><div class="top"><span class="num">2</span><h3>输入提纯</h3></div><p>并行 · 每题 1 agent，提取原文与附件画像</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-blue"><div class="top"><span class="num">3</span><h3>并行审题</h3></div><p>领域 / 约束 / 子问题 / 数据充分性</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-blue"><div class="top"><span class="num">4</span><h3>选题推荐</h3></div><p>综合打分排名</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-amber"><div class="top"><span class="num">5</span><h3>用户选择 ⏸</h3></div><p>全程唯一人工决策点</p></div>
+    </div>
+  </section>
+
+  <!-- 过渡 -->
+  <div class="bridge">
+    <svg viewBox="0 0 28 26"><path d="M14 2v18m0 0l-6-6m6 6l6-6" stroke="#b4791f" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    选题确认 · selectedProblem + analysis JSON
+  </div>
+
+  <!-- 阶段二 -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">02</span>
+      <span class="sec-title">Workflow 全自动</span>
+      <span class="sec-desc">30 分钟 ~ 10 小时 · 前台阻塞勿打断 · checkpoint 断点续跑</span>
+    </div>
+    <div class="sec-line"></div>
+    <div class="flow">
+      <div class="card tone-purple"><div class="top"><span class="num">6</span><h3>文献调研</h3></div><p>4 角度搜索 → 精读 → 局限分析</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-purple"><div class="top"><span class="num">7</span><h3>建模方案</h3></div><p>Gap → 3 角度提案 → 综合</p><span class="tag loop">↻ 评审⇄修订 max6 轮</span></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-purple"><div class="top"><span class="num">8</span><h3>求解⇄验证</h3></div><p>算法 → 实现 → baseline → 五维验证+投票</p><span class="tag loop">↻ 求解⇄验证 dry≥3 收敛</span></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-purple"><div class="top"><span class="num">9</span><h3>写作</h3></div><p>事实源表 → 顺序主编 → 交叉审查</p><span class="tag loop">↻ 审查⇄修复 max3 轮</span></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-green"><div class="top"><span class="num">10</span><h3>终审</h3></div><p>摘要数字溯源 → 代码对账 → 评委修复 → LaTeX 两遍</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-green"><div class="top"><span class="num">11</span><h3>交付物</h3></div><p>paper.pdf ＋ code/ ＋ intermediates/</p></div>
+    </div>
+    <div class="ckpt-row">
+      <span class="ckpt-chip">✓ checkpoint 落盘（runFingerprint 防脏数据）</span>
+      <span class="ckpt-chip">✓ 修复落盘 P0-2（进最终 PDF）</span>
+      <span class="ckpt-chip">↻ resumeFrom 断点续跑</span>
+    </div>
+  </section>
+
+  <footer>
+    <div><b>质量门</b>：摘要数字须正文有出处 · 代码-论文数字对账 · 失败不假收敛 · 事实源表为数字唯一权威</div>
+    <div><b>模式</b>：full（默认 110~160+ agents）／ quick（~30-40 agents）</div>
+    <div class="legend">
+      <span><i style="background:#3d6ea5"></i>阶段一 编排</span>
+      <span><i style="background:#6d5a9e"></i>阶段二 Workflow</span>
+      <span><i style="background:#b4791f"></i>人工决策</span>
+      <span><i style="background:#2f7d4f"></i>终态 / 产物</span>
+      <span><i style="background:#c0557c"></i>迭代 loop</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>
