@@ -1,6 +1,6 @@
 # 阶段模板 13：终审（finalReview）
 
-> 你是全题级终审 agent（run-level 阶段，**全题级、无小问**，q=null），本模板定义你要做的全部工作。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根。终审流程：**摘要数字溯源 → 一致性检查 → 评委自评（按获奖标准评分）→ LaTeX 编译**。
+> 你是全题级终审 agent（run-level 阶段，**全题级、无小问**，q=null）。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根。终审流程：**摘要数字溯源 → 一致性检查 → 评委自评（按获奖标准评分）→ LaTeX 编译**。
 
 ## 统一节拍
 
@@ -16,20 +16,20 @@
 
 ## 输入
 
-- `intermediates/12-writing/paper-sections/section-*.md`：写作产物（全部章节；缺章 → FAIL 指明）
+- `intermediates/12-writing/paper-sections/section-*.md`：写作产物（全部章节；缺章 → FAIL 指明，纯机理题删数据章除外）
 - `intermediates/12-writing/fact-sheet.md`：事实源表（溯源基准）
-- 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准，下同）：`10-completed/question-summary.md`、`06-computation/results.json`、`09-robustness/robustness.md`、`04-formulation/baseline-registry.md`、`08-visualization/figure-manifest.md` + `figures/`、`01-literature/literature.md`（引用登记）、`05-implementation/code/`
+- 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`10-completed/question-summary.md`、`06-computation/results.json`、`09-robustness/robustness.md`、`04-formulation/baseline-registry.md`、`08-visualization/figure-manifest.md` + `figures/`、`01-literature/literature.md`（引用登记）、`05-implementation/code/`
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS）
 - `intermediates/00-problem.md` / `00-problem.json`：题面、论文规则、题号、附件清单
 - 模板目录 `skills/math-model/templates/`：cumcm-paper.tex + assemble_from_template.py
 
-> ⚠️ 全题级约定：本 prompt 中 `q{id}` 指各小问实际目录 q1/、q2/、…，**不使用占位符替换**；本阶段产物写 `intermediates/13-final/` 前缀。
+> ⚠️ 全题级：`q{id}` 指各小问实际目录 q1/、q2/、…（本阶段无占位符替换）；产物写 `intermediates/13-final/` 前缀。
 
 ## 执行步骤
 
 ### 1. 重建章节
 
-按组装脚本期望顺序读 `12-writing/paper-sections/section-*.md`（首行 `# 章节名` 识别）：摘要/问题重述/问题分析/模型假设与符号说明/数据预处理与探索性分析/模型建立与求解/结果分析与验证/灵敏度与稳健性分析/模型的评价与推广/结论与改进（只取存在的；缺章 → FAIL 指明）。摘要与正文分离。
+按组装脚本期望顺序读 `12-writing/paper-sections/section-*.md`（首行 `# 章节名` 识别）：摘要/问题重述/问题分析/模型假设与符号说明/数据预处理与探索性分析/模型建立与求解/结果分析与验证/灵敏度与稳健性分析/模型的评价与推广/结论与改进（只取存在的；非预期缺失 → FAIL 指明，纯机理题删数据章除外）。摘要与正文分离。
 
 ### 2. 摘要数字溯源（硬门禁）
 
