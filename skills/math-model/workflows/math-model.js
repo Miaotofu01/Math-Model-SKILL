@@ -9,7 +9,7 @@ const STRICT = A.innovationStrictness || "strict"
 const TRY = 2, RND = A.mode === "quick" ? 1 : 3
 const T = { literature: "文献调研", data: "数据探索", assumption: "假设定义", formulation: "公式化", implementation: "实现", computation: "计算", sanity: "Sanity", visualization: "可视化", robustness: "鲁棒性", localComplete: "小问完成", crossReview: "跨问复核", writing: "写作", finalReview: "终审" }
 const PERS = ["judge", "adversary", "application"]
-const BRIEF = "返回{status,artifact_path,summary}；status∈PASS/DRAFT/NEEDS_REVISION/FAIL/SKIPPED；≤200字"
+const BRIEF = "返回{status,artifact_path,summary}；status∈PASS/DRAFT/NEEDS_REVISION/FAIL/SKIPPED/PASS_WITH_WARNING；≤200字"
 const LG = "追加 ledger：<key>: <status> <产物> <50字>"
 let dg = false
 const sm = []
