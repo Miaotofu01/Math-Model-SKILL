@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "status": { "enum": ["PASS","DRAFT","NEEDS_REVISION","FAIL","SKIPPED"] },
+    "artifact_path": { "type": "string" },
+    "summary": { "type": "string" }
+  },
+  "required": ["status","artifact_path","summary"],
+  "additionalProperties": false
+}
