@@ -10,7 +10,7 @@ export const meta = {
     { title: '审题', detail: '并行阅读所有题目，提取结构化信息' },
     { title: '选题', detail: '综合对比，推荐最优题目' },
     { title: '文献调研', detail: '多角度搜索 + 精读 + 局限分析' },
-    { title: '建模方案', detail: 'Gap分析(含方向筛选) → 3角度创新提案 → 综合 → 4人评审团 ⇄ 修订(max 6轮)' },
+    { title: '建模方案', detail: '问题分析(逐问) + EDA数据探索(数据题) → Gap分析 → 单一建模方案(三维自查) → 4人评审团 ⇄ 修订(max 6轮)' },
     { title: '求解', detail: '算法设计 → 代码实现 → baseline对比 → 迭代修复' },
     { title: '验证', detail: '灵敏度 + 边界 + 对抗 + 数据验证' },
     { title: '写作', detail: '事实源表 → 叙事大纲 → 顺序主编撰写 → 交叉审查(统一修复)' },
@@ -95,14 +95,6 @@ const MODEL_PROPOSAL_SCHEMA = {
   },
 }
 
-const VERDICT_SCHEMA = {
-  type: "object", required: ["refuted", "evidence", "confidence"],
-  properties: {
-    refuted: { type: "boolean" }, evidence: { type: "string" },
-    confidence: { enum: ["high", "medium", "low"] }, suggestion: { type: "string" },
-  },
-}
-
 const SOLUTION_SCHEMA = {
   type: "object", required: ["algorithm", "code", "results"],
   properties: {
@@ -119,7 +111,7 @@ const SOLUTION_SCHEMA = {
 const VERIFICATION_SCHEMA = {
   type: "object", required: ["dimension", "findings"],
   properties: {
-    dimension: { enum: ["sensitivity", "edge_cases", "adversarial", "data_validation", "devils_advocate"] },
+    dimension: { enum: ["sensitivity", "edge_cases", "adversarial", "data_validation", "statistical", "devils_advocate"] },
     findings: { type: "array", items: { type: "object", required: ["issue", "severity"], properties: {
       issue: { type: "string" }, severity: { enum: ["critical", "moderate", "minor"] },
       evidence: { type: "string" }, fixSuggestion: { type: "string" },
@@ -157,17 +149,7 @@ const BASELINE_COMPARISON_SCHEMA = {
 
 const PAPER_RULES = {
   cumcm: {
-    name: '全国大学生数学建模竞赛',
-    docClass: 'ctexart',
-    lang: 'zh',
-    pageSize: 'a4paper',
-    margin: '2.5cm',
-    abstractOnFirstPage: true,
-    keywords: true,
-    appendixSourceCode: true,
-    maxPages: null, // 无严格页数限制
-    citationStyle: 'GB/T 7714',
-    anonymity: true,
+    // ⚠️ 只有 `.rules` 被 currentRules.rules 读取；其余字段（docClass/lang/pageSize 等）从未被引用，已删。
     rules: `## ⚠️ 全国大学生数学建模竞赛论文格式规范（内建，始终生效）
 
 ### 电子版结构
@@ -186,18 +168,6 @@ const PAPER_RULES = {
 - **附录必须包含全部完整可运行的源程序代码**（含 Excel、SPSS 等交互命令）。缺少源程序或程序不能运行 → 可能被取消评奖资格。确实没有用到程序时需在附录中明确说明`,
   },
   mcm: {
-    name: 'MCM/ICM',
-    docClass: 'article',
-    lang: 'en',
-    pageSize: 'letterpaper',
-    margin: '1in',
-    abstractOnFirstPage: false, // Summary Sheet 单独一页
-    keywords: false,
-    appendixSourceCode: true,
-    maxPages: 25, // body 部分最多 25 页
-    citationStyle: 'APA',
-    anonymity: true,
-    summarySheet: true, // 需要单独的 Summary Sheet
     rules: `## ⚠️ MCM/ICM Paper Format Rules (Built-in, always in effect)
 
 ### Structure
@@ -529,8 +499,8 @@ function createSaveToFile(intermediatesDir, userFeedback = '') {
     : ""
   return (label) =>
     feedbackNote +
-    "\n\n**附加任务**: 将你的输出也保存到 `" + intermediatesDir + "/" + label + "`。" +
-    "先用 `mkdir -p " + intermediatesDir + "` 创建目录，然后 `Write` 或 `Bash` 写入文件。保存失败不影响主流程（best-effort）。"
+    "\n\n**附加任务**: 将你的输出保存到 `" + intermediatesDir + "/" + label + "`。" +
+    "先用 `mkdir -p " + intermediatesDir + "` 创建目录，再用 `Write` 或 `Bash` 写入文件。**此文件是后续环节共享的载体，必须保存成功**——写入后 `ls " + intermediatesDir + "/" + label + "` 确认存在；若失败，重试一次；仍失败则在结果里明确标记 `SAVE_FAILED`。"
 }
 
 // ── Sub-questions formatting ═══
@@ -566,17 +536,12 @@ function stripNulls(obj) {
   return obj
 }
 
-// ── Long field summarization cache (session-scoped) ═══
-const _longFieldSummaries = new Map()
-
-// clearSummaryCache() removed: dead code (never called). _longFieldSummaries is session-scoped, no explicit clear needed.
-
-
 // ── Context string builder with priority truncation + optional summarization ═══
 function buildContextStr(ctx, priorityKeys, budget, options = {}) {
   const {
     summarizeLongFields = false,
     skipRawIfStructured = false,
+    fullKeys = [],   // 这些 key 不做摘要，保留完整原文（仅受 budget 截断）
   } = options
   const summaryLimit = typeof summarizeLongFields === 'object' && summarizeLongFields.limit
     ? summarizeLongFields.limit
@@ -594,16 +559,14 @@ function buildContextStr(ctx, priorityKeys, budget, options = {}) {
     ctx['rawDescription'] !== undefined
 
   const stringifyValue = (key, value) => {
-    if (summarizeLongFields && typeof value === 'string' && value.length > 2000) {
-      if (_longFieldSummaries.has(key)) {
-        const preview = value.slice(0, summaryLimit).replace(/\n/g, ' ')
-        const ref = referencePath
-          ? `[见 ${referencePath}/${key}.txt]`
-          : `[见 intermediates/${key}.txt]`
-        return JSON.stringify(preview + `... ${ref}`)
-      } else {
-        _longFieldSummaries.set(key, true)
-      }
+    // 长字符串字段：默认总是摘要（不再"首次完整注入"——那会导致第一个 writer 上下文爆炸），
+    // fullKeys 内的 key 保留完整原文（如 rawDescription/finalModel/solution，由 budget 兜底截断）。
+    if (summarizeLongFields && typeof value === 'string' && value.length > 2000 && !fullKeys.includes(key)) {
+      const preview = value.slice(0, summaryLimit).replace(/\n/g, ' ')
+      const ref = referencePath
+        ? `[见 ${referencePath}/${key}.txt]`
+        : `[见 intermediates/${key}.txt]`
+      return JSON.stringify(preview + `... ${ref}`)
     }
     return JSON.stringify(value, null, 2)
   }
@@ -643,21 +606,6 @@ function logError(level, phase, message, details = {}) {
 function getErrorLog() { return _errorLog }
 function clearErrorLog() { _errorLog.length = 0 }
 
-// agent 调用包装器 —— 根据 errorPolicy 决定失败行为
-async function safeAgent(prompt, opts, errorPolicy = {}) {
-  const { level = ErrorLevel.WARNING, fallback = null } = errorPolicy
-  const label = opts?.label || 'agent'
-  const phase = opts?.phase || 'unknown'
-  try {
-    return await agent(prompt, opts)
-  } catch (err) {
-    logError(level, phase, `${label} failed: ${err.message}`,
-      { stack: err.stack?.split('\n').slice(0, 3).join('\n') })
-    if (level === ErrorLevel.FATAL) throw err
-    return fallback
-  }
-}
-
 // 替换 .filter(Boolean) — 带 warning 日志的过滤
 function safeFilter(arr, context = 'unknown') {
   if (!Array.isArray(arr)) {
@@ -682,8 +630,15 @@ function cpHash(str) {
 
 async function saveCheckpoint(ctx, phaseName, data) {
   const { intermediatesDir } = ctx
-  const timestamp = "N/A"
   const serialized = JSON.stringify(data)
+  // ⚠️ 大小门禁：checkpoint 经 LLM 读写，超大载荷本身就会触发输入/输出超限。
+  // 超过 40k 字符直接跳过写盘并告警（调用方应通过 extractData 瘦身；phase7 的章节本就在磁盘上）。
+  if (serialized.length > 40000) {
+    logError(ErrorLevel.WARNING, phaseName,
+      `checkpoint 载荷过大 (${serialized.length} 字符 > 40000) 跳过写盘——断点续跑该 phase 时需重跑。请通过 extractData 瘦身。`)
+    return null
+  }
+  const timestamp = "N/A"
   const checkpoint = { phase: phaseName, timestamp, version: '1.0', runFingerprint: ctx.runFingerprint || null, sha256: cpHash(serialized), data }
   const filePath = `${intermediatesDir}/${phaseName}-checkpoint.json`
   try {
@@ -1146,8 +1101,8 @@ async function phase3_literature(ctx) {
   if (allModels.length > 0 || allClaims.length > 0) {
     limitationAnalysis = await agent(
       "## 标准解法局限分析\n\n" +
-      (chosenAnalysis._rawDescription ? "## 题目原文（逐字引自赛题）\n" + chosenAnalysis._rawDescription + "\n\n" : "") +
-      (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + chosenAnalysis._dataProfile + "\n\n" : "") +
+      (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "") +
       "## 题目结构化分析\n" + JSON.stringify(chosenAnalysis, null, 2) + "\n\n" +
       "## 文献调研结果\n" + JSON.stringify({
         sources: allSources.length,
@@ -1205,7 +1160,7 @@ async function phase3_literature(ctx) {
 
 
 async function phase4_modeling(ctx) {
-  const { chosenAnalysis, limitationAnalysis, allModels, allClaims, directionContext, cfg, subQuestions, innovationThresholds, innovationStrictness } = ctx
+  const { chosenAnalysis, limitationAnalysis, allModels, allClaims, directionContext, cfg, subQuestions, innovationThresholds, innovationStrictness, attachments, figuresDir, outputDir } = ctx
   // Innovation necessity threshold from ctx config
   const thresh = (innovationThresholds && innovationThresholds.threshold) || 0.05
   const threshPct = Math.round(thresh * 100)
@@ -1218,8 +1173,180 @@ async function phase4_modeling(ctx) {
   phase("建模方案")
   log("[Phase 4/8] 建模方案开始 — 预计 10-15 分钟")
 
+  // ── Step 4.0a: 数据需求评估 + 外部数据收集（题目无附件 / 附件不足 / 明确要求查数据时）──
+  // 真实比赛（尤其国赛）常有「数据需自行收集」的题（交通/经济/环境/地理等），或附件数据不足。
+  // 旧 pipeline 只认附件，无附件就让建模 agent「自行构造数据」——那是编造，评委查来源必挂。
+  // 这里：先评估是否需要外部数据；需要则搜权威源 → 下载 → 清洗 → 落盘 data/external/，
+  // 每条记录来源 URL + 获取日期；找不到就标 NOT_FOUND 并明说，禁止编造数字。
+  let externalData = ctx.externalData || null   // { needsExternalData, dataNeeds, sources: [{id,purpose,status,filePath,sourceUrl,sourceTitle,fetchedAt,fields}] }
+  if (!externalData) {
+    const dataAssessment = await agent(
+      "## 数据需求评估（判断是否需要自行收集外部数据）\n\n" +
+      (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      "## 题目结构化分析\n" + JSON.stringify(chosenAnalysis, null, 2) + "\n\n" +
+      formatSubQuestions(subQuestions) +
+      "## 任务\n" +
+      "判断本题是否需要**自行收集外部数据**（国赛/美赛常见：题目不给附件但要求基于真实数据建模，或附件不足以支撑结论）。\n\n" +
+      "判定规则：\n" +
+      "1. **有附件且数据充分**（dataSufficiency 为 high/medium，题目结论可直接由附件得出）→ needsExternalData=false。\n" +
+      "2. **无附件但纯机理/几何/物理推导题**（所有参数题目已给出，如板凳龙、定日镜场）→ needsExternalData=false。\n" +
+      "3. **无附件且题目需要真实数据**（如流量、经济指标、天气、地理、人口、行业价格等，题目原文有「查找/收集/查阅/获取数据」「根据实际数据」等字样）→ needsExternalData=true。\n" +
+      "4. **附件不足**（dataSufficiency 为 low/insufficient，题目结论需要附件外的补充数据）→ needsExternalData=true。\n\n" +
+      "若需要外部数据，列出每条数据需求：\n" +
+      "- id：简短标识（如 traffic_flow / gdp_city）\n" +
+      "- purpose：用于回答哪个子问题、什么用途\n" +
+      "- fields：需要的字段/维度（如 小时级车流量、城市GDP、日气温）\n" +
+      "- preferredSources：优先数据源建议（国家统计局、气象局、交通部门、世界银行、公开数据集等）\n\n" +
+      "Structured output only." + ctx.saveToFile("04-data-needs.json"),
+      {
+        label: "data-needs", phase: "建模方案",
+        schema: { type: "object", required: ["needsExternalData", "reason"], properties: {
+          needsExternalData: { type: "boolean" },
+          reason: { type: "string" },
+          dataNeeds: { type: "array", items: { type: "object", properties: { id: { type: "string" }, purpose: { type: "string" }, fields: { type: "string" }, preferredSources: { type: "string" } } } },
+        } }
+      }
+    )
+    if (dataAssessment && dataAssessment.needsExternalData) {
+      log("[Phase 4/8] 数据需求评估：需要外部数据 — " + (dataAssessment.dataNeeds?.length || 0) + " 项")
+      const collection = await agent(
+        "## 外部数据收集（权威真实数据，禁止编造）\n\n" +
+        "## 数据需求\n" + JSON.stringify(dataAssessment.dataNeeds || [], null, 2) + "\n\n" +
+        "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" +
+        "## 任务\n" +
+        "为每条数据需求收集**真实、可验证**的数据，保存到 `" + outputDir + "/data/external/` 目录。\n\n" +
+        "### 逐条处理（每条数据需求）：\n" +
+        "1. 用 WebSearch 查找权威数据源（优先：国家统计局/地方统计局、气象局、交通部门、世界银行、WHO、政府开放数据平台、权威行业报告；次选：知名公开数据集）\n" +
+        "2. 用 python3（requests/pandas/curl）下载数据文件，保存为 `" + outputDir + "/data/external/{id}_{简述}.csv/xlsx/json`\n" +
+        "3. 读取确认结构（shape/列名/前几行），必要时做轻量清洗（去表头杂质、统一列名、编码 utf-8），把清洗后的最终文件留在 data/external/ 下\n" +
+        "4. 记录：filePath、sourceUrl（精确到页面的真实 URL）、sourceTitle、fetchedAt（今天日期）、fields（字段清单）、notes（口径/单位/范围说明）\n\n" +
+        "### ⚠️ 铁律（合规关键，违反会毁掉论文）：\n" +
+        "- **数据必须是真实下载/抓取自可验证来源**；禁止凭空构造、近似、抄写论文里的示例数字\n" +
+        "- 某个需求找不到可靠来源 → status=NOT_FOUND，写明尝试过哪些源、为什么没有；**绝不伪造数据替代**\n" +
+        "- 下载失败重试 1 次；仍失败标 NOT_FOUND\n" +
+        "- 每条成功数据必须给精确 sourceUrl（评委/支撑材料会核对）\n\n" +
+        "Structured output only." + ctx.saveToFile("04-data-collection.json"),
+        {
+          label: "data-collector", phase: "建模方案",
+          schema: { type: "object", required: ["sources"], properties: {
+            sources: { type: "array", items: { type: "object", properties: {
+              id: { type: "string" }, purpose: { type: "string" },
+              status: { type: "string", enum: ["OK", "NOT_FOUND"] },
+              filePath: { type: "string" }, sourceUrl: { type: "string" },
+              sourceTitle: { type: "string" }, fetchedAt: { type: "string" },
+              fields: { type: "string" }, notes: { type: "string" },
+            } } },
+          } }
+        }
+      )
+      externalData = {
+        needsExternalData: true,
+        dataNeeds: dataAssessment.dataNeeds || [],
+        sources: (collection && Array.isArray(collection.sources)) ? collection.sources : [],
+      }
+      log("[Phase 4/8] 外部数据收集完成 — " + externalData.sources.filter(s => s.status === "OK").length + " 份成功, " + externalData.sources.filter(s => s.status === "NOT_FOUND").length + " 份未找到")
+    } else {
+      externalData = { needsExternalData: !!(dataAssessment && dataAssessment.needsExternalData), dataNeeds: [], sources: [] }
+      log("[Phase 4/8] 数据需求评估：无需外部数据" + (dataAssessment && dataAssessment.reason ? "（" + (typeof dataAssessment.reason === "string" ? dataAssessment.reason.slice(0, 80) : "") + "）" : ""))
+    }
+    ctx.externalData = externalData
+  } else {
+    log("[Phase 4/8] 外部数据（已评估）：" + (externalData.needsExternalData ? (externalData.sources?.filter(s => s.status === "OK").length || 0) + " 份成功" : "无需"))
+  }
+  // 外部数据文件列表（供 EDA/问题分析/求解/写作共用）
+  const externalDataFiles = (externalData && externalData.sources || []).filter(s => s.status === "OK" && s.filePath).map(s => s.filePath)
+  const externalDataStr = externalDataFiles.length > 0
+    ? "\n\n## 外部数据文件（自行收集，必须读取使用；来源见 `" + intermediatesDir + "/04-data-collection.json`）\n" +
+      externalData.sources.filter(s => s.status === "OK").map((s, i) => (i + 1) + ". `" + s.filePath + "` （来源: " + (s.sourceUrl || "?") + "，获取日期: " + (s.fetchedAt || "?") + "）").join("\n")
+    : ""
+
+  // ── Step 4.0: 问题分析（逐问深度分析）—— 优秀获奖论文第2章的内容来源，也是后续建模的依据 ──
+  // 每篇优秀论文都有独立的「问题分析」章：逐问给出机理推理→难点→建模思路草图→数据要点。
+  // 当前 pipeline 曾把问题分析压进"问题重述"一句话导致写作时展开不了——这里显式产出并存储。
+  let problemAnalysis = null
+  {
+    problemAnalysis = await agent(
+      "## 问题分析（逐问深度分析）\n\n" +
+      formatSubQuestions(subQuestions) +
+      (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      "## 题目结构化分析\n" + JSON.stringify(chosenAnalysis, null, 2) + "\n\n" +
+      (limitationAnalysis ? "## 标准解法局限（供分析参考）\n" + (typeof limitationAnalysis === "string" ? limitationAnalysis.slice(0, 1500) : "") + "\n\n" : "") +
+      "## 任务\n" +
+      "你是数学建模竞赛审题与建模专家。逐子问题撰写**问题分析**（这是优秀获奖论文的标准第2章，也是后续建模的直接依据）：\n\n" +
+      "对每个子问题（用「对于问题N」分段）给出：\n" +
+      "1. **机理/业务推理**：这个子问题背后的物理/几何/业务机制是什么？为什么题目这样设问？\n" +
+      "2. **难点识别**：该问最大的难点具体在哪？（数据陷阱/机理复杂/求解困难）\n" +
+      "3. **建模思路草图**：打算用什么模型解决？先做什么、再做什么？如何逐层递进？若该问依赖前置问题，说明如何复用前置结果。\n" +
+      "4. **数据要点**：该问用到哪些数据/附件、需要怎样的预处理？（无附件且无外部数据则说明所需数据应从何处获取；有外部数据则说明如何使用已收集数据）\n\n" +
+      "要求：分析要有机理深度（可引用领域知识/文献），不能泛泛而谈；**不写完整公式推导**（那是建模章的事），但要给出清晰的思路路线；中文。\n\n" +
+      (externalDataStr ? "## 已收集的外部数据（可用于支撑建模，勿忽略）\n" + externalDataStr + "\n\n" : "") +
+      "输出纯文本。" + ctx.saveToFile("04-problem-analysis.txt"),
+      { label: "problem-analysis", phase: "建模方案" }
+    )
+    if (problemAnalysis) {
+      log("[Phase 4/8] 问题分析完成 — " + (typeof problemAnalysis === "string" ? problemAnalysis.slice(0, 80).replace(/\n/g, " ") : ""))
+    }
+  }
+
+  // ── Step 4.0b: 数据探索（EDA）—— 数据题的「数据预处理+探索性分析」整章来源，并驱动建模选择 ──
+  // 优秀数据题论文（如2023 C228、2024 C038）都是先数据预处理+探索性分析（分布/趋势/相关性/关联规则/统计检验），
+  // 再用数据发现驱动建模选择（如 FP-Growth 发现品类关联→做联合定价；ACF 发现周期→做时序分解）。
+  // 当前 pipeline 的建模由"文献+Gap"驱动、数据只在求解阶段被读入——这里是补上"数据驱动"环节。
+  let edaReport = null
+  if (attachments && attachments.length > 0 || externalDataFiles.length > 0) {
+    edaReport = await agent(
+      "## 数据探索（EDA）—— 清洗 + 统计检验 + 可视化 + 发现报告\n\n" +
+      formatSubQuestions(subQuestions) +
+      (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      (attachments && attachments.length > 0 ? "## 附件文件（必须读取处理）\n" + attachments.map((a, ai) => (ai + 1) + ". `" + a + "`").join("\n") + "\n\n" : "") +
+      (externalDataStr ? "## 外部数据文件（自行收集，必须读取处理）\n" + externalDataStr + "\n\n" : "") +
+      "## 任务（优秀数据题获奖论文的标配：先数据预处理，再探索性分析，让数据驱动建模）\n\n" +
+      "### 第1步 数据预处理（运行 Python 实际操作）\n" +
+      "1. 读取所有附件，检查 shape/缺失/类型/重复\n" +
+      "2. 清洗：缺失值处理（删除/插补并记录数量）、异常值处理（3σ 或业务规则，如利润率>2、负销量、量程外读数，记录剔除数量）、无关数据剔除（记录规则与数量）、单位/口径统一、多表关联（自然连接）与聚合规则（如按日/周聚合的销量加权公式）\n" +
+      "3. 每步清洗都要输出：处理规则 + 处理前后数量对比\n\n" +
+      "### 第2步 探索性统计分析（运行 Python）\n" +
+      "针对题目目标做探索：\n" +
+      "1. 分布规律：总值/分类别/分单品的量级与占比（生成占比图/条形图）\n" +
+      "2. 时间规律：时序图观察趋势；ACF 自相关检验周期性；必要时时间序列分解（趋势/季节/残差）\n" +
+      "3. 关系规律：Spearman/偏相关分析（控制总量影响）、分组对比；适合时做关联规则（FP-Growth/卡方/Fisher 精确检验）\n" +
+      "4. 统计检验：给出检验方法、统计量、p 值、样本量（如 Fisher 精确检验、t 检验、卡方检验）\n" +
+      "⚠️ 使用库函数（scipy.stats / statsmodels / mlxtend），禁止手写统计公式\n\n" +
+      "### 第3步 生成 EDA 图表\n" +
+      "图表保存到 `" + figuresDir + "/`，命名 `fig_eda_<内容描述>.png`（如 fig_eda_各类占比.png、fig_eda_总销量时序与ACF.png、fig_eda_相关热力图.png）。CJK 字体配置与命名规范同求解阶段。每个图要能回答一个数据问题。\n\n" +
+      "### 第4步 输出《数据发现报告》（Structured output）\n" +
+      "1. datasetFacts: 各数据集事实（行数、时间范围、缺失/异常/剔除数量）\n" +
+      "2. cleaningDecisions: 清洗决策列表（{step, rule, removedCount, rationale}）\n" +
+      "3. findings: 探索发现列表（{finding, method, evidence(实际数字/统计量/p值), implicationForModeling(对后续建模的含义——最重要)}），至少 3 条\n" +
+      "4. recommendedModelingDirections: 基于数据发现推荐的建模方向（EDA 如何驱动模型选择）\n\n" +
+      "**必须实际运行代码并报告真实结果**，禁止只写不跑。\n\nStructured output only." + ctx.saveToFile("04-eda-report.json"),
+      { label: "eda-explore", phase: "建模方案",
+        schema: { type: "object", required: ["datasetFacts", "cleaningDecisions", "findings", "recommendedModelingDirections"], properties: {
+          datasetFacts: { type: "array", items: { type: "object", properties: { dataset: { type: "string" }, facts: { type: "string" } } } },
+          cleaningDecisions: { type: "array", items: { type: "object", properties: { step: { type: "string" }, rule: { type: "string" }, removedCount: { type: "string" }, rationale: { type: "string" } } } },
+          findings: { type: "array", items: { type: "object", properties: { finding: { type: "string" }, method: { type: "string" }, evidence: { type: "string" }, implicationForModeling: { type: "string" } } } },
+          recommendedModelingDirections: { type: "array", items: { type: "string" } },
+        } } }
+    )
+    if (edaReport) {
+      log("[Phase 4/8] EDA 数据探索完成 — " + (edaReport.findings?.length || 0) + " 条发现")
+    }
+  }
+
+  // 将问题分析 + EDA 发现注入后续建模上下文（gap 分析 / 提案 / 综合）
+  let directionContext2 = directionContext
+  if (problemAnalysis) {
+    directionContext2 += "\n\n## 问题分析（逐问深度分析）\n" + (typeof problemAnalysis === "string" ? problemAnalysis : JSON.stringify(problemAnalysis))
+  }
+  if (edaReport) {
+    directionContext2 += "\n\n## 数据探索发现（EDA）\n" + JSON.stringify(edaReport, null, 2).slice(0, 5000)
+  }
+
   // ── Step 4.1: Gap analysis —— 总是运行，将局限转化为可操作的切入点 ──
-  let gapContext = directionContext
+  let gapContext = directionContext2
   let gapAnalysis = null
   {
     const gapInput = limitationAnalysis
@@ -1230,7 +1357,7 @@ async function phase4_modeling(ctx) {
     gapAnalysis = await agent(
       "## 创新机会分析 (Gap Analysis)\n\n" +
       formatSubQuestions(subQuestions) +
-      (chosenAnalysis._rawDescription ? "## 题目原文（逐字引自赛题）\n" + chosenAnalysis._rawDescription + "\n\n" : "") +
+      (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
       "## 题目结构化分析\n" + JSON.stringify(chosenAnalysis, null, 2) + "\n\n" +
       "## 标准解法局限\n" + gapInput + "\n\n" +
       "## 文献模型参考\n" + JSON.stringify(allModels.slice(0, 8), null, 2) + "\n\n" +
@@ -1254,65 +1381,34 @@ async function phase4_modeling(ctx) {
     }
   }
 
-  // ── Step 4.2: 多角度方案提案 ──
-  const INNOVATION_ANGLES = [
-    { id: "method", label: "方法改进",
-      prompt: "从**方法层面**改进标准流程中的某个关键步骤。具体到公式级别——写出自适应规则的具体数学形式。\n" +
-        "⚠️ 正确性第一：能加一项修正解决的就不要替换整个方法。如果标准方法已经够好，你的提案就是「选择标准方法+解释为什么不需要改」——这不叫没有创新，这叫正确。" },
-    { id: "model", label: "模型方案",
-      prompt: "从**数学模型层面**设计方案。选择标准：哪个框架对这个具体问题最贴切？不要因为某个框架更「高级」而选它。\n" +
-        "写成完整的建模方案：假设→符号→方程→求解策略。正确性>简洁性>新颖性。\n" +
-        "⚠️ 每个假设必须有文献或常识支撑。超过1个无支撑假设 → 方案不可行。" },
-    { id: "algorithm", label: "求解方案",
-      prompt: "从**求解算法层面**设计方案。优先使用成熟算法库（scipy/numpy/sklearn）；只在标准方法不适用时才设计新算法。\n" +
-        "给出算法复杂度分析，并与标准方法对比。\n" +
-        "⚠️ 如果你的「改进算法」跑出来和标准算法结果差异 < " + threshPct + "%，改用标准算法——复杂度更低、更可靠，评委不会因此扣分。" },
-  ]
-
-  const innovationProposals = safeFilter(await parallel(
-    INNOVATION_ANGLES.map(angle => () =>
-      agent(
-        "## 创新提案: " + angle.label + "\n\n" + formatSubQuestions(subQuestions) + gapContext + "\n\n" +
-        "## 创新方向\n" + angle.prompt + "\n" +
-        (subQuestions && subQuestions.length > 0 ? "\n⚠️ 请分别为每个子问题设计" + angle.label + "方案。对于有依赖的子问题，明确基于前序问题的输出。\n" : "") + "\n" +
-        "## ⚠️ 硬性要求（正确性第一，创新是锦上添花）\n" +
-        "1. **必要性测试**：如果把这个「创新」去掉，改用该领域最标准的方法，核心结果会差多少？" + NOT_SIG + "，降级为辅助方案。\n" +
-        "2. **假设自检**：你的方案有多少个未经文献支撑的假设？超过1个 → 不可行。\n" +
-        "3. **可验证性**：你的改进能在 Phase 5-6 中用数据（baseline对比）量化证明吗？不能 → 不可作为主创新。\n" +
-        "4. 创新必须**解决 gap analysis 中发现的具体局限**，不能凭空创造。\n" +
-        "提出一个完整的、可实现的建模方案。Structured output only." + ctx.saveToFile("04-proposal-" + angle.id + ".json"),
-        { label: "innovate:" + angle.id, schema: MODEL_PROPOSAL_SCHEMA }
-      )
-    )
-  ), "建模方案-innovationProposals")
-
-  log("创新提案: " + innovationProposals.length + " 个")
-
-  if (innovationProposals.length === 0) {
-    return { error: "创新提案阶段失败——所有 agent 均未返回结果。" }
-  }
-
-  // ── Step 4.4: 综合 —— 从提案中整合出初始建模方案 ──
+  // ── Step 4.2: 单一建模方案 agent（三维自查内化 + 必要性测试）──
+  // 旧版 3 角度并行提案+综合：3-4 个 agent 产 3 份高度重叠的完整方案，上下文大量重复。
+  // 新版 1 个 agent 直接产出完整方案（gapContext 已含 问题分析 + EDA 数据发现），评审团不变。
   let finalModel = await agent(
-    "## 建模方案综合\n\n" +
+    "## 建模方案设计（完整建模路线）\n\n" +
     formatSubQuestions(subQuestions) +
     "## 题目结构化分析\n" + JSON.stringify(chosenAnalysis, null, 2) + "\n\n" +
-    "## 提案方案 (" + innovationProposals.length + " 个)\n" + JSON.stringify(innovationProposals, null, 2) + "\n\n" +
-    (allModels && allModels.length > 0 ? "## 文献模型\n" + JSON.stringify(allModels.slice(0, 8), null, 2) + "\n\n" : "") +
+    "## 创新机会（Gap 分析，含问题分析与 EDA 数据发现）\n" + gapContext + "\n\n" +
+    (allModels && allModels.length > 0 ? "## 文献模型参考\n" + JSON.stringify(allModels.slice(0, 8), null, 2) + "\n\n" : "") +
     (limitationAnalysis ? "## 标准解法局限\n" + (typeof limitationAnalysis === "string" ? limitationAnalysis : "") + "\n\n" : "") +
-    "## 任务\n" +
-    "综合以上方案给出最终建模路线。你需要完成三件事：\n\n" +
-    "1. **必要性筛选**（最重要）：对每个提案中的「创新」，做必要性测试——如果改用该领域最标准的方法，结果会差多少？\n" +
-    "   " + NOT_SIG + "，丢弃或用标准方法替代。" + SIG_RANGE + "，不作为主创新叙事。" + CORE_INNOV + "。\n" +
-    "2. **建模方案综合**: 整合好想法，舍弃不可行的。如果多个提案有互相矛盾的假设，选择最有文献支撑的那个。\n" +
-    "3. **方案叙事设计**（如有改进点，附在 approach 字段末尾，用 `\\n\\n【方案亮点】` 分隔）：解决了哪个具体问题、改进效果如何、如何在论文中展开。\n" +
-    "   如果所有提案都没通过必要性测试 → 诚实地写「采用标准方法」并解释为什么标准方法对这个题目已经足够好——这不丢分，硬贴创新才丢分。\n\n" +
-    "⚠️ 这个方案会立即接受 4 人评审团的严格审查——数学家(数学正确性，否决权)+工程师(可实现性，否决权)+领域专家+魔鬼代言人。确保你的方案经得起推敲。\n\n" +
-    "Structured output only." + ctx.saveToFile("04-final-model.json"),
-    { label: "synthesize-model", schema: MODEL_PROPOSAL_SCHEMA }
+    "## 设计要求（三维自查，最终只产出一个完整方案）\n" +
+    "1. **方法维度**：从方法层面改进标准流程中的关键步骤——能加一项修正解决的就不要替换整个方法；若标准方法已够好，就是「选标准方法+解释为什么不需要改」——这不叫没有创新，这叫正确。\n" +
+    "2. **模型维度**：选择对这个具体问题最贴切的数学框架（正确性>简洁性>新颖性）。每个假设必须有文献或常识支撑，超过 1 个无支撑假设 → 方案不可行。\n" +
+    "3. **求解维度**：优先成熟算法库（scipy/numpy/sklearn）；只在标准方法不适用时才设计新算法，并给出复杂度分析。若改进算法与标准算法结果差异 < " + threshPct + "%，改用标准算法——复杂度更低、更可靠，评委不会因此扣分。\n\n" +
+    "## ⚠️ 硬性要求（正确性第一，创新是锦上添花）\n" +
+    "1. **必要性测试**：如果去掉「创新」改用该领域最标准的方法，核心结果会差多少？" + NOT_SIG + "，降级为辅助或不采用。" + SIG_RANGE + "，不作为主创新叙事。" + CORE_INNOV + "。\n" +
+    "2. **假设自检**：超过 1 个未经文献/常识支撑的假设 → 不可行。\n" +
+    "3. **可验证性**：你的改进能在 Phase 5-6 用数据（baseline 对比）量化证明吗？不能 → 不可作为主创新。\n" +
+    "4. 创新必须解决 gap analysis 中发现的具体局限，不能凭空创造。\n" +
+    (subQuestions && subQuestions.length > 0 ? "5. **子问题全覆盖**：为每个子问题设计完整方案；有依赖的子问题明确基于前序输出。\n" : "") +
+    "6. **方案叙事设计**：如有改进点，附在 approach 字段末尾（用 `\\n\\n【方案亮点】` 分隔）：解决了哪个具体局限、改进效果如何、如何在论文中展开。若所有候选改进都不过必要性测试 → 诚实地写「采用标准方法」并解释为何它对本题已足够好——这不丢分，硬贴创新才丢分。\n\n" +
+    "⚠️ 这个方案会立即接受 4 人评审团严格审查——数学家(数学正确性，否决权)+工程师(可实现性，否决权)+领域专家+魔鬼代言人。确保经得起推敲。\n\n" +
+    "输出一个完整的、可实现的建模方案（涵盖所有子问题）。Structured output only." + ctx.saveToFile("04-final-model.json"),
+    { label: "model-design", schema: MODEL_PROPOSAL_SCHEMA }
   )
+  const innovationProposals = finalModel ? [finalModel] : []
   if (!finalModel) {
-    return { error: "建模方案综合失败。", proposals: innovationProposals }
+    return { error: "建模方案设计失败——agent 未返回结果。" }
   }
   log("初始方案: " + (finalModel.approach || "").slice(0, 60))
 
@@ -1361,7 +1457,7 @@ async function phase4_modeling(ctx) {
     }
   }
 
-  log("[Phase 4/8] 建模方案完成 ✓ — " + innovationProposals.length + " 个创新提案, 适配性评分 " + (fitnessCheck?.totalScore ?? '?') + "/12")
+  log("[Phase 4/8] 建模方案完成 ✓ — " + innovationProposals.length + " 个建模方案, 适配性评分 " + (fitnessCheck?.totalScore ?? '?') + "/12")
 
   // Store results in ctx
   ctx.gapAnalysis = gapAnalysis
@@ -1369,8 +1465,10 @@ async function phase4_modeling(ctx) {
   ctx.finalModel = finalModel
   ctx.earlyJudgeReview = earlyJudgeReview
   ctx.fitnessCheck = fitnessCheck
+  ctx.problemAnalysis = problemAnalysis
+  ctx.edaReport = edaReport
 
-  return { finalModel, innovationProposals, gapAnalysis, fitnessCheck, earlyJudgeReview }
+  return { finalModel, innovationProposals, gapAnalysis, fitnessCheck, earlyJudgeReview, problemAnalysis, edaReport }
 }
 
 
@@ -1385,8 +1483,22 @@ async function phase4_modeling(ctx) {
 
 async function phase5_6_solve_verify(ctx) {
   const { cfg, chosenAnalysis, finalModel, allModels, allClaims, limitationAnalysis,
-          outputDir, codeDir, figuresDir, attachments, subQuestions } = ctx
+          outputDir, codeDir, figuresDir, attachments, subQuestions, edaReport } = ctx
   const earlyJudgeReview = ctx.earlyJudgeReview || null
+
+  // EDA 报告：文档为唯一权威，求解/验证 agent 直接 Read 完整报告（不另塞摘要）
+  const edaCtx = edaReport
+    ? "\n\n## ⚠️ EDA 数据发现（数据题）\n" +
+      "完整数据发现报告已保存到 `" + outputDir + "/intermediates/04-eda-report.json`，**开写前必须 `Read` 它**（数据清洗规则/聚合口径/统计检验/数据事实的唯一权威，你的求解必须与其一致）。"
+    : ""
+
+  // 外部数据（Phase 4.0a 自行收集）：求解阶段同样需要读取
+  const extData = ctx.externalData || null
+  const extFiles = (extData && extData.sources || []).filter(s => s.status === "OK" && s.filePath).map(s => s.filePath)
+  const extCtx = extFiles.length > 0
+    ? "\n\n## 外部数据文件（自行收集，必须读取使用；来源见 `" + outputDir + "/intermediates/04-data-collection.json`）\n" +
+      extData.sources.filter(s => s.status === "OK").map((s, i) => (i + 1) + ". `" + s.filePath + "` （来源: " + (s.sourceUrl || "?") + "，获取日期: " + (s.fetchedAt || "?") + "）").join("\n") + "\n\n"
+    : ""
 
   log("[Phase 5-6/8] 求解⇄验证开始 — 预计 15-25 分钟")
 
@@ -1413,8 +1525,9 @@ async function phase5_6_solve_verify(ctx) {
       (iteration === 1
         ? "## 算法设计\n\n" +
           formatSubQuestions(subQuestions) +
-          (chosenAnalysis._rawDescription ? "## 题目原文（逐字引自赛题）\n" + chosenAnalysis._rawDescription + "\n\n" : "") +
-          (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + chosenAnalysis._dataProfile + "\n\n" : "") +
+          (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+          (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+          edaCtx + extCtx + "\n\n" +
           "## 建模方案\n" + JSON.stringify(finalModel, null, 2) + "\n\n" +
           (attachments.length > 0 ? "## 附件文件\n" + attachments.map((a, ai) => (ai + 1) + ". `" + a + "`").join("\n") + "\n\n**先读取附件确认数据格式**，然后设计算法。\n\n" : "") +
           "## 任务\n" +
@@ -1446,13 +1559,17 @@ async function phase5_6_solve_verify(ctx) {
 
     let solution = await agent(
       "## 代码实现与执行 (第" + iteration + "轮)\n\n" +
+      (SKILL_DOCS ? "> ⚠️ 规范真源：完整图表/数值规范在 `" + SKILL_DOCS + "` 的「§二 图表生成规范」（CJK 字体/单位/附录浮动），需要完整要求时先 `Read` 对应章节；本 prompt 已列出关键配置。\n\n" : "") +
       formatSubQuestions(subQuestions) +
-      (chosenAnalysis._rawDescription ? "## 题目原文（逐字引自赛题）\n" + chosenAnalysis._rawDescription + "\n\n" : "") +
-      (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + chosenAnalysis._dataProfile + "\n\n" : "") +
+      // 迭代 2+ 不再重发全文/数据画像（上轮已给），只带算法变更+待修问题，省大量 token
+      (iteration === 1 && chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      (iteration === 1 && chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      edaCtx + "\n\n" +
       "## 算法设计\n" + algoAgent + "\n\n" +
-      "## 建模方案\n" + JSON.stringify(finalModel, null, 2) + "\n\n" +
+      "## 建模方案\n" + JSON.stringify(finalModel, null, 2).slice(0, iteration === 1 ? 24000 : 8000) + "\n\n" +
       (fixContext ? "## ⚠️ 本轮必须修复的问题\n" + fixContext + "\n\n" : "") +
       (attachments.length > 0 ? "## 附件文件（必须读取处理）\n" + attachments.map((a,ai) => (ai+1) + ". `" + a + "`").join("\n") + "\n\n" : "") +
+      (extCtx ? extCtx + "\n" : "") +
       (codeTemplateBlock ? codeTemplateBlock + "\n" : "") +
       "## ⚠️ 强制要求：你必须实际运行代码并报告真实结果，不允许只写代码不运行。\n\n" +
       "## ⚠️ 创新 vs 基线对比要求（dual-path）\n" +
@@ -1573,8 +1690,9 @@ async function phase5_6_solve_verify(ctx) {
         const baselineAgent = await agent(
           "## 标准基线求解（单脚本 dual-path）\n\n" +
           formatSubQuestions(subQuestions) +
-          (chosenAnalysis._rawDescription ? "## 题目原文（逐字引自赛题）\n" + chosenAnalysis._rawDescription + "\n\n" : "") +
-          (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + chosenAnalysis._dataProfile + "\n\n" : "") +
+          (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+          (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+          edaCtx + extCtx + "\n\n" +
           "## 题目结构化分析\n" + JSON.stringify(chosenAnalysis, null, 2) + "\n\n" +
           "## 任务\n" +
           "运行已有求解脚本的基线模式（`METHOD=baseline`）以获取标准方法结果。\n" +
@@ -1617,12 +1735,20 @@ async function phase5_6_solve_verify(ctx) {
 
     // ── Verify ──
     const dctx = getDomainExpertise(chosenAnalysis?.domain) || "\n\n## 领域专家视角\n资深工程师，关注计算结果的工程合理性。"
-    const actx = attachments.length > 0
-      ? ("\n\n## 附件数据验证\n" + attachments.map((a,ai) => (ai+1)+". \`" + a + "\`").join("\n") + "\n用 Python/pandas 读取附件，对比求解输出与参考值。差异>10% → critical severity。") : ""
+    const actx = (attachments.length > 0 || extFiles.length > 0)
+      ? ("\n\n## 附件/外部数据验证\n" +
+         (attachments.length > 0 ? attachments.map((a,ai) => (ai+1)+". `"+a+"`").join("\n") + "\n" : "") +
+         (extFiles.length > 0 ? extData.sources.filter(s => s.status === "OK").map((s,i) => (i+1)+". `"+s.filePath+"` (来源: "+s.sourceUrl+")").join("\n") + "\n" : "") +
+         "用 Python/pandas 读取数据，对比求解输出与参考值。差异>10% → critical severity。") : ""
+    const edaCtxVerifiers = edaReport
+      ? "\n\n## EDA 数据发现（验证时与其交叉核验）\n" +
+        "完整数据发现报告已保存到 `" + outputDir + "/intermediates/04-eda-report.json`，**核验前必须 `Read` 它**。"
+      : ""
     const problemCtx = ""
       + formatSubQuestions(subQuestions)
-      + (chosenAnalysis._rawDescription ? "## 题目原文（逐字引自赛题）\n" + chosenAnalysis._rawDescription + "\n\n" : "")
-      + (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + chosenAnalysis._dataProfile + "\n\n" : "")
+      + (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "")
+      + (chosenAnalysis._dataProfile ? "## 附件数据画像\n" + PROBLEM_READ_HINT + "\n\n" : "")
+      + edaCtxVerifiers + "\n\n"
       + "## 题目结构化分析\n" + JSON.stringify(chosenAnalysis, null, 2)
     const verifiers = [
       {
@@ -1646,15 +1772,28 @@ async function phase5_6_solve_verify(ctx) {
         prompt: "## 对抗审查\n\n" + problemCtx + "\n\n## 模型\n" + JSON.stringify(finalModel, null, 2) + "\n\n## 结果\n" + JSON.stringify(solution.results || {}, null, 2) + "\n\n" +
           "对照题目原文，试图找到模型崩溃场景：假设是否成立？是否有更优解？输出物理上合理吗？有没有更简单的 benchmark？每个发现标注 severity。\n\nStructured output only." + dctx + actx,
       },
-      ...(attachments.length > 0 ? [{
+      ...(attachments.length > 0 || extFiles.length > 0 ? [{
         dimension: "data_validation",
         prompt: "## 硬数据验证\n\n" + problemCtx + "\n\n" +
           "## 附件\n" + attachments.map((a,ai) => (ai+1)+". `"+a+"`").join("\n") + "\n\n" +
+          (extCtx ? "## 外部数据文件\n" + extCtx + "\n\n" : "") +
           "**硬数据检查，不依赖主观判断。**\n" +
-          "1. 用 Python pandas 读取附件 xlsx/csv\n" +
-          "2. 运行求解代码，将输出与附件参考值逐项对比\n" +
+          "1. 用 Python pandas 读取附件/外部数据 xlsx/csv\n" +
+          "2. 运行求解代码，将输出与数据参考值逐项对比\n" +
           "3. 报告数值差异百分比和格式匹配情况\n" +
           "4. 差异>10% → critical severity。差异<5% → minor\n\nStructured output only." + dctx
+      }, {
+        dimension: "statistical",
+        prompt: "## 统计显著性审查\n\n" + problemCtx + "\n\n" +
+          "## 模型\n" + JSON.stringify(finalModel, null, 2) + "\n\n## 求解结果\n" + JSON.stringify(solution.results || {}, null, 2) + "\n\n" +
+          "## 任务\n" +
+          "审查结论的统计显著性（优秀数据题论文的常规武器：统计检验支撑结论）：\n" +
+          "1. 声称的差异/提升/规律是否有统计检验支撑（置信区间、p 值、样本量）？\n" +
+          "2. 样本量是否足以支撑结论？小样本结论是否被过度外推？\n" +
+          "3. 关键估计是否报告了置信区间/不确定性（如最优参数的灵敏度带）？\n" +
+          "4. 分类/分组/关联结论是否做过显著性检验（卡方/Fisher/t 检验/相关系数检验）？\n" +
+          "5. 时间序列类结论是否做过平稳性/周期性检验（ACF/ADF）？\n" +
+          "每个发现标注 severity。\n\nStructured output only." + dctx + actx,
       }] : []),
       {
         dimension: "devils_advocate",
@@ -1960,6 +2099,40 @@ async function phase5_6_solve_verify(ctx) {
 
   log("[Phase 5-6/8] 求解⇄验证完成 ✓ — " + iteration + " 轮迭代, " + allIssues.length + " 个问题, " + allIssues.filter(i => i.severity === "critical").length + " 个严重, dry=" + dry + "/" + cfg.dryThreshold)
 
+  // ── 稳健性分析报告 —— 聚合灵敏度/边界/统计/对抗发现 → 「灵敏度与稳健性分析」章的数据来源 ──
+  // 优秀论文的灵敏度/稳健性章（如2024 C038 鲁棒优化+动态调参、2023 C228 加噪鲁棒性检验）都是
+  // 多方法+扰动表+明确结论；这里把验证阶段散落的发现聚合为结构化报告，写作章直接引用。
+  let robustnessReport = null
+  if (currentSolution && (allIssues.length > 0 || (allAdversarialFindings && allAdversarialFindings.length > 0))) {
+    const sensitivityIssues = allIssues.filter(f => !f._dimension || ["sensitivity", "edge_cases", "statistical"].includes(f._dimension))
+    robustnessReport = await agent(
+      "## 稳健性分析报告（灵敏度与稳健性章的数据来源）\n\n" +
+      formatSubQuestions(subQuestions) +
+      (chosenAnalysis._rawDescription ? "## 题目原文\n" + PROBLEM_READ_HINT + "\n\n" : "") +
+      "## 建模方案\n" + JSON.stringify(finalModel, null, 2).slice(0, 3000) + "\n\n" +
+      "## 最终求解结果\n" + JSON.stringify(currentSolution?.results || {}, null, 2).slice(0, 3000) + "\n\n" +
+      "## 验证发现（灵敏度/边界/统计/对抗，全部来自验证阶段真实产出）\n" + JSON.stringify(allIssues.slice(-25), null, 2) + "\n\n" +
+      (baselineResult ? "## Baseline 对比\n" + JSON.stringify(baselineResult, null, 2).slice(0, 1500) + "\n\n" : "") +
+      "## 任务\n" +
+      "把验证发现汇总成结构化稳健性分析报告（优秀论文的「灵敏度/稳健性」章数据来源）：\n" +
+      "1. perturbationResults: 参数扰动对关键结果的影响（基于灵敏度发现整理，{parameter, perturbation, effectOnResult, sensitivityLevel}）\n" +
+      "2. robustnessStatements: 明确的稳健性结论（{statement, supportingEvidence, boundary}），至少 3 条——模型在什么范围内可靠、什么条件下会失效\n" +
+      "3. weakestPoints: 模型最脆弱的地方（基于 adversarial/edge 发现）\n" +
+      "4. statisticalChecks: 统计稳健性（置信区间/样本量/检验结论）\n" +
+      "⚠️ 只基于上面提供的真实发现整理，禁止编造数字或凭空添加扰动实验；若某项无信息写「无」。\n\nStructured output only." + ctx.saveToFile("06-robustness-report.json"),
+      { label: "robustness-report", phase: "求解-稳健性",
+        schema: { type: "object", required: ["perturbationResults", "robustnessStatements", "weakestPoints", "statisticalChecks"], properties: {
+          perturbationResults: { type: "array", items: { type: "object", properties: { parameter: { type: "string" }, perturbation: { type: "string" }, effectOnResult: { type: "string" }, sensitivityLevel: { enum: ["low", "medium", "high"] } } } },
+          robustnessStatements: { type: "array", items: { type: "object", properties: { statement: { type: "string" }, supportingEvidence: { type: "string" }, boundary: { type: "string" } } } },
+          weakestPoints: { type: "array", items: { type: "string" } },
+          statisticalChecks: { type: "array", items: { type: "object", properties: { check: { type: "string" }, result: { type: "string" } } } },
+        } } }
+    )
+    if (robustnessReport) {
+      log("[Phase 5-6/8] 稳健性分析报告完成 — " + (robustnessReport.robustnessStatements?.length || 0) + " 条稳健性结论")
+    }
+  }
+
   // Store results in ctx
   ctx.currentSolution = currentSolution
   ctx.baselineResult = baselineResult
@@ -1969,8 +2142,9 @@ async function phase5_6_solve_verify(ctx) {
   ctx.allRethinkResults = allRethinkResults
   ctx.redesignHistory = redesignHistory
   ctx.overallRobustness = overallRobustness
+  ctx.robustnessReport = robustnessReport
 
-  return { currentSolution, baselineResult, allIssues, iterationLog, solveConverged }
+  return { currentSolution, baselineResult, allIssues, iterationLog, solveConverged, robustnessReport }
 }
 
 
@@ -1989,7 +2163,8 @@ async function phase7_writing(ctx) {
           allSources, allModels, allClaims,
           allIssues, allAdversarialFindings, allRethinkResults, redesignHistory,
           overallRobustness, innovationProposals, outputDir, figuresDir,
-          subQuestions, iterationLog, competition, intermediatesDir } = ctx
+          subQuestions, iterationLog, competition, intermediatesDir, attachments,
+          problemAnalysis, edaReport, robustnessReport } = ctx
   const isMcm = competition === 'mcm'
 
   if (!currentSolution) {
@@ -2024,13 +2199,30 @@ async function phase7_writing(ctx) {
 
   const currentRules = PAPER_RULES[competition] || PAPER_RULES.cumcm
 
+  // problem 清理：剥掉 _rawDescription/_dataProfile/_paperRules（全文统一在 intermediates/00-problem.md，
+  // 写作 agent 需要时 Read；这里避免大文本随结构化 problem JSON 重复注入写作上下文）
+  const problemForWriting = chosenAnalysis ? { ...chosenAnalysis } : null
+  if (problemForWriting) {
+    delete problemForWriting._rawDescription
+    delete problemForWriting._dataProfile
+    delete problemForWriting._paperRules
+  }
+  // solution 清理：写作不需要完整源码与算法文本，只留结果摘要/关键值/图列表（省 30-40k 字符）
+  const solutionForWriting = currentSolution ? {
+    summary: currentSolution?.results?.summary || "",
+    keyValues: currentSolution?.results?.keyValues || [],
+    plots: currentSolution?.results?.plots || [],
+    concerns: currentSolution?.concerns || [],
+    testPassed: currentSolution?.testPassed,
+  } : null
+
   const allContext = {
     competition,
-    problem: chosenAnalysis, selection,
-    rawDescription: chosenAnalysis._rawDescription || "",
-    dataProfile: chosenAnalysis._dataProfile || "",
-    paperRules: chosenAnalysis._paperRules || "",
-    finalModel, solution: currentSolution,
+    problem: problemForWriting, selection,
+    finalModel, solution: solutionForWriting,
+    problemAnalysis: typeof problemAnalysis === "string" ? problemAnalysis.slice(0, 5000) : null,
+    edaReport: edaReport ? JSON.stringify(edaReport, null, 2).slice(0, 6000) : null,
+    robustnessReport: robustnessReport ? JSON.stringify(robustnessReport, null, 2).slice(0, 6000) : null,
     adversarialFindings: advFindings.map(f => ({ issue: f.issue, severity: f.severity, evidence: f.evidence })),
     rethinkHistory: (allRethinkResults || []).map(r => ({ iteration: r.iteration, verdict: r.verdict, flawedAssumptions: r.flawedAssumptions, reasoning: (r.reasoning || "").slice(0, 500) })),
     redesignHistory: (redesignHistory || []).map(r => ({ iteration: r.iteration, reason: (r.reason || "").slice(0, 300), approachSummary: (r.approach?.approach || "").slice(0, 500) })),
@@ -2043,54 +2235,47 @@ async function phase7_writing(ctx) {
       earlyJudgeReview: typeof earlyJudgeReview === "string" ? earlyJudgeReview.slice(0, 2000) : null,
     },
     literature: { sources: allSources ? allSources.length : 0, models: (allModels || []).slice(0, 10), keyClaims: (allClaims || []).slice(0, 15) },
+    externalData: ctx.externalData ? { needsExternalData: ctx.externalData.needsExternalData, sources: (ctx.externalData.sources || []).map(s => ({ id: s.id, purpose: s.purpose, status: s.status, sourceUrl: s.sourceUrl, fetchedAt: s.fetchedAt, fields: s.fields })) } : null,
     verification: { otherIssues, iterationLog, overallRobustness },
   }
 
   const cleanContext = stripNulls(allContext)
 
-  const WRITING_PRIORITY = ["competition", "paperRules", "adversarialFindings", "finalModel", "rawDescription", "dataProfile", "solution", "problem", "innovation", "rethinkHistory", "redesignHistory", "innovationMatrix", "literature", "verification"]
+  const WRITING_PRIORITY = ["competition", "adversarialFindings", "finalModel", "solution", "problem", "problemAnalysis", "edaReport", "robustnessReport", "innovation", "externalData", "rethinkHistory", "redesignHistory", "innovationMatrix", "literature", "verification"]
 
-  const buildWritingContext = () => buildContextStr(cleanContext, WRITING_PRIORITY, cfg.contextBudget, { summarizeLongFields: true })
   const buildNarrativeContext = () => buildContextStr(cleanContext, WRITING_PRIORITY, Math.floor(cfg.contextBudget * 0.8), { summarizeLongFields: true })
 
-  const writingContext = buildWritingContext()
-
-  // ── Step 7.1b: 章节上下文裁剪映射 ═══
-  // 根据章节类型，只注入该章节所需的上下文，减少 token 浪费和 "lost in the middle" 效应
-  const SECTION_CONTEXT_GROUPS = {
-    abstract:          ['all', 'critical', 'modeling', 'solving'],
-    restatement:       ['all', 'modeling'],
-    assumptions:       ['all', 'modeling'],
-    intro:             ['all', 'modeling'],
-    model:             ['modeling', 'solving', 'critical'],
-    analysis:          ['analysis', 'solving', 'critical'],
-    analysis_conclusion: ['analysis', 'solving', 'critical'],
-    closing:           ['analysis', 'solving', 'critical'],
-    conclusion:        ['all', 'critical', 'modeling', 'analysis'],
+  // ── Step 7.1b: 章节上下文裁剪 —— 顺序主编模式下每个章节仍是独立 agent 调用，
+  // 只注入该章节真正需要的 key（跨章一致性由 前文注入 + 事实源表 + 风格指南 保证），
+  // 根治"每个写作 agent 拿满 10 万字符上下文"的超限问题。
+  // key 顺序即优先级：budget 截断时保前面的（每个章节最重要的放最前）。
+  // ⚠️ 题目原文/数据画像/论文规则不再作为 key 注入——统一在 `intermediates/00-problem.md`，写作 agent 需要时 Read。
+  const SECTION_KEY_NEEDS = {
+    abstract:          ['solution', 'finalModel', 'innovation', 'adversarialFindings', 'problem'],
+    restatement:       ['problem'],
+    problem_analysis:  ['problemAnalysis', 'problem', 'finalModel', 'literature'],
+    assumptions:       ['finalModel', 'problem'],
+    data_analysis:     ['problem'],
+    model:             ['finalModel', 'solution', 'problemAnalysis', 'problem', 'innovation'],
+    analysis:          ['solution', 'innovation', 'adversarialFindings', 'verification', 'finalModel'],
+    robustness:        ['solution', 'adversarialFindings', 'verification', 'innovation'],
+    model_eval:        ['innovation', 'solution', 'finalModel', 'adversarialFindings', 'verification'],
+    conclusion:        ['problem', 'solution', 'finalModel', 'innovation', 'adversarialFindings', 'redesignHistory', 'rethinkHistory'],
   }
+  // 这些 key 不做摘要保留完整原文（由 budget 兜底截断）；其余长字段一律摘要为 200 字符预览
+  const CONTEXT_FULL_KEYS = ['finalModel', 'solution', 'edaReport', 'robustnessReport', 'problemAnalysis']
+  // 章节专属预算（字符）：模型章最重，给 40k；其余 25k
+  const SECTION_BUDGETS = { model: 40000 }
 
-  const CONTEXT_GROUP_KEYS = {
-    modeling:  ['finalModel', 'rawDescription', 'dataProfile', 'innovation'],
-    solving:   ['solution', 'finalModel'],
-    analysis:  ['solution', 'innovation', 'adversarialFindings', 'verification'],
-    critical:  ['adversarialFindings', 'redesignHistory', 'rethinkHistory', 'verification', 'innovationMatrix'],
-    all:       ['paperRules', 'problem', 'selection', 'literature'],
-  }
-
-  function selectContextForSection(sectionId, fullContext) {
-    const groups = SECTION_CONTEXT_GROUPS[sectionId] || ['all', 'critical']
-    const neededKeys = new Set(groups.flatMap(g => CONTEXT_GROUP_KEYS[g] || []))
-    // 如果 problem（结构化 JSON）已包含 _rawDescription，不再单独传 rawDescription
-    if (neededKeys.has('problem') && neededKeys.has('rawDescription')) {
-      neededKeys.delete('rawDescription')
-    }
+  function buildSectionContext(sectionId) {
+    const keys = SECTION_KEY_NEEDS[sectionId] || []
     const selected = {}
-    for (const key of neededKeys) {
-      if (fullContext[key] !== undefined && fullContext[key] !== null) {
-        selected[key] = fullContext[key]
-      }
+    for (const k of keys) {
+      if (cleanContext[k] !== undefined && cleanContext[k] !== null) selected[k] = cleanContext[k]
     }
-    return selected
+    return buildContextStr(selected, keys, SECTION_BUDGETS[sectionId] || 25000, {
+      summarizeLongFields: true, fullKeys: CONTEXT_FULL_KEYS,
+    })
   }
 
   // ── Step 7.1: 叙事大纲 ──
@@ -2099,6 +2284,7 @@ async function phase7_writing(ctx) {
     "## 论文叙事大纲\n\n" +
     formatSubQuestions(subQuestions) +
     (subQuestions && subQuestions.length > 0 ? "请围绕子问题组织叙事弧线，每个子问题形成独立的故事单元，同时保持整体逻辑连贯。\n\n" : "") +
+    "## 题面文档（需要题目原文时先 `Read`）\n" + PROBLEM_READ_HINT + "\n\n" +
     "## 建模上下文\n" + buildNarrativeContext() + "\n\n" +
     "## 任务\n" +
     "为" + (isMcm ? "美赛（MCM/ICM）" : "国一") + "论文设计叙事大纲。记住：论文不是技术报告——评委是人，读完要有「这个队有想法」的直觉。\n\n" +
@@ -2196,29 +2382,25 @@ async function phase7_writing(ctx) {
 
   // ── Step 7.2: 章节定义 ──
   const SECTION_PRESETS = {
-    compact: [
-      { id: "abstract", label: "摘要", prompt: "撰写摘要。按子问题分段：「对于问题1，…对于问题2，…对于问题3，…」每段给出方法+核心结果（数值用\\bm{}加粗）。300-500字。**必须有具体数字。**末段一句话总结核心发现。最后附上**关键词**（3-5个，用分号分隔）。\n\n⚠️ 只加粗答案关键词和数值，不加粗整句。禁止「创新点：」「关键发现：」等标签。" },
-      { id: "intro", label: "问题重述+假设", prompt: "重述问题+列出假设+符号说明。" },
-      { id: "model", label: "模型+求解", prompt: "完整推导+方程+算法+结果。**创新自然融入推导，不是单独贴一段。**" },
-      { id: "closing", label: "分析+结论", prompt: "结果分析+灵敏度+优劣势+总结改进。" },
-    ],
-    standard: [
-      { id: "abstract", label: "摘要", prompt: "撰写摘要。按子问题分段：「对于问题1，…对于问题2，…对于问题3，…」每段给出方法+核心结果（数值用\\bm{}加粗）。300-500字。**必须有具体数字和创新highlight。**末段一句话总结核心发现。最后附上**关键词**（3-5个，用分号分隔）。\n\n⚠️ 只加粗答案关键词和数值，不加粗整句。禁止「创新点：」「关键发现：」等标签。" },
-      { id: "restatement", label: "问题重述", prompt: "重述问题。背景、分析、已知条件、目标。" },
-      { id: "assumptions", label: "模型假设+符号", prompt: "列出假设+符号说明表。每个假设说明合理性。" },
-      { id: "model", label: "模型建立与求解", prompt: "完整推导+方程(LaTeX)+算法+结果。**创新点自然融入推导——不是单独贴一段。**如有baseline对比用表格展示。" },
-      { id: "analysis_conclusion", label: "分析+结论", prompt: "结果分析、灵敏度、优劣势、baseline对比 + 总结改进方向。**必须引用adversarialFindings和redesignHistory。**" },
-    ],
     full: [
       { id: "abstract", label: "摘要", prompt: "撰写摘要。按子问题分段：「对于问题1，…对于问题2，…对于问题3，…」每段给出方法+核心结果。300-500字。\n\n**格式要求：**\n① 每个子问题的核心数值用\\bm{}加粗（如$\\bm{d=7.66\\pm0.78~\\mu\\text{m}}$）\n② 只加粗答案关键词和数值，不加粗整句叙述\n③ 禁止使用「创新点：」「关键发现：」「核心结论：」等标签——创新自然融入答案描述\n④ 末段一句话总结核心发现\n⑤ 最后附上**关键词**（3-5个，用分号分隔）" },
-      { id: "restatement", label: "问题重述", prompt: "重述问题。背景、问题分析、已知条件、求解目标。不要复制原题——用自己的话重新组织。" },
+      { id: "restatement", label: "问题重述", prompt: "重述问题。背景、已知条件、求解目标（问题逐条列出）。不要复制原题——用自己的话重新组织。背景部分如需引用领域文献（能源/政策/行业背景）用 \\\\cite 标注。**注意：本章只做重述，不做方法分析——「问题分析」由专门一章负责。**" },
+      { id: "problem_analysis", label: "问题分析", prompt: "撰写「问题分析」章——优秀获奖论文的标准第2章。对**每个子问题**逐问分析（用「对于问题N」分段）：\n① 机理/业务推理：这个子问题背后的物理/几何/业务机制是什么？为什么题目这样设问？\n② 难点识别：该问最大的难点（数据陷阱/机理复杂/求解困难）具体在哪？\n③ 建模思路草图：打算用什么模型、先做什么后做什么、如何逐层递进？若该问依赖前置问题，说明如何复用前置结果。\n④ 数据要点：该问用到哪些数据/附件、需要怎样的预处理（无附件则说明所需数据如何构造；若已自行收集外部数据，说明使用了哪些外部数据及其作用）。\n要求：有机理深度、给出清晰思路路线，但**不写完整公式推导**（那是模型章的事）；禁止「难点：」「创新点：」等标签，自然融入叙述。可引用下方 context 中的 problemAnalysis 作为原始素材，也可引用领域文献支撑机理判断。" },
       { id: "assumptions", label: "模型假设+符号", prompt: "列出假设条件和符号说明。每个假设说明合理性（为什么可以这样简化）。符号用表格（符号|含义|单位）。" },
-      { id: "model", label: "模型建立与求解", prompt: "核心章节。写出完整模型推导、关键方程(LaTeX)、求解算法、代码逻辑、结果(含图表描述)。**创新点要自然融入推导过程——不是单独一段「我们的创新是……」而是在推导中展示「标准方法在这里有X局限，因此我们引入Y来处理」。**如有baseline对比数据，在这里用表格展示。" },
-      { id: "analysis", label: "结果分析与验证", prompt: "分析结果意义、灵敏度、模型优劣势、与baseline/文献对比。如果有baseline对比数据，用图表展示创新vs标准的差异。诚实讨论局限。**必须引用adversarialFindings和redesignHistory中至少各1条发现。**" },
+      { id: "data_analysis", label: "数据预处理与探索性分析", prompt: "撰写「数据预处理与探索性分析」章——优秀数据题获奖论文的标准章节。先 `Read` `intermediates/04-eda-report.json`（EDA 数据发现报告，含实际运行的数字）作为**唯一数据来源**，分三部分：\n① 数据预处理：数据整合（多表关联/聚合规则与公式）、缺失值处理、异常值剔除（3σ/业务规则）、无关数据剔除——每条给出处理规则、剔除数量与理由（引用 cleaningDecisions 的实际数字）。\n② 探索性分析：用实际生成的图表（fig_eda_*.png，分布/时序/ACF/相关热力图/占比）分析分布规律、趋势、周期性、相关性、关联规则；涉及统计检验时给出检验方法、统计量、p 值、样本量（引用 findings 的 evidence）。\n③ 数据发现对建模的启示：EDA 发现的规律如何驱动后续模型选择（引用 findings.implicationForModeling）。\n⚠️ 数字纪律：只使用 EDA 报告中真实存在的数字，禁止编造；每个图都要在文中 \\\\includegraphics 引用。\n⚠️ **外部数据来源合规（如使用了自行收集的数据）**：`Read` `intermediates/04-data-collection.json`，在章内说明每个外部数据集的**来源名称、URL、获取日期**（以「数据来源」小节或脚注形式），并在参考文献中按 GB/T 7714 标注；没有外部数据则忽略本条。" },
+      { id: "model", label: "模型建立与求解", prompt: "核心章节。写出完整模型推导、关键方程(LaTeX)、求解算法、代码逻辑、结果(含图表描述)。**如有需要，先在章首写「模型准备」小节（坐标系建立/符号定义/问题形式化），再进入推导**——优秀机理题论文（如定日镜场）都有这一过渡。**创新点要自然融入推导过程——不是单独一段「我们的创新是……」而是在推导中展示「标准方法在这里有X局限，因此我们引入Y来处理」。**如有baseline对比数据，在这里用表格展示。" },
+      { id: "analysis", label: "结果分析与验证", prompt: "分析结果意义、与baseline/文献对比、结果解读（用图表支撑）。如果有baseline对比数据，用图表展示创新vs标准的差异。诚实讨论局限：若求解/验证中确实发现模型在某种条件下失效或精度不足，以论文语言诚实呈现（如「进一步分析表明当X时误差增大」）——**禁止出现「对抗性审查」「模型重设计」「adversarialFindings」「验证器」等内部流程字样，也不得把内部迭代历史写进论文**；把发现转述成\"结果解读/局限讨论\"的论文口吻即可。（模型优劣势与推广由「模型的评价与推广」章负责，本章不重复；灵敏度与稳健性由「灵敏度与稳健性分析」章负责，本章可简要提及但不展开。）" },
+      { id: "robustness", label: "灵敏度与稳健性分析", prompt: "撰写「灵敏度与稳健性分析」章——优秀获奖论文的标准章节（如鲁棒优化灵敏度、动态调参灵敏度）。先 `Read` `intermediates/06-robustness-report.json`（稳健性报告，含验证阶段实际发现）作为**数据来源**，展示：\n① 参数扰动分析：关键参数（±10%/±20% 或题目关键参数）扰动对核心结果的影响，识别最敏感参数（用表格/图展示扰动-结果关系，引用 perturbationResults）。\n② 边界与极端情况：边界/极端输入下模型的表现（引用验证发现的 edge_cases 维度）。\n③ 统计稳健性：置信区间、样本量、对假设偏离的容忍度（引用 statisticalChecks）。\n④ 明确结论：模型在什么范围内可靠、什么条件下会失效；若验证确实暴露了脆弱点，以论文语言诚实讨论（如「当X时模型失效」）——**禁止出现「对抗性审查」「adversarialFindings」等内部流程字样**，把发现转述成稳健性结论的论文口吻。\n⚠️ 数字纪律：只使用稳健性报告 / 验证发现中真实存在的数字，禁止编造；若某项无信息写「本项未做专门检验」。每个结论要有实际数字支撑。" },
+      { id: "model_eval", label: "模型的评价与推广", prompt: "撰写「模型的评价与推广」章（优秀获奖论文标准章节，如「模型优点/缺点/推广」），分三节：\n① 模型的优点：2-4条，具体到方法/机制层面，与同类标准方法对比说明强在哪（如有 baseline 对比数据，引用量化提升，如精度/效率/稳健性指标）。\n② 模型的缺点：2-3条，诚实——计算代价、假设局限、数据要求、对哪些场景不适用（若验证揭示认知边界，以论文语言说明——**禁止出现「对抗性审查」「adversarialFindings」等内部流程字样**）。\n③ 模型的推广：模型可迁移到哪些领域/场景/其他数据集，迁移需要满足什么条件（数据/假设/参数）。\n⚠️ 禁止「创新点：」等标签；优点要有依据、缺点要具体。实事求是。" },
       { id: "conclusion", label: "结论与改进", prompt: "按子问题逐问总结。每段开头用{\\bfseries 对于问题N——标题：}格式，陈述方法和结果。末尾提改进方向和未来工作。**这一章必须是论文最后一章。**\n\n⚠️ 加粗规则：仅加粗核心数值和答案关键词（如$\\bm{d=7.66\\pm0.78~\\mu\\text{m}}$），不加粗整句。\n⚠️ 禁止使用「创新点：」「关键发现：」「核心结论：」等标签——创新和发现应自然融入答案描述。实事求是。" },
     ],
   }
-  const sectionDefs = SECTION_PRESETS[cfg.sectionPreset] || SECTION_PRESETS.compact
+  // 数据题（有附件或有外部数据）才启用「数据预处理与探索性分析」章；纯机理/无数据时移除该章
+  let sectionDefs = SECTION_PRESETS[cfg.sectionPreset] || SECTION_PRESETS.full
+  const hasAnyData = (attachments && attachments.length > 0) || !!(ctx.externalData && (ctx.externalData.sources || []).some(s => s.status === "OK"))
+  if (!hasAnyData || !ctx.edaReport) {
+    sectionDefs = sectionDefs.filter(s => s.id !== "data_analysis")
+  }
 
   const formatGuide = "\n\n## LaTeX 格式要求\n" +
     "输出完整 LaTeX 源码，要求：\n" +
@@ -2244,22 +2426,31 @@ async function phase7_writing(ctx) {
     : ""
 
   const figureLayoutGuide = "\n\n## 图表排版规范\n" +
-    "求解阶段已在 `" + figuresDir + "` 目录下生成图表，命名规范为 `fig_{子问题ID}_{内容描述}.png`（如 `fig_Q1_xxx.png`、`fig_Q2_xxx.png`、`fig_cross_xxx.png`）。\n" +
+    "求解阶段已在 `" + figuresDir + "` 目录下生成图表，命名规范为 `fig_{子问题ID}_{内容描述}.png`（如 `fig_Q1_xxx.png`、`fig_Q2_xxx.png`、`fig_cross_xxx.png`），EDA 阶段生成的图命名为 `fig_eda_*.png`。\n" +
     "1. 先 `ls " + figuresDir + "` 列出所有图表文件\n" +
     "2. 根据文件名中的子问题ID（Q1/Q2/Q3），将图表分配到对应的「对于问题N」段落\n" +
-    "3. 文件名中的内容描述即为 caption 依据\n" +
-    "4. 跨问题的综合图表（fig_cross_*）放在综合分析章节\n" +
-    "5. 确保 `" + figuresDir + "` 中每个文件都在论文中被 `\\includegraphics{...}` 引用"
+    "3. `fig_eda_*` 图表分配到「数据预处理与探索性分析」章（数据题）\n" +
+    "4. 文件名中的内容描述即为 caption 依据\n" +
+    "5. 跨问题的综合图表（fig_cross_*）放在综合分析章节\n" +
+    "6. 确保 `" + figuresDir + "` 中每个文件都在论文中被 `\\includegraphics{...}` 引用；**同时每个 `\\includegraphics` 引用的文件必须真实存在**——禁止空 figure 环境（有 caption 无图）。\n" +
+    "7. **本章可以自己画「示意图」**：当本章需要一张图来**帮助读者理解思路**（几何示意/方法流程图/方案示意图/结构图/区域图），而 `" + figuresDir + "` 里没有现成的图时——**不要留空 figure 环境，用 python3 + matplotlib 自己画**并保存：\n" +
+    "   - 命名：`fig_{子问题ID}_示意图_{内容描述}.png`（如 `fig_Q2_示意图_碰撞区域几何关系.png`；跨问题用 `fig_cross_示意图_...`；EDA 章用 `fig_eda_...`）\n" +
+    "   - 脚本必须先配 CJK 字体（`matplotlib.rcParams['font.sans-serif']=['Noto Sans CJK SC','DejaVu Sans']` + `font.family='sans-serif'` + `axes.unicode_minus=False`），保存用 `plt.savefig('" + figuresDir + "/fig_xxx.png', dpi=200, bbox_inches='tight')`，保存后在终端 `ls " + figuresDir + "` 确认文件真实生成。\n" +
+    "   - 在文中用 `\\includegraphics{" + figuresDir + "/fig_xxx.png}` 引用（绝对路径，保证任意目录编译都能找到）。\n" +
+    "8. **每张图都要能被一句话解释作用**：文中必须有「如图X所示…」的解读句（读者能从图中看到什么、为什么帮助理解）；图注用 LaTeX math 单位；与思路无关的装饰图不要画。"
 
-  // ── 数字纪律指令（所有章节/修复 agent 必须遵守；事实源表为唯一数字来源）──
-  const factSheetStr = factSheet ? JSON.stringify(factSheet, null, 2).slice(0, 6000) : "（无事实源表）"
-  const NUMBER_DISCIPLINE = "\n\n## ⚠️ 数字纪律（最高优先级，违反即重写）\n" +
-    "论文中的**每一个数值声明**必须来自下方【最终事实源表】。严格禁止：\n" +
-    "1. 使用事实源表之外的数字（包括记忆中的、推测的、早期运行版本的数字）\n" +
-    "2. 自行计算、推导或「补全」新数字\n" +
-    "3. 同一数字在不同章节写不同值（如用户数、阈值、户数、百分比）\n" +
-    "若事实源表中没有你需要的数字：跳过该声明，绝不编造；若必须引用，写[待定]并标注。\n" +
-    "数字的精确写法（小数位数、单位、口径）以事实源表为准，全篇统一。"
+  // 写作范式：从国一论文（如 2024 板凳龙 A053）蒸馏的"推导叙事"风格，治 AI 味/术语堆砌/无推导链
+  const narrativeStyleGuide =
+    "\n\n## 写作范式（必须遵守，治「AI味」——啰嗦、术语堆砌、只贴公式不推导）\n" +
+    "你要像**获奖选手写解题手记**，不要像技术白皮书。评委是人，必须让一个外行也能顺着你的思路读下去。\n" +
+    "1. **先想后写，一段一意**：每一段先回答「这一小步想解决什么问题、为什么这样想」，再写做法和结果。一段只讲一件事，禁止「首先…其次…再次…」式的罗列腔。\n" +
+    "2. **推导要三步走**：每个关键公式必须按「**动机 → 推导 → 含义**」写——先说明为什么这样设（从哪个物理/几何/业务事实出发）、再从定义一步步推到最终式（给出中间步骤，禁止直接甩最终式加一句说明）、最后说这个式子意味着什么、后面怎么用它。参考：优秀论文从「极坐标 → 弧长公式 → 递推关系」一步步来。\n" +
+    "3. **术语用人话解释一次**：技术名词首次出现时，用一句大白话说明它是什么、为什么需要它（如「分离轴定理——把两个矩形的碰撞判断拆成各条轴上的投影是否重叠」）；之后直接用。**禁止一段里堆 3 个以上未解释的术语**。\n" +
+    "4. **句子短、段落短**：一句一个意思，3-6 行为一段。删掉所有凑字数的话（「值得注意的是」「综上所述」「不难发现」「本文系统地」等），删掉背景科普式铺垫。\n" +
+    "5. **摘要/每节开头给「路标」**：像「针对问题一，我们建立 X 模型：先…接着…然后…最后得到…」这样的一句话导读，让读者先知道这一节的路线再读细节。\n" +
+    "6. **禁止标签和目录腔**：不得写「创新点：」「关键发现：」「本模型具有以下优势：(1)(2)(3)」；创新和优势融入推导和结果叙述中。\n\n" +
+    "### 范文风格（照这个口气写）\n" +
+    "「针对问题二，我们建立碰撞检测模型。首先，我们利用反证法证明了整条龙的首次碰撞必然发生在龙头上。接着，根据几何关系表示出各板凳顶点的坐标以划定边界，基于分离轴定理将龙头碰撞问题转化为矩形区域的重叠问题。然后，通过递推法计算出终止时刻为 412.47s，并求得终止时刻处相关把手的位置与速度。」"
 
   // ── Step 7.2: 各章节顺序撰写（单主编视角：每章可见全部已有章节+事实源表，口径天然统一）──
   // 顺序而非并行：后写章节强制读取前面已写章节，杜绝"不同章节不同口径"；
@@ -2267,20 +2458,37 @@ async function phase7_writing(ctx) {
   const paperSections = []
   for (let si = 0; si < sectionDefs.length; si++) {
     const s = sectionDefs[si]
-    const previousContent = paperSections.map(ps => "### " + ps.section + "\n" + (ps.content || "").slice(0, 1800)).join("\n\n")
-    const sectionContextStr = buildContextStr(cleanContext, WRITING_PRIORITY, cfg.contextBudget, { summarizeLongFields: true })
+    const sectionContextStr = buildSectionContext(s.id)
     const writeOne = (standalone) => agent(
       "## 论文撰写: " + s.label + (standalone ? "（重试：前序章节不可用，独立撰写）" : "") + "\n\n" +
       "## ⚠️ 论文格式规则（必须严格遵守）\n" + currentRules.rules + "\n" +
-      (chosenAnalysis._paperRules ? "\n### 题目特定补充规则\n" + chosenAnalysis._paperRules + "\n" : "") + "\n" +
-      "## 【最终事实源表】（本论文唯一数字来源，必须逐条遵守）\n" + factSheetStr + "\n\n" +
-      NUMBER_DISCIPLINE + "\n\n" +
-      "## 叙事大纲\n" + (narrativeOutline ? (typeof narrativeOutline === "string" ? narrativeOutline.slice(0, 3000) : "") : "（无叙事大纲，请自行组织）") + "\n\n" +
+      "## ⚠️ 题面文档（先 Read 再写）\n题目原文 / 附件数据画像 / 论文规则已落盘到 `" + PROBLEM_DOC + "`。**需要题目原文（问题重述/问题分析/模型章必须读它）、附件数据画像、题目特定论文规则时，开写前先 `Read` 该文件**；本 prompt 不内联全文。\n\n" +
+      "## 【最终事实源表】（本论文唯一数字来源，必须逐条遵守）\n" +
+      "完整事实源表已保存到 `" + intermediatesDir + "/07-fact-sheet.json`，**开写前必须 `Read` 它**获取全篇数字/符号/口径的权威版本。\n\n" +
+      (SKILL_DOCS
+        ? "## ⚠️ 规范真源（先 Read 再写）\n完整写作/图表/数字纪律规范在 `" + SKILL_DOCS + "` 的「§一 论文写作规范」「§二 图表生成规范」。**开写前先 `Read` 对应章节**并遵守；以下为本 prompt 的关键约束（Read 失败以此为准）：\n\n"
+        : "## ⚠️ 规范真源\n无法定位规范文档（templateDir 未传）：按下述关键约束执行：\n\n") +
+      "## 关键约束\n" +
+      "- 数字纪律：每个数值声明必须来自你刚 `Read` 的最终事实源表（07-fact-sheet.json）；禁止编造/推算/跨章不一致；缺失写[待定]。\n" +
+      "- 摘要按子问题分段（「对于问题1，…」），核心数值用 $\\bm{}$ 加粗；只加粗答案，不加粗整句；禁止「创新点：」等标签。\n" +
+      "- 每个子问题独立成段（「对于问题N」）；模型/分析/结论各章覆盖所有子问题。\n" +
+      "- 图表单位用 LaTeX math（cm$^{-1}$ 而非 cm⁻¹）；CJK 字体（Noto Sans CJK SC）；附录图用 [H]、正文用 [htbp]。\n\n" +
+      "## 叙事大纲\n" + (narrativeOutline ? (typeof narrativeOutline === "string" ? narrativeOutline.slice(0, 2000) : "") : "（无叙事大纲，请自行组织）") + "\n\n" +
       subQuestionWritingGuide +
       figureLayoutGuide + "\n\n" +
-      (styleGuide ? "## 写作风格指南（全篇必须遵守）\n" + JSON.stringify(styleGuide, null, 2).slice(0, 2000) + "\n\n" : "") +
-      (previousContent && !standalone ? "## ✅ 已完成的先前章节（必须通读：符号、数字、口径、术语以它们为准并保持一致；你在其后的章节中延续同一体系）\n" + previousContent.slice(0, 12000) + "\n\n" : "") +
-      "## 建模与求解上下文（完整，含最终结果）\n" + sectionContextStr + "\n\n" +
+      narrativeStyleGuide + "\n" +
+      (styleGuide ? "## 写作风格指南（全篇必须遵守）\n" + JSON.stringify(styleGuide, null, 2).slice(0, 1500) + "\n\n" : "") +
+      (standalone
+        ? "## ⚠️ 独立撰写模式（无法可靠读取前文：请自行从事实源表/叙事大纲保证自洽，写完后仍尽力保存章节文件）\n\n"
+        : "## 完整前文（开写前必须 Read 真实落盘文档，不要凭空猜前文）\n" +
+          "先前已写章节已保存到 `" + intermediatesDir + "/05-writing/` 目录（每个章节一个文件 `section-<id>.json`）。开写前：\n" +
+          "1. `ls " + intermediatesDir + "/05-writing/` 列出所有已存在章节文件\n" +
+          "2. 逐个 `Read` 你之前的 `section-*.json`（跳过你自己的 `section-" + s.id + ".json`），读取其中哪个 chapter 的**完整 content**（不要只看开头）\n" +
+          "3. 延续所读前文已确定的：符号、数字、口径、术语、章节衔接——数字以【事实源表】为唯一权威\n" +
+          "4. 若目录无前文，说明你是首篇/次篇，直接撰写\n" +
+          "5. ⚠️ 本章写完后必须把章节保存为 `" + intermediatesDir + "/05-writing/section-" + s.id + ".json`（`{\"section\":\"<章节名>\",\"content\":\"<本章全文>\"}`）——这是后续章节共享前文的载体，保存失败会导致后文断裂。\n\n") +
+      "## 本章所需上下文（只含与本章相关的建模与求解信息）\n" + sectionContextStr + "\n\n" +
+      "> 所有共享中间文档（EDA 数据发现 / 稳健性 / 问题分析 / 文献等）已落盘到 `" + intermediatesDir + "/` 目录，需要其完整内容时用 `Read` 读取对应 json/txt；本 prompt 只给本章相关的精简摘要。\n\n" +
       "## 任务\n" + s.prompt + formatGuide + "\n\n" +
       "本章节应与先前章节口径完全一致（同一符号、同一数字、同一术语）。\n\nStructured output only." + ctx.saveToFile("05-writing/section-" + s.id + ".json"),
       { label: "write:" + s.id, phase: "写作", schema: PAPER_SECTION_SCHEMA }
@@ -2327,14 +2535,15 @@ async function phase7_writing(ctx) {
         "### 质量门检查（硬性指标）\n" +
         "6. **章节数量**: 实际章节数=" + paperSections.length + "，预期=" + EXPECTED_SECTION_COUNT + "。缺失章节→P0。\n" +
         "7. **章节排序**: 结论/改进方向应该是最后一章，不在第1-3节。排序错误→P0。\n" +
-        "8. **图表引用**: 先 `ls " + figuresDir + "` 列出所有图表，检查每个文件是否在论文中被 `\\includegraphics` 引用。未引用的图表→P1。\n" +
+        "8. **图表引用**: 先 `ls " + figuresDir + "` 列出所有图表，检查每个文件是否在论文中被 `\\includegraphics` 引用。未引用的图表→P1。**反向检查**：每个 `\\includegraphics` 引用的文件是否真实存在于 `" + figuresDir + "`？找不到文件或空 figure 环境（有 caption 无图）→P0（写作阶段须自己画出示意图或删除该环境）。\n" +
         "8.1. **正文图表数量**: 正文保留 3-5 张最关键图表（如数据总览、FFT演示、方法对比、谐波分析、结果汇总）；其余移至附录。违规→P1。\n" +
         "8.2. **正文页数**: 编译后检查附录首页页码。正文（含摘要）不超过 20 页（CUMCM 规则），超过 20 页→P0。页数超标时优先精简约简非核心段落（未来展望、学术贡献等）而非压缩排版。\n" +
         "8.5. **图表标签验证**: 生成图表的 Python 脚本是否：① 正确配置 CJK 字体（`font.family=\'sans-serif\'`）；② 使用 LaTeX math 而非 Unicode 上下标（`cm$^{-1}$` 而非 `cm⁻¹`，`A$_2$/A$_1$` 而非 `A₂/A₁`）。违规→P0（图表中文或单位将渲染为方框）。\n" +
-        "9. **章节长度**: 模型章<2000字→P0，其他核心章<500字→P1。\n" +
-        "10. **redesignHistory引用**: 局限性讨论是否引用了模型重设计历史（至少1条）？\n" +
-        "11. **adversarialFindings引用**: 局限性章节是否引用了魔鬼代言人发现（至少2条）？\n" +
-        (subQuestions && subQuestions.length > 0 ? "12. **逐问覆盖**: 模型/分析/结论各章是否都覆盖了所有子问题？每个子问题的模型/求解/结果是否都有呈现？缺失→P0。\n\n" : "\n") +
+        "9. **章节长度**: 问题分析/模型章<2000字→P0，其他核心章<500字→P1。\n" +
+        "10. **内部流程术语检查**: 正文是否出现「对抗性审查」「模型重设计」「adversarialFindings」「验证器」「重设计历史」等内部流程字样？出现→P1（必须改写为论文语言，如「进一步分析表明…」）。\n" +
+        "11. **推导链检查**: 模型/分析章的关键公式是否是「动机→推导→含义」三步（从定义/事实出发、有中间步骤、说明式子含义），还是直接甩最终公式加一句说明？发现「定义式」写法→P1。\n" +
+        "12. **术语堆砌/可读性**: 段落中是否堆砌未解释的术语（一段超过 3 个）、句子是否冗长绕口、是否有凑字数铺垫（「值得注意的是」「综上所述」「本文系统地」等）？违规→P1（要求精简改写）。\n" +
+        (subQuestions && subQuestions.length > 0 ? "13. **逐问覆盖**: 问题分析/模型/分析/结论各章是否都覆盖了所有子问题？每个子问题的机理分析/模型/求解/结果是否都有呈现？缺失→P0。\n\n" : "\n") +
         "输出格式：每个问题一行 `[severity:P0/P1/P2] [章节名] 问题描述 | 修复建议`。\n纯文本。" + ctx.saveToFile("05-writing/cross-review-r" + writingRound + ".txt"),
         { label: "cross-review-r" + writingRound, phase: "写作" }
       ),
@@ -2345,7 +2554,7 @@ async function phase7_writing(ctx) {
         "## 论文\n" + paperSections.map(s => "## " + s.section + "\n" + (s.content || "").slice(0, 2500)).join("\n\n") + "\n\n" +
         "## 评估\n" +
         "1. **结构**: 章节顺序合理吗？有没有前言不搭后语？结论放对位置了吗？\n" +
-        "2. **可读性**: 读完知道创新是什么吗？还是得自己找？\n" +
+        "2. **可读性**: 读完知道创新是什么吗？还是得自己找？**是否像技术白皮书/说明书（术语堆砌、直接甩公式、啰嗦铺垫）？**是→P1。\n" +
         "3. **数字可信度**: 摘要/正文里的数字有推导支撑吗？还是看起来像编的？\n" +
         "4. **最大弱点**: 哪个问题最影响评分？（具体说，不要废话）\n" +
         "5. **一句话建议**: 改什么最提升竞争力？\n\n" +
@@ -2392,7 +2601,7 @@ async function phase7_writing(ctx) {
           const allCurrent = paperSections.map(ps => "### " + ps.section + "\n" + (ps.content || "").slice(0, 1200)).join("\n\n")
           const fixed = await agent(
             "## 最终 P0 修复: " + s.section + "\n\n" +
-            "## 【最终事实源表】（数字唯一权威）\n" + factSheetStr + "\n\n" +
+            "## 【最终事实源表】（数字唯一权威，修复前先 `Read` `" + intermediatesDir + "/07-fact-sheet.json`）\n\n" +
             "## 你的章节内容\n" + (s.content || "").slice(0, 5000) + "\n\n" +
             "## ⚠️ 只修复这些 P0 问题（其他忽略）\n" +
             p0Only.slice(0, 6000) + "\n\n" +
@@ -2420,18 +2629,19 @@ async function phase7_writing(ctx) {
       const allCurrent = paperSections.map(ps => "### " + ps.section + "\n" + (ps.content || "").slice(0, 1500)).join("\n\n")
       const fixed = await agent(
         "## 章节统一修复: " + s.section + " (第" + writingRound + "轮, " + (fi + 1) + "/" + paperSections.length + ")\n\n" +
-        "## 【最终事实源表】（数字的唯一权威；修复时若发现你的章节数字与它不符，以它为准）\n" + factSheetStr + "\n\n" +
+        "## 【最终事实源表】（数字的唯一权威；修复前先 `Read` `" + intermediatesDir + "/07-fact-sheet.json`，若发现你的章节数字与它不符，以它为准）\n\n" +
         "## 你要修复的章节（当前内容）\n" + (s.content || "").slice(0, 5000) + "\n\n" +
         "## 审查发现的问题（全文问题列表，只处理与你章节相关的；涉及其他章节的问题由对应轮次处理）\n" +
         combinedIssues.slice(0, 8000) + "\n\n" +
         "## ✅ 全篇所有章节当前内容（含此前已修复的章节——修复你这一章时必须与全篇保持一致：同一符号、同一数字、同一口径；若发现其他章节与事实源表冲突，在回复的 keyPoints 中报告，不要代改）\n" +
         allCurrent.slice(0, 14000) + "\n\n" +
         "## 修复要求\n" +
-        "- 只修改审查报告中指出的问题（符号、数字、逻辑衔接、创新呼应、图表引用、结构排序）\n" +
+        "- 只修改审查报告中指出的问题（符号、数字、逻辑衔接、创新呼应、图表引用、结构排序、**可读性/推导链/术语堆砌**）\n" +
         "- 不要重写整个章节——精准手术，不是开膛\n" +
         "- 如果某个问题不涉及你的章节，忽略它\n" +
         "- **特别注意**：如果问题涉及摘要数字无出处，要么补推导，要么删数字\n" +
         "- **数字纪律**：你的章节中所有数字必须与事实源表一致（number 字段精确匹配）；不一致的以事实源表修正\n" +
+        "- **可读性问题修复口径**：术语堆砌→每个术语首次出现补一句大白话解释并精简；只贴公式→补「动机→推导→含义」；啰嗦铺垫→删除；禁止把「对抗性审查/模型重设计」等内部流程字样写进论文\n" +
         "输出修改后的完整 content。Structured output only.",
         { label: "fix:" + s.id + "-r" + writingRound, phase: "写作", schema: PAPER_SECTION_SCHEMA }
       )
@@ -2469,14 +2679,37 @@ async function phase8_final(ctx) {
   const { cfg, chosenAnalysis, selection, finalModel, currentSolution, baselineResult,
           limitationAnalysis, allSources, allModels, allClaims,
           allIssues, iterationLog, innovationProposals, outputDir, codeDir, figuresDir,
-          paperSections, narrativeOutline, innovationMatrix, crossSectionReview,
+          narrativeOutline, innovationMatrix, crossSectionReview,
           earlyJudgeReview, allRethinkResults, redesignHistory, allAdversarialFindings,
-          subQuestions, competition } = ctx
+          subQuestions, competition, intermediatesDir } = ctx
   const currentRules = PAPER_RULES[competition] || PAPER_RULES.cumcm
   const isMcm = competition === 'mcm'
 
   phase("终审")
   log("[Phase 8/8] 终审开始 — 预计 8-12 分钟")
+
+  // ── paperSections 重建：phase7 checkpoint 不存全文（太大），写作 agent 已逐节落盘，
+  // 断点续跑或 phase7 checkpoint 缺失时从 intermediates/05-writing/section-*.json 重建 ──
+  let paperSections = ctx.paperSections || []
+  if (!paperSections || paperSections.length === 0) {
+    const restored = await agent(
+      "## 从磁盘重建论文章节\n\n" +
+      "phase7 的章节已由写作 agent 逐节落盘到 `" + intermediatesDir + "/05-writing/` 目录。\n" +
+      "1. 先 `ls " + intermediatesDir + "/05-writing/` 列出所有 section-*.json 文件\n" +
+      "2. 逐个 `Read` 读取，每个文件是 {\"section\":\"章节名\",\"content\":\"...\"}\n" +
+      "3. 按论文顺序排序：摘要/问题重述/问题分析/模型假设与符号说明/数据预处理与探索性分析/模型建立与求解/结果分析与验证/灵敏度与稳健性分析/模型的评价与推广/结论与改进（只取存在的）\n" +
+      "4. 输出 JSON 数组 [{\"section\":\"...\",\"content\":\"...\"}, ...]，content 完整保留、不截断\n\nStructured output only.",
+      { label: "restore-sections", phase: "终审",
+        schema: { type: "array", items: PAPER_SECTION_SCHEMA } }
+    )
+    if (restored && Array.isArray(restored) && restored.length > 0) {
+      paperSections = restored
+      ctx.paperSections = paperSections
+      log("[Phase 8/8] 从磁盘重建 " + paperSections.length + " 个章节（phase7 checkpoint 不含全文）")
+    } else {
+      logError(ErrorLevel.WARNING, "终审", "从磁盘重建章节失败——phase7 产出丢失，写作需要重跑（resumeFrom='phase7-writing' 或去掉 resumeFrom 重新运行）")
+    }
+  }
 
   const ABSTRACT_IDS = ["摘要", "Abstract", "Summary"]
   const abstractSection = paperSections.find(s => ABSTRACT_IDS.includes(s.section))
@@ -2490,7 +2723,7 @@ async function phase8_final(ctx) {
       formatSubQuestions(subQuestions) +
       (subQuestions && subQuestions.length > 0 ? "请逐子问题验证摘要中的每个数值声明，确认在对应子问题的章节中有出处。\n\n" : "") +
       "## 摘要\n" + polishedAbstract + "\n\n" +
-      "## 正文全文\n" + bodyText.slice(0, 60000) + (bodyText.length > 60000 ? "\n（正文超过 6 万字符，以上为前 6 万字符，数字可能位于截断区之外，请结合事实源表判断）\n" : "") + "\n\n" +
+      "## 正文全文\n" + bodyText.slice(0, 30000) + (bodyText.length > 30000 ? "\n（正文超过 3 万字符，以上为前 3 万字符，数字可能位于截断区之外，请结合事实源表判断）\n" : "") + "\n\n" +
       "## 任务\n" +
       "1. 从摘要中提取所有**具体数字**（百分比、数值、时间等），忽略序号和年份\n" +
       "2. 逐一在正文中搜索每个数字的出处/推导过程\n" +
@@ -2511,7 +2744,7 @@ async function phase8_final(ctx) {
           unverifiable.map(c => "- **" + c.number + "**: " + (c.context || "无上下文")).join("\n") + "\n\n" +
           "## 正文中可用的数据（从正文提取的可靠数字）\n" +
           "如果某个数字在正文中不存在，请从以下正文片段中找最接近的可靠数据替换，或者直接删除那句声称。\n\n" +
-          bodyText.slice(0, 30000) + "\n\n" +
+          bodyText.slice(0, 20000) + "\n\n" +
           "输出修复后的完整摘要（纯文本，300-500字）。只删除/替换不可溯源的数字，不重写其他部分。" + ctx.saveToFile("06-final/abstract-fixed.txt"),
           { label: "abstract-fix", phase: "终审" }
         )
@@ -2597,7 +2830,7 @@ async function phase8_final(ctx) {
             "## 修正清单\n" + fixInstructions.join("\n") + "\n\n" +
             (codeValidationResult.missingInStdout && codeValidationResult.missingInStdout.length > 0
               ? "## 以下数字在代码 stdout 中未找到，请基于正文中可用的数据替换或删除\n" +
-                "正文片段（供参考）：\n" + bodyText.slice(0, 20000) + "\n\n"
+                "正文片段（供参考）：\n" + bodyText.slice(0, 15000) + "\n\n"
               : "") +
             "输出修复后的完整摘要（纯文本，300-500字）。" + ctx.saveToFile("06-final/abstract-code-verified.txt"),
             { label: "abstract-code-fix", phase: "终审" }
@@ -2622,7 +2855,7 @@ async function phase8_final(ctx) {
   const judgeFinalReview = await agent(
     "## 评委视角终审\n\n" +
     "你是数学建模竞赛评委，已读了100篇同题论文。读完以下论文后回答：\n\n" +
-    "## 论文\n" + fullPaperMdBody.slice(0, 30000) + "\n\n" +
+    "## 论文\n" + fullPaperMdBody.slice(0, 25000) + "\n\n" +
     (subQuestions && subQuestions.length > 0 ? "本题包含" + subQuestions.length + "个子问题。评估时检查每个子问题是否都得到了充分解答。\n\n" : "") +
     "## 问题\n" +
     "1. 这篇和另外100篇摆在一起，我为什么会对它**有印象**？（找不到就说无，建议在哪里做深/做奇创造记忆点）\n" +
@@ -2701,7 +2934,7 @@ async function phase8_final(ctx) {
     problemsAnalyzed: ctx.analyses ? ctx.analyses.length : 0,
     sourcesFetched: allSources ? allSources.length : 0,
     modelsReferenced: allModels ? allModels.length : 0,
-    proposalsGenerated: innovationProposals ? innovationProposals.length : 0,
+    proposalsGenerated: innovationProposals ? innovationProposals.length : 0,  // 现为单一建模方案（length 恒 1）
     solveIterations: iterationLog ? iterationLog.length : 0,
     issuesFound: allIssues ? allIssues.length : 0,
     sectionsWritten: paperSections.length,
@@ -2836,6 +3069,7 @@ async function phase8_final(ctx) {
 
   const compileResult = await agent(
     "## LaTeX 排版编译\n\n" +
+    (SKILL_DOCS ? "> ⚠️ 规范真源：完整 CUMCM 格式 / 模板要点在 `" + SKILL_DOCS + "` 的「§三 CUMCM 格式」「§四 论文模板要点」，需要完整要求时先 `Read` 对应章节；本 prompt 已列出关键 LaTeX 约束。\n\n" : "") +
     "## 任务\n" +
     "你的任务是将论文写入 .tex 文件并编译，**不要尝试在回复中评估或摘要论文内容**。" +
     "使用 Write 工具分块写入。\n\n" +
@@ -2891,7 +3125,7 @@ async function phase8_final(ctx) {
         "  --materials \\\"\\\\item 赛题原始数据由竞赛提供，按规范第十一条不包含在支撑材料中；全部结果可由上述源程序直接复算\\\"\n```\n" +
         "   如果存在疑似名单数据（`" + outputDir + "/data/suspect_lists.json`），追加 `--suspect-json " + outputDir + "/data/suspect_lists.json`。\n" +
         "4. **组装后检查**：`grep -n 'section*{摘' " + texFilePath + "` 确认摘要用 `\\\\section*`（无编号）；`grep -c 'begin{thebibliography}' " + texFilePath + "` 必须为 1（单一参考文献）；`grep -n 'appendix' " + texFilePath + "` 确认附录从 \\\\appendix 开始（A/B/C 编号）。\n" +
-        "5. **章节名兼容**：若组装脚本报「未找到章节」，用 `ls " + intermediatesDir + "/05-writing/` 核对 section-*.json 的 section 名（脚本按 摘要/问题重述/问题重述与分析/模型假设与符号说明/模型假设与符号/模型建立与求解/结果分析与验证/结论与改进 顺序匹配；不匹配时把 JSON 的 section 字段改为脚本期望名）。\n\n") +
+        "5. **章节名兼容**：若组装脚本报「未找到章节」，用 `ls " + intermediatesDir + "/05-writing/` 核对 section-*.json 的 section 名（脚本按 摘要/问题重述/问题重述与分析/问题分析/模型假设与符号说明/模型假设与符号/数据预处理与探索性分析/模型建立与求解/结果分析与验证/灵敏度与稳健性分析/模型的评价与推广/结论与改进 顺序匹配；不匹配时把 JSON 的 section 字段改为脚本期望名）。\n\n") +
 
     (isMcm
       ? "### 第3.5步：嵌入图表到附录\n" +
@@ -2968,10 +3202,10 @@ async function phase8_final(ctx) {
 const cfg = {
   searchAngles: 4, maxFetch: 8,
   dryThreshold: QUICK_MODE ? 1 : 3, maxIterations: QUICK_MODE ? 3 : 6,
-  sectionPreset: "full",
+  sectionPreset: "full",  // 仅 full 生效（compact/standard 已移除）
   latexMaxRetries: 5,
   rethinkThreshold: 3,
-  contextBudget: 100000,
+  contextBudget: 30000,
 }
 
 // ═══ Innovation threshold mapping ═══
@@ -2989,9 +3223,11 @@ log("创新必要性阈值: " + innovationThresholds.desc + " (innovationStrictn
 const hasArgs = _hasArgs
 const outputDir = (hasArgs && args?.outputDir) || "./math-model-output"
 const templateDir = (hasArgs && args?.templateDir) || ""   // 模板目录（assemble 脚本 + cumcm-paper.tex）；空则编译 agent 自动探测
+// 内部 agent 规范唯一真源：skill 自带的 docs/writing-and-format.md（templateDir 是 <skill>/templates，取其父级）
+const SKILL_DOCS = templateDir ? templateDir.replace(/\/templates\/?$/, '') + '/docs/writing-and-format.md' : ''
 const codeDir = outputDir + "/code"
 const figuresDir = outputDir + "/figures"
-const attachments = (hasArgs && args?.attachments) || []
+let attachments = (hasArgs && args?.attachments) || []
 const intermediatesDir = outputDir + "/intermediates"
 const isPreSelected = !!(hasArgs && args?.selectedProblem)
 const currentYear = 2026
@@ -3033,7 +3269,7 @@ if (skipPhases.length > 0) {
 // ── 输出目录结构（重试 2 次，失败才 FATAL）──
 const ALL_DIRS = [
   outputDir + "/paper", outputDir + "/code", outputDir + "/figures",
-  outputDir + "/data", outputDir + "/logs",
+  outputDir + "/data", outputDir + "/data/external", outputDir + "/logs",
   intermediatesDir,
   intermediatesDir + "/05-writing", intermediatesDir + "/06-final",
 ];
@@ -3115,10 +3351,45 @@ if (isPreSelected) {
   // Pre-selected by skill — use the provided analysis directly
   phase("审题+选题")
   log("[Phase 1-2/8] 审题+选题开始 — 使用预选结果")
-  const presel = args
+
+  // 文档即共享：Stage 1（提纯/审题/选题）产物优先从落盘的 intermediates/00-problem.json 读取，
+  // 文件是唯一权威（主 agent 按 SKILL.md Step 5 提前落盘，可预先审查）；读不到才 fallback args.problem
+  // （兼容旧调用；且后续 ensure-stage1-doc 会机制性补写，保证文件最终一定存在）。
+  let presel = args
+  let stage1Source = "args"   // 'args' | 'file'
+  const stage1File = intermediatesDir + "/00-problem.json"
+  try {
+    const fileResult = await agent(
+      `Read the file at ${stage1File}. If it exists, output its content exactly as-is. If it doesn't exist, output exactly "NOT_FOUND".`,
+      { label: "load-stage1", phase: "初始化" }
+    )
+    if (fileResult && String(fileResult).trim() !== 'NOT_FOUND') {
+      const parsed = typeof fileResult === 'string' ? JSON.parse(fileResult) : fileResult
+      if (parsed && parsed.selectedProblem && parsed.problem) {
+        presel = {
+          selectedProblem: parsed.selectedProblem,
+          problem: parsed.problem,
+          attachments: parsed.attachments || [],
+        }
+        if (Array.isArray(parsed.attachments) && parsed.attachments.length > 0) {
+          attachments = parsed.attachments   // 文件中的附件清单为权威
+        }
+        stage1Source = "file"
+        log("从文件读取 Stage 1 产物: " + stage1File)
+      } else {
+        logError(ErrorLevel.WARNING, "初始化", "00-problem.json 格式不符（缺 selectedProblem/problem 字段），回退 args.problem")
+      }
+    } else {
+      logError(ErrorLevel.WARNING, "初始化", "未找到 00-problem.json——使用 args.problem 作为 Stage 1 产物（随后 ensure-stage1-doc 会补写文件）")
+    }
+  } catch (err) {
+    logError(ErrorLevel.WARNING, "初始化", "读取 00-problem.json 失败（" + err.message + "），回退 args.problem")
+  }
+  log("Stage 1 产物来源: " + (stage1Source === "file" ? "intermediates/00-problem.json（主 agent 提前落盘）" : "args.problem（未提前落盘，将由 workflow 补写）"))
+
   chosenAnalysis = presel.problem?.analysis || {}
   if (!chosenAnalysis.domain || !chosenAnalysis.objectives) {
-    return { error: "预选题目缺少分析数据——请提供 problem.analysis (含 domain, objectives 等字段)" }
+    return { error: "预选题目缺少分析数据——请提供 problem.analysis (含 domain, objectives 等字段) 或 intermediates/00-problem.json" }
   }
   chosenAnalysis.problemId = presel.selectedProblem
   chosenAnalysis._rawDescription = presel.problem?.description || ""
@@ -3224,6 +3495,59 @@ if (isPreSelected) {
 // From here on, Phase 3-8 uses chosenAnalysis (set above)
 chosenAnalysis = analyses.find(a => a.problemId === selection.selected) || analyses[0]
 
+// ═══ 题面落盘（文档即共享：题目原文/数据画像/论文规则唯一真源）═══
+// 三个"输入"是阶段一提取的逐字原文，被 19+ 处 agent prompt 引用。
+// 旧做法：每处都内联完整原文（占每处 context 预算 ~8%，且 data-collector 处被截断）。
+// 现在：启动时一次性写入 intermediates/00-problem.md（唯一一次全文注入），
+// 之后所有 agent 需要时 `Read` 该文件，prompt 只给路径提示。
+const PROBLEM_DOC = intermediatesDir + "/00-problem.md"
+const PROBLEM_READ_HINT =
+  "题目原文 / 附件数据画像 / 论文规则已落盘到 `" + PROBLEM_DOC + "`。**凡任务涉及题目细节（题意/数据/规则/结论依据），开写前必须 `Read` 该文件获取完整内容**；本 prompt 不内联全文，省上下文预算。"
+if (!DRY_RUN) {
+  await agent(
+    "## 题面落盘（文档即共享——唯一一次全文传递，此后所有 agent 从磁盘 `Read`）\n\n" +
+    "将以下三段内容**原样、逐字**写入 `" + PROBLEM_DOC + "`（用 Write 工具，不得改写/概括/删节/加标题）：\n\n" +
+    "### 题目原文\n" + (chosenAnalysis._rawDescription || "（无）") + "\n\n" +
+    "### 附件数据画像\n" + (chosenAnalysis._dataProfile || "（无）") + "\n\n" +
+    "### 论文规则\n" + (chosenAnalysis._paperRules || "（无）") + "\n\n" +
+    "写入后验证：`ls -la " + PROBLEM_DOC + "` 确认文件存在且非空（`wc -c` > 0）；若失败重试一次，仍失败在回复中标记 SAVE_FAILED。",
+    { label: "write-problem-doc", phase: "初始化" }
+  )
+  log("[Phase 1-2/8] 题面已落盘: " + PROBLEM_DOC)
+}
+
+// ═══ Stage 1 产物机制性兜底：00-problem.json 一定存在 ═══
+// 主 agent 按 SKILL.md Step 5 在 workflow 前落盘 00-problem.json（可选增强，可预先审查）；
+// 但主 agent 可能忘记/失败——这里由 workflow 机制保证：文件不存在就从当前内存状态补写，
+// 使「Stage 1 产物有文件记录」成为确定事实，不依赖主 agent 的自觉。
+if (!DRY_RUN) {
+  const stage1Analysis = { ...chosenAnalysis }
+  delete stage1Analysis._rawDescription
+  delete stage1Analysis._dataProfile
+  delete stage1Analysis._paperRules
+  const stage1Json = JSON.stringify({
+    selectedProblem: selection.selected,
+    problem: {
+      id: selection.selected,
+      description: chosenAnalysis._rawDescription || "",
+      dataProfile: chosenAnalysis._dataProfile || "",
+      paperRules: chosenAnalysis._paperRules || "",
+      analysis: stage1Analysis,
+    },
+    attachments: attachments || [],
+  }, null, 2)
+  await agent(
+    "## Stage 1 产物落盘（机制性兜底）\n\n" +
+    "检查 `" + intermediatesDir + "/00-problem.json` 是否存在（`ls -la " + intermediatesDir + "/00-problem.json`）。\n" +
+    "1. **若已存在**（主 agent 已在 workflow 前落盘）→ 直接确认输出「ALREADY_EXISTS」，不要修改。\n" +
+    "2. **若不存在** → 用 Write 工具创建（`mkdir -p " + intermediatesDir + "` 后）写入以下 JSON（原样，不要改写/省略字段）：\n\n" +
+    "```json\n" + stage1Json + "\n```\n\n" +
+    "写入后验证：`ls -la " + intermediatesDir + "/00-problem.json && wc -c " + intermediatesDir + "/00-problem.json` 确认存在且非空；若失败重试一次。",
+    { label: "ensure-stage1-doc", phase: "初始化" }
+  )
+  log("[Phase 1-2/8] Stage 1 产物已确认落盘: " + intermediatesDir + "/00-problem.json")
+}
+
 // ═══ 子问题提取 ═══
 const subQuestions = (chosenAnalysis?.subQuestions?.length > 0)
   ? chosenAnalysis.subQuestions : []
@@ -3284,7 +3608,7 @@ if (DRY_RUN) {
     "| Phase | 内容 | 预计耗时 | 关键机制 |",
     "|-------|------|----------|----------|",
     "| 3. 文献调研 | 多角度搜索 → 精读 → 局限分析 | 5-10 min | 找出标准方法共同局限 |",
-    "| 4. 建模方案 | Gap分析 → 创新提案 → 评审团⇄修订(max 6轮) → 适配性预检 | 10-15 min | 正确性第一,低于阈值打回 |",
+    "| 4. 建模方案 | 数据需求评估→(外部数据收集)→问题分析→EDA→Gap分析→单一建模方案(三维自查)→评审团⇄修订(max 6轮)→适配性预检 | 10-15 min | 正确性第一,低于阈值打回;数据真实不编造 |",
     "| 5⇄6. 求解⇄验证 | 算法→实现→baseline对比→5维验证→迭代修复→趋势退出 | 15-30 min | 数据说话;趋势恶化自动退出 |",
     "| 7. 写作 | 事实源表→叙事大纲→风格指南→顺序主编撰写→交叉审查⇄统一修复(max 3轮) | 15-25 min | 质量门:章节/摘要数字/图表引用/数字纪律 |",
     "| 8. 终审 | 摘要数字溯源→验证→LaTeX编译→评委自评 | 5-10 min | 摘要数字须有正文出处 |",
@@ -3303,9 +3627,8 @@ if (DRY_RUN) {
     "## 模式说明",
     "| 模式 | Agent 用量 | 适用场景 |",
     "|------|-----------|----------|",
-    "| quick | ~20 | 快速练习,熟悉流程 |",
-    "| standard | ~250 | 正常比赛(默认) |",
-    "| thorough | ~600-1000 | 正式冲奖,最严格质控 |",
+    "| quick | ~30-40 | 快速练习,熟悉流程 |",
+    "| full | ~110-160 | 完整模式(默认),评委评审/求解/写作全迭代 |",
     ""
   ].join('\n')
   await agent("将以下内容写入文件: cat > " + intermediatesDir + "/execution-plan.md << 'PLANEOF'\n" + planLines + "PLANEOF", { label: "dry-run-exec-plan", phase: "dry-run" })
@@ -3326,7 +3649,15 @@ if (shouldSkipPhaseByName(skipPhases, 'literature')) {
   log("[Phase 3/8] 文献调研 — 已从 checkpoint 恢复（skipPhases 跳过）")
 } else {
   const litPhase = await runPhaseWithCheckpoint(ctx, 'phase3-literature', phase3_literature,
-    ctx => ({ allSources: ctx.allSources, allModels: ctx.allModels, allClaims: ctx.allClaims, limitationAnalysis: ctx.limitationAnalysis, directionContext: ctx.directionContext }),
+    // checkpoint 瘦身：allSources 曾占 300k+ 字符（含每篇文献完整抓取内容，写作只用数量+模型/claim 摘要）。
+    // 只存精简后的来源列表 + 模型/claim 摘要 + 局限分析 + directionContext。
+    ctx => ({
+      allSources: (ctx.allSources || []).slice(0, 6).map(s => ({ url: s.url, title: s.title, sourceQuality: s.sourceQuality })),
+      allModels: (ctx.allModels || []).slice(0, 10),
+      allClaims: (ctx.allClaims || []).slice(0, 15),
+      limitationAnalysis: ctx.limitationAnalysis,
+      directionContext: ctx.directionContext,
+    }),
     resumeFrom)
   if (litPhase?.error) {
     return buildErrorReport(ctx, 'phase3-literature', litPhase.error)
@@ -3353,7 +3684,18 @@ if (shouldSkipPhaseByName(skipPhases, 'modeling')) {
   log("[Phase 4/8] 建模方案 — 已从 checkpoint 恢复（skipPhases 跳过）")
 } else {
   const modelPhase = await runPhaseWithCheckpoint(ctx, 'phase4-modeling', phase4_modeling,
-    ctx => ({ finalModel: ctx.finalModel, gapAnalysis: ctx.gapAnalysis, innovationProposals: ctx.innovationProposals, fitnessCheck: ctx.fitnessCheck, earlyJudgeReview: ctx.earlyJudgeReview }),
+    // checkpoint 瘦身：finalModel/problemAnalysis/edaReport 保留（写作与求解需要），
+    // 提案/评审/适配性检查只留摘要与计数。
+    ctx => ({
+      finalModel: ctx.finalModel,
+      gapAnalysis: typeof ctx.gapAnalysis === "string" ? ctx.gapAnalysis.slice(0, 2000) : ctx.gapAnalysis,
+      innovationProposals: (ctx.innovationProposals || []).map(p => p && ({ approach: (p.approach || "").slice(0, 200) })),
+      fitnessCheck: ctx.fitnessCheck,
+      earlyJudgeReview: typeof ctx.earlyJudgeReview === "string" ? ctx.earlyJudgeReview.slice(0, 2000) : null,
+      problemAnalysis: ctx.problemAnalysis,
+      edaReport: ctx.edaReport,
+      externalData: ctx.externalData ? { needsExternalData: ctx.externalData.needsExternalData, dataNeeds: ctx.externalData.dataNeeds, sources: (ctx.externalData.sources || []).map(s => ({ id: s.id, purpose: s.purpose, status: s.status, filePath: s.filePath, sourceUrl: s.sourceUrl, sourceTitle: s.sourceTitle, fetchedAt: s.fetchedAt, fields: s.fields, notes: s.notes })) } : null,
+    }),
     resumeFrom)
   if (modelPhase?.error) {
     return buildErrorReport(ctx, 'phase4-modeling', modelPhase.error)
@@ -3361,9 +3703,17 @@ if (shouldSkipPhaseByName(skipPhases, 'modeling')) {
 }
 if (USER_INTERVENTION && ctx.finalModel) {
   const fitScore = ctx.fitnessCheck?.totalScore ?? '?'
+  const extSummary = ctx.externalData
+    ? (ctx.externalData.needsExternalData
+        ? ('外部数据: ' + (ctx.externalData.sources || []).filter(s => s.status === 'OK').length + ' 份成功 / ' + (ctx.externalData.sources || []).filter(s => s.status === 'NOT_FOUND').length + ' 份未找到')
+        : '外部数据: 无需')
+    : '外部数据: 未评估'
   await writeIntermediateSummary(ctx, 'phase4-modeling', '建模方案摘要',
+    '- 问题分析: ' + (ctx.problemAnalysis ? '完成' : '跳过') + '\n' +
+    '- EDA 数据探索: ' + (ctx.edaReport ? (ctx.edaReport.findings?.length || 0) + ' 条发现' : '无附件，跳过') + '\n' +
+    '- ' + extSummary + '\n' +
     '- Gap 分析: ' + (ctx.gapAnalysis ? '完成' : '跳过') + '\n' +
-    '- 创新提案: ' + (ctx.innovationProposals?.length || 0) + ' 个角度\n' +
+    '- 建模方案: ' + (ctx.innovationProposals?.length || 0) + ' 个方案\n' +
     '- 最终方案: ' + ((ctx.finalModel?.approach || '').slice(0, 100)) + '\n' +
     '- 评审团审查: ' + (ctx.earlyJudgeReview ? '完成' : '未通过') + '\n' +
     '- 适配性评分: ' + fitScore + '/12')
@@ -3377,7 +3727,19 @@ if (skipPhases.includes('baseline')) {
   log("[skipPhases] baseline 对比将在求解阶段跳过 — 复用已有基线结果")
 }
 const solvePhase = await runPhaseWithCheckpoint(ctx, 'phase5_6_solve_verify', phase5_6_solve_verify,
-  ctx => ({ currentSolution: ctx.currentSolution, baselineResult: ctx.baselineResult, allIssues: ctx.allIssues, iterationLog: ctx.iterationLog, allAdversarialFindings: ctx.allAdversarialFindings, allRethinkResults: ctx.allRethinkResults, redesignHistory: ctx.redesignHistory, overallRobustness: ctx.overallRobustness }),
+  // checkpoint 瘦身：currentSolution/baselineResult/robustnessReport 保留（写作需要）；
+  // allIssues 截断 top 40、对抗/反思/重设计只留近期几条（曾占 120k+ 字符）。
+  ctx => ({
+    currentSolution: ctx.currentSolution,
+    baselineResult: ctx.baselineResult,
+    allIssues: (ctx.allIssues || []).slice(-40),
+    iterationLog: (ctx.iterationLog || []).slice(-5),
+    allAdversarialFindings: (ctx.allAdversarialFindings || []).slice(-10),
+    allRethinkResults: (ctx.allRethinkResults || []).slice(-5),
+    redesignHistory: (ctx.redesignHistory || []).slice(-3),
+    overallRobustness: ctx.overallRobustness,
+    robustnessReport: ctx.robustnessReport,
+  }),
   resumeFrom)
 if (solvePhase?.error) {
   return buildErrorReport(ctx, 'phase5_6_solve_verify', solvePhase.error)
@@ -3408,7 +3770,9 @@ if (USER_INTERVENTION) {
 // Phase 7: 写作（带 checkpoint 恢复）
 // ═══════════════════════════════════════════
 const writePhase = await runPhaseWithCheckpoint(ctx, 'phase7-writing', phase7_writing,
-  ctx => ({ paperSections: ctx.paperSections, narrativeOutline: ctx.narrativeOutline, innovationMatrix: ctx.innovationMatrix, crossSectionReview: ctx.crossSectionReview, styleGuide: ctx.styleGuide }),
+  // checkpoint 极小化：全文（旧版 ~200k 字符）经 LLM 读写必然超限。
+  // 写作 agent 已把每节落盘到 intermediates/05-writing/section-*.json，phase8 从磁盘重建即可。
+  ctx => ({ writingDone: true, sectionIds: (ctx.paperSections || []).map(s => s.section) }),
   resumeFrom)
 if (writePhase?.error) {
   return buildErrorReport(ctx, 'phase7-writing', writePhase.error)

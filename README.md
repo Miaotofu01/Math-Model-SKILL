@@ -8,13 +8,13 @@
   <strong>给题 → 选一道 → 论文 PDF 自己出来</strong>
 </p>
 
-> **审题、查资料、建模、求解、验证、写论文、排版——几百个 AI 助手分工协作，最后直接给你一份能提交的 PDF。**
+> **审题、查资料、建模、求解、验证、写论文、排版——一百多个 AI 助手分工协作，最后直接给你一份能提交的 PDF。**
 >
 > 它不会"写一篇论文交差"——它像一支纪律严明的参赛队：方案要过专家评审团，结果要多角度验证，摘要里**每一个数字都要能在正文找到出处**。每一轮都是"挑毛病 → 改"，直到挑不出毛病。
 
 <p align="center">
   <a href="#-快速开始"><img alt="Quickstart" src="https://img.shields.io/badge/快速开始-30s-4c6ef5"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.4.0-1c1a17">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.7.0-1c1a17">
   <img alt="Platform" src="https://img.shields.io/badge/platform-DSH%20%7C%20Claude%20Code-6d5a9e">
   <img alt="Competition" src="https://img.shields.io/badge/CUMCM%20%7C%20MCM-2f7d4f">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-8a857d">
@@ -42,6 +42,7 @@ math-model 把"一个人 + 一个 AI"变成"**一支分工明确的 AI 参赛队
 
 - **审题选题自动化**：输入提纯 → 并行审题 → 选题推荐，你全程只做一次决策——选哪道题
 - **多小问逐问处理**：一道题好几个小问时自动拆开，每一问独立建模、求解、写解答，符合逐问评分的规则
+- **对齐国一论文结构**：内置「问题分析」（逐问机理推理）、「数据预处理与探索性分析」（EDA 数据驱动建模）、「灵敏度与稳健性分析」、「模型的评价与推广」四章——历年优秀论文的标准骨架，从建模阶段就为这些章节准备素材
 - **建模与求解闭环**：建模方案过专家评审（最多 6 轮改稿）；求解代码真实运行并多角度验证，不达标就继续改，直到挑不出毛病
 - **摘要数字溯源 + 代码核对**：摘要每个数字在正文有出处，而且和代码实际跑出来的结果一一核对
 - **论文模板内置**：国赛格式固化在模板里，直接产出合规 PDF（摘要无编号、页边距、附录、支撑材料清单 + AI 使用声明都符合规范，换赛题不用改模板；美赛走独立英文路径）
@@ -144,14 +145,15 @@ bash ~/math-model-skill/install.sh --claude
 ```
 math-model/
 ├── skills/math-model/            # 技能本体（一份代码两处用）
-│   ├── SKILL.md                  # DeepSeek Harness 版说明
-│   ├── SKILL.claude.md           # Claude Code 版说明
+│   ├── SKILL.md                  # DeepSeek Harness 版说明（主 agent 操作手册）
+│   ├── SKILL.claude.md           # Claude Code 版说明（主 agent 操作手册）
 │   ├── prompts/                  # 审题阶段的三份指令
 │   ├── templates/                # 论文模板 + 组装工具
-│   └── workflows/                # 主流程脚本 + 元数据
+│   ├── workflows/                # 主流程脚本 + 元数据
+│   └── docs/                     # 内部执行规范（writing-and-format.md：写作/图表/格式/模板/创新唯一真源）
 ├── install.sh                    # 一键安装（--dsh / --claude / --both）
 ├── env-check.sh                  # 环境依赖自检
-├── docs/                         # 总览图（图片版 / 流程图代码 / 网页版）
+├── docs/                         # 总览图 + 蒸馏/审计设计文档（paper-structure-distillation.md 等）
 └── .claude-plugin/plugin.json
 ```
 
@@ -159,6 +161,9 @@ math-model/
 
 ## 变更历史
 
+- **v2.7.0**：治「AI味」与「论文无图」两大致命差异；并新增**外部数据收集**能力（真实比赛常需自行查数据）。① 写作范式：注入国一论文「推导叙事」风格（先想后写、公式「动机→推导→含义」三步走、术语用人话解释一次、删啰嗦铺垫），并新增范文基准（2024 板凳龙 A053）；② 交叉审查新增可读性维度（推导链 / 术语堆砌 / 内部流程术语检查），并反向校验每个 `\includegraphics` 文件真实存在（防空 figure 环境）；③ 移除「必须引用内部评审/重设计历史」等强制条款，禁止「对抗性审查 / 模型重设计 / adversarialFindings」等内部流程字样泄漏进论文；④ 图表分工：代码阶段出结果图，**写作 agent 按需自绘示意图**（几何示意 / 方法流程图 / 方案图），命名 `fig_*_示意图_*`，CJK 字体规范同求解阶段；⑤ **外部数据收集（Phase 4.0a）**：审题后评估是否需要外部数据（无附件 / 附件不足 / 题目明确要求查数据）→ 搜权威源 → 下载清洗 → 落盘 `data/external/`，每条记录来源 URL + 获取日期，接入 EDA / 问题分析 / 求解 / 数据验证 / 写作；**禁止编造数据**，找不到标 NOT_FOUND，外部数据在论文中必须列出出处；⑥ **文档即共享打通到入口**：Stage 1（提纯/审题/选题）产物由主 agent 落盘 `intermediates/00-problem.json`（SKILL.md Step 5），workflow 启动 `load-stage1` agent 优先 `Read` 该文件、`args.problem` 仅作 fallback；workflow 内部再生成 `intermediates/00-problem.md` 作为全文共享载体（19+ 处 agent 不再内联全文、需要时 Read）——从 Stage 1 到 Stage 2 全链路文档共享，可追溯、可断点恢复
+- **v2.6.0**：对齐国一优秀论文的章节骨架（问题分析 / 数据预处理与探索性分析 / 灵敏度与稳健性分析 / 模型的评价与推广）；信息流重构为「文档即共享 + 规范单一真源」（`skill/docs/writing-and-format.md`，写作/图表/编译 agent 直接 Read）；CHECKPOINT 轻量化；大规模死代码清理（`PAPER_RULES` 死配置字段等）；`SKILL.md` 瘦身为「主 agent 操作手册」
+- **v2.5.0**：单一建模方案 agent（原 3 角度提案+综合合并，少 3-4 个 agent）；写作上下文按需裁剪（根治 agent 输入超限）；EDA / 事实源表等下游改读真实落盘文档；新增问题分析 / EDA 数据探索 agent；验证增至 6 维度 + 稳健性报告
 - **v2.4.0**：修掉一个会导致国赛流程中途崩溃的 bug；AI 各环节的修改现在会真正写进最终 PDF；自动存档加了运行标记防串数据；模板路径自动定位；快速模式；修掉多处"看起来在检查其实没检查"的质量门
 - v2.3.0：写作环节重构（先定事实清单，按顺序一章章写，再交叉检查）
 - v2.2.0：同步实际运行版本、修文档和代码不一致、删无用代码

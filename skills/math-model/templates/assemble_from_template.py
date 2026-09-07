@@ -99,17 +99,18 @@ def code_entries(code_dir, code_files):
     if code_dir and os.path.isdir(code_dir):
         files = sorted(os.listdir(code_dir))
         files = [f for f in files if f.endswith(('.py', '.m', '.jl', '.R')) and '__pycache__' not in f]
-        return '\n'.join(
-            f'\\subsection{{{f.replace("_", "\\_")}}}\n'
-            f'\\lstinputlisting[style=pythonstyle]{{{code_dir}/{f}}}'
-            for f in files
-        )
+        parts = []
+        for f in files:
+            # 注意：Python < 3.12 的 f-string 表达式部分不能含反斜杠，故用 % 格式化
+            name = f.replace('_', r'\_')
+            parts.append('\\subsection{%s}\n\\lstinputlisting[style=pythonstyle]{%s/%s}' % (name, code_dir, f))
+        return '\n'.join(parts)
     if code_files:
-        return '\n'.join(
-            f'\\subsection{{{name.replace("_", "\\_")}}}\n'
-            f'\\lstinputlisting[style=pythonstyle]{{{path}}}'
-            for name, path in code_files
-        )
+        parts = []
+        for name, path in code_files:
+            safe = name.replace('_', r'\_')
+            parts.append('\\subsection{%s}\n\\lstinputlisting[style=pythonstyle]{%s}' % (safe, path))
+        return '\n'.join(parts)
     return '\\subsection{本论文没有用到程序}\n本论文没有用到程序。'
 
 
@@ -131,10 +132,11 @@ def main():
 
     template = open(args.template, encoding='utf-8').read()
 
-    # 章节
+    # 章节（顺序 = 论文结构；新增章节名须与写作 agent 的 section 字段一致）
     sections = load_sections(args.sections)
-    order = ['摘要', '问题重述', '问题重述与分析', '模型假设与符号说明', '模型假设与符号',
-             '模型建立与求解', '结果分析与验证', '结论与改进']
+    order = ['摘要', '问题重述', '问题重述与分析', '问题分析', '模型假设与符号说明', '模型假设与符号',
+             '数据预处理与探索性分析', '模型建立与求解', '结果分析与验证', '灵敏度与稳健性分析',
+             '模型的评价与推广', '结论与改进']
     body_parts = []
     abstract = ''
     for name in order:

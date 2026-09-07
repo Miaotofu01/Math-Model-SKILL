@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>math-model 数字可信</title>
+<style>
+  :root{
+    --paper:#faf9f6; --ink:#1c1a17; --gray:#8a857d; --line:#e4dfd6;
+    --blue:#3d6ea5; --blue-bg:#eef3f9; --purple:#6d5a9e; --purple-bg:#f2eff8;
+    --amber:#b4791f; --amber-bg:#f8ecda; --green:#2f7d4f; --green-bg:#e8f3ec;
+    --pink:#c0557c; --pink-bg:#f9eef2;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"Noto Sans CJK SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.55;padding:48px 24px 56px}
+  .wrap{max-width:1060px;margin:0 auto}
+  header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:8px}
+  .kicker{font-size:12px;letter-spacing:.18em;color:var(--gray);text-transform:uppercase}
+  h1{font-size:30px;font-weight:800;letter-spacing:-.01em;margin:4px 0 2px}
+  .sub{font-size:14px;color:var(--gray)}
+  .badge{display:inline-block;margin-top:8px;font-size:11px;border:1px solid var(--line);border-radius:99px;padding:2px 10px;color:var(--gray)}
+  section{margin-top:36px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .sec-no{font-size:13px;font-weight:800;color:var(--ink);border:1px solid var(--ink);border-radius:4px;padding:1px 7px}
+  .sec-title{font-size:19px;font-weight:700}
+  .sec-desc{font-size:13px;color:var(--gray);margin-left:auto}
+  .sec-line{height:1px;background:var(--line);margin:12px 0 22px}
+  .flow{display:flex;align-items:stretch;gap:10px;flex-wrap:nowrap}
+  .card{flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 12px 10px;position:relative}
+  .card .top{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+  .num{font-size:10px;font-weight:800;color:#fff;background:var(--ink);border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;flex:none}
+  .card h3{font-size:13.5px;font-weight:700}
+  .card p{font-size:11.5px;color:var(--gray);line-height:1.45}
+  .arrow{flex:none;width:26px;display:flex;align-items:center;justify-content:center;color:var(--gray)}
+  .arrow svg{width:22px;height:14px}
+  .tone-blue .num{background:var(--blue)} .tone-blue{border-top:3px solid var(--blue)}
+  .tone-purple .num{background:var(--purple)} .tone-purple{border-top:3px solid var(--purple)}
+  .tone-amber{background:var(--amber-bg);border:1.5px solid var(--amber);border-top:3px solid var(--amber)}
+  .tone-amber .num{background:var(--amber)}
+  .tone-green{background:var(--green-bg);border-top:3px solid var(--green)}
+  .tone-green .num{background:var(--green)}
+  .tag{display:inline-block;font-size:10px;border-radius:4px;padding:1px 6px;margin-top:6px;color:#fff;font-weight:600}
+  .tag.loop{background:var(--pink)}
+  .tag.ok{background:var(--green)}
+  .chips{display:flex;gap:8px;margin:14px 0 0;padding-left:2px;flex-wrap:wrap}
+  .chip{font-size:11px;color:var(--blue);background:var(--blue-bg);border:1px solid #d3e0ee;border-radius:99px;padding:3px 12px}
+  .loop-row{display:flex;gap:10px;margin:14px 0 2px;padding-left:2px}
+  .loop-chip{font-size:10.5px;color:var(--pink);background:var(--pink-bg);border:1px solid #e8c9d5;border-radius:99px;padding:2px 10px}
+  footer{margin-top:44px;border-top:2px solid var(--ink);padding-top:14px;display:flex;gap:26px;flex-wrap:wrap;font-size:12px;color:var(--gray)}
+  footer b{color:var(--ink);font-weight:700}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--gray);margin-top:8px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  @media (max-width:900px){.flow{flex-wrap:wrap}.card{flex:1 1 45%}.arrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Verification · 数字可信</div>
+    <h1>为什么数字可以信</h1>
+    <div class="sub">三道关卡：溯源 · 对账 · 评审 —— 摘要里的数字编不出来</div>
+    <span class="badge">不是"看起来对"，是"查得到、对得上、挑不出毛病"</span>
+  </header>
+
+  <!-- 关卡一 -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">01</span>
+      <span class="sec-title">溯源：每个数字都要有出处</span>
+      <span class="sec-desc">摘要 → 正文 → 事实清单，逐级可查</span>
+    </div>
+    <div class="sec-line"></div>
+    <div class="flow">
+      <div class="card tone-blue"><div class="top"><span class="num">1</span><h3>摘要里的数字</h3></div><p>R²、误差、结论数值……</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-blue"><div class="top"><span class="num">2</span><h3>正文找得到出处</h3></div><p>在对应章节有推导与上下文</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-blue"><div class="top"><span class="num">3</span><h3>事实清单（唯一权威）</h3></div><p>全篇数字的唯一来源，写作前先定</p></div>
+    </div>
+  </section>
+
+  <!-- 关卡二 -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">02</span>
+      <span class="sec-title">对账：和代码真实输出一一核对</span>
+      <span class="sec-desc">论文写完不算完，跑一遍才算数</span>
+    </div>
+    <div class="sec-line"></div>
+    <div class="flow">
+      <div class="card tone-purple"><div class="top"><span class="num">1</span><h3>事实清单</h3></div><p>写论文用的所有数字</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-purple"><div class="top"><span class="num">2</span><h3>代码真的跑一遍</h3></div><p>最终版代码，重新执行</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-purple"><div class="top"><span class="num">3</span><h3>逐数字比对输出</h3></div><p>论文 vs 运行结果，不一致就改</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-green"><div class="top"><span class="num">4</span><h3>✓ 核对通过</h3></div><p>数字与代码输出一致</p><span class="tag ok">✓ 可写进摘要</span></div>
+    </div>
+    <div class="chips">
+      <span class="chip">R²</span>
+      <span class="chip">窗口函数</span>
+      <span class="chip">零填充</span>
+      <span class="chip">AIC</span>
+      <span class="chip">不确定度</span>
+      <span class="chip">…… 重点数字逐一核对</span>
+    </div>
+  </section>
+
+  <!-- 关卡三 -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">03</span>
+      <span class="sec-title">评审：方案要过评委挑毛病</span>
+      <span class="sec-desc">不是自说自话，是挑不出毛病才算完</span>
+    </div>
+    <div class="sec-line"></div>
+    <div class="flow">
+      <div class="card tone-amber"><div class="top"><span class="num">1</span><h3>方案/初稿</h3></div><p>建模方案或论文初稿</p></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-amber"><div class="top"><span class="num">2</span><h3>评委 AI 挑毛病</h3></div><p>假设不合理？数据对不上？表述含糊？</p><span class="tag loop">↻ 建模评审 max 6 轮</span></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-amber"><div class="top"><span class="num">3</span><h3>修订</h3></div><p>逐条修复，改完再送审</p><span class="tag loop">↻ 写作交叉审查 max 3 轮</span></div>
+      <div class="arrow"><svg viewBox="0 0 22 14"><path d="M1 7h19m0 0l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="card tone-green"><div class="top"><span class="num">4</span><h3>✓ 挑不出毛病</h3></div><p>质量门全过，才进入终审</p><span class="tag ok">✓ 通过</span></div>
+    </div>
+  </section>
+
+  <footer>
+    <div><b>质量门</b>：章节完整 · 排序正确 · 数字有出处 · 图表有引用 · 无 P0 问题</div>
+    <div><b>收敛控制</b>：评审有轮次上限，趋势不收敛自动退出，不会无限循环</div>
+    <div class="legend">
+      <span><i style="background:#3d6ea5"></i>溯源</span>
+      <span><i style="background:#6d5a9e"></i>对账</span>
+      <span><i style="background:#b4791f"></i>评审⇄修订</span>
+      <span><i style="background:#2f7d4f"></i>通过</span>
+      <span><i style="background:#c0557c"></i>迭代 loop</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>
