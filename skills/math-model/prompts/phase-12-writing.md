@@ -26,9 +26,9 @@
 
 ### 1. 事实源表（单一事实源，先做）
 
-写 `intermediates/12-writing/fact-sheet.md`——全篇唯一数字来源，从各问 question-summary.md、results.json、robustness.md、baseline-registry.md、symbols.json 提取：
+写 `12-writing/fact-sheet.md`——全篇唯一数字来源，从各问 question-summary/results/robustness/baseline-registry/symbols 提取：
 
-- **keyNumbers**：全部关键数字 {number, label, 场景, sourcePath(产物文件+字段), 口径注意}
+- **keyNumbers**：全部关键数字 {number,label,场景,sourcePath,口径注意}
 - **symbols**：全题符号统一表（跨问合并）
 - **caliberNotes**：口径注意事项（如「名单=预算定容30户」）
 - **datasetFacts**：数据集画像事实
@@ -37,7 +37,7 @@
 
 ### 2. 叙事大纲
 
-写 `intermediates/12-writing/narrative-outline.md`：围绕小问组织叙事弧线（每问独立故事单元 + 整体连贯）：① 方案逻辑为主线、改进融入推导 ② 问题驱动（每章回答什么问题）③ 节奏控制（推导→结果→亮点）④ 记忆点 ⑤ 摘要埋钩子。
+写 `12-writing/narrative-outline.md`：围绕小问组织叙事弧线（每问独立故事单元+整体连贯）：①方案逻辑为主线、改进融入推导 ②问题驱动 ③节奏（推导→结果→亮点）④记忆点 ⑤摘要埋钩子。
 
 ### 3. 章节定义（章节名与组装脚本 order 一致）
 
@@ -56,11 +56,13 @@
 
 纯机理/无数据题删 data_analysis 章。语言按题目包论文规则（CUMCM 中文 / MCM 英文）。
 
+**页数预算（含摘要 ≤20 页）**：摘要1｜重述1｜分析1.5｜假设+符号1.5｜数据1（无数据删）｜模型5-7｜结果2-3｜稳健1.5｜评价1｜结论1 ≈17-20。超预算先压缩模型/结果非核心段。
+
 ### 4. 顺序主编撰写
 
 按上表顺序逐章撰写（后写章节强制读前文，杜绝口径分叉；每个 writer 是同一「主编」的延续视角）。开写每章前：① `ls` + `Read` 已写章节（跳过自己的），延续符号/数字/口径/术语/衔接 ② `Read` fact-sheet.md + 相关问 question-summary.md + figure-manifest.md ③ 需要题面原文时 `Read 00-problem.json` 的 problem.description。
 
-每章保存为 `intermediates/12-writing/paper-sections/section-<id>.md`：首行 `# <章节名>`，其后为本章 LaTeX body（含章节标题 `\section{...}`）；**不含** `\documentclass`/`\begin{document}`/`\maketitle`；引用用 `\cite{<登记表编号>}`（编号来自 literature.md 引用登记表；参考文献由终审统一生成，章节内不写 thebibliography）；无身份/学校/赛区信息。
+每章存 `12-writing/paper-sections/section-<id>.md`：首行 `# <章节名>`，后为本章 LaTeX body（含 `\section{...}`）；不含 documentclass/maketitle；引用 `\cite{<登记表编号>}`（编号来自 literature.md 登记表，参考文献由终审统一生成）；无身份/学校/赛区信息。
 
 > ⚠️ **分批落盘防上下文触顶**：每章写完立即落盘 `section-<id>.md` 再写下一章；多小问（3-4 问）全量写作可能触顶——必要时分多次会话继续（重读已写章节 + fact-sheet 延续口径）。
 
@@ -87,12 +89,12 @@
 1. 符号统一：重述→模型→结果符号一致（对照 fact-sheet symbols）
 2. 数据一致：**摘要每个数字在正文有出处**，找不到 → P0
 3. 逻辑连贯：假设→推导→结果→结论无断点
-4. 创新呼应：创新点各章呼应（对照 11-cross-review）
+4. 创新呼应：各章呼应（对照 11-cross-review）
 5. 重复/矛盾：不同章节重复或矛盾
 6. 章节数量与排序：全部存在；结论为最后一章（P0）
 7. 图表双向：figures/ 文件都被引用（P1）；includegraphics 文件真实存在、无空 figure（P0）
 8. 内部流程术语 → P1（改写为论文语言）
-9. 推导链：公式是否「动机→推导→含义」三步 → P1
+9. 推导链：公式「动机→推导→含义」三步 → P1
 10. 术语堆砌/可读性：一段 >3 未解释术语、冗长啰嗦 → P1
 11. 逐问覆盖：问题分析/模型/分析/结论各章覆盖全部小问 → 缺失 P0
 12. AI 味复核：§一-13/14 逐条（路标/标签/凑字腔/加粗过度/示意图）
@@ -108,7 +110,7 @@
 
 ## 完成标准
 
-- 全部章节按序写完，章节名与组装脚本 order 一致
-- 交叉审查收敛（无未修 P0）；摘要数字可溯源到正文与 fact-sheet.md
+- 全部章节按序写完，章节名与组装 order 一致
+- 交叉审查收敛（无未修 P0）；摘要数字可溯源正文与 fact-sheet
 - AI 味检查项逐条通过；图表双向验证通过；无内部流程术语
 - 一致 → PASS；残留必须修订项 → NEEDS_REVISION
