@@ -25,7 +25,7 @@ function stagePrompt(q, s, m) {
   return [
     `## 阶段 ${k}：读模板 ${PD}/${m.prompts[s]}、状态 ${IM}/state.json、依赖 ${deps||"无"}`,
     `按模板执行，产物写 ${IM}/${lay}（mkdir -p）`,
-    `完成后按 ${PD}/state-schema.md 更新 state.json，${LG}`,
+    `完成后按 ${PD}/state-schema.md 更新 state.json（artifacts 一律用相对 intermediates/ 路径），${LG}`,
     `${BRIEF}；ctx q=${q||"全题"} mode=${A.mode||"full"} strict=${STRICT} date=${new Date().toISOString().slice(0,10)}`,
   ].join("\n")
 }
@@ -43,6 +43,7 @@ async function runFormulation(q, m, sc, a) {
   const k = q + ".formulation"
   const d = IM + "/" + q + "/04-formulation"
   const dr = d + "/draft.md"
+  const drRel = q + "/04-formulation/draft.md"  // 记录用相对路径（artifacts 契约），写入仍用 dr 绝对路径
   const sf = d + "/self-check.md"
   const ok1 = await ca(stagePrompt(q, "formulation", m) + (a > 1 ? "\n【第2次】改策略：重写主线或调假设，解决上轮必须改" : "") + `\n【节点1】产方案+baseline预注册，写 ${dr}、${d}/baseline-registry.md；gates["${k}"]="NEEDS_REVISION"`, sc, "formulator")
   if (!ok1) return null
@@ -56,12 +57,12 @@ async function runFormulation(q, m, sc, a) {
       sc, "review:" + p)))
     const vs = raw.map(x => x && x.status)
     if (vs.length && vs.every(v => v === "PASS")) {
-      await ca(finalizePrompt(k, "PASS", r, dr), sc, "finalize")
-      return { accepted: true, status: "PASS", artifact_path: dr }
+      await ca(finalizePrompt(k, "PASS", r, drRel), sc, "finalize")
+      return { accepted: true, status: "PASS", artifact_path: drRel }
     }
     if (r >= RND) {
       const v = vs.every(v => !v) ? "FAIL" : "NEEDS_REVISION"
-      await ca(finalizePrompt(k, v, r, dr), sc, "finalize")
+      await ca(finalizePrompt(k, v, r, drRel), sc, "finalize")
       return { accepted: false, status: v, why: raw.filter(Boolean).map(x => x.summary).join(" | ").slice(0, 300) }
     }
     const okR = await ca(`【修订r${r}】读 ${dr} 与 ${d}/review-r${r}-*.md；逐条回应（改或说明），覆盖写回 ${dr}；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；${LG}；${BRIEF}（不更新state）`, sc, "revise")

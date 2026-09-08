@@ -54,7 +54,7 @@ Bootstrap 置信区间（关键估计值 ± 区间）、样本量是否支撑结
 - statisticalChecks：{check, result}
 - ablationResults：{component, removedVariant, effect, conclusion}
 
-**铁律：只基于真实实验，禁止编造数字或凭空添加扰动实验；某项无信息写「无」。**
+**铁律：只基于真实实验，禁止编造数字或凭空添加扰动实验；某项无信息写「无」。实验失败/报错必须把原因与影响写进 robustness.md 相应小节（计入 robustnessStatements/weakestPoints），禁止用裸 err.log/日志文件留档（不留空日志文件）。**
 
 ## 产物
 
