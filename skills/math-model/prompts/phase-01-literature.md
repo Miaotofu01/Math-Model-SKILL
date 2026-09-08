@@ -16,7 +16,7 @@
 
 ## 输入
 
-- `intermediates/00-problem.md`：题目原文全文（必读）
+- `intermediates/00-problem.json`：题目原文全文（problem.description，必读）
 - `intermediates/00-problem.json`：结构化分析（domain、mathType、各小问 objectives、keyChallenges）
 - `pool/literature-pool.md`：共享文献池（首问可能不存在）
 

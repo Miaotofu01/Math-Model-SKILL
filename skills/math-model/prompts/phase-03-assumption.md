@@ -12,7 +12,7 @@
 
 ## 输入
 
-- `intermediates/00-problem.md` / `intermediates/00-problem.json`：题面（一致性核对基准）
+- `intermediates/00-problem.json`：题面（problem.description，一致性核对基准）
 - `intermediates/q{id}/01-literature/literature.md`：文献（假设的支撑引用来源）
 - `intermediates/q{id}/02-data/eda.md`：数据事实（数据一致性核对基准）
 
@@ -25,7 +25,7 @@
 - **陈述**：一句话，可判真伪
 - **理由**：为什么这样简化是合理的
 - **支撑**：文献引用（literature.md 中的具体条目）或常识/业务依据；**无支撑假设全稿最多 1 条，超过即整版拒绝**
-- **与题面一致性**：核对 00-problem.md，确认不违反题目给定条件（如题目给了边界条件就不能假设忽略）
+- **与题面一致性**：核对 00-problem.json 的 problem.description，确认不违反题目给定条件（如题目给了边界条件就不能假设忽略）
 - **与数据一致性**：对照 eda.md 的数据事实（如 EDA 显示强相关/强周期，则不能假设独立/平稳）
 - **必要性**：去掉它方案是否仍成立；只为凑数的假设应删
 - **服务环节**：支撑后续哪个模型环节（供公式化阶段引用）

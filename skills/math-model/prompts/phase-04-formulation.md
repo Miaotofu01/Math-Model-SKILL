@@ -18,7 +18,7 @@
 
 ## 输入
 
-- `intermediates/00-problem.md` / `intermediates/00-problem.json`：题面与结构化分析
+- `intermediates/00-problem.json`：题面与结构化分析
 - `intermediates/q{id}/02-data/eda.md`：数据事实与推荐建模方向
 - `intermediates/q{id}/03-assumptions/assumption-vNN.md`：假设（最新版本）
 - `intermediates/q{id}/01-literature/literature.md`：文献局限分析（Gap 输入；如缺失则以题面 keyChallenges 推断并注明）

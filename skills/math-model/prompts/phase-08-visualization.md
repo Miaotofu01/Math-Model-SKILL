@@ -18,7 +18,7 @@
 
 - `intermediates/q{id}/06-computation/results.json`：结果与数值（图的数据源）
 - `intermediates/q{id}/07-sanity/sanity-report.md`：已核验结论（图必须与之一致）
-- `intermediates/00-problem.md`：题面（示意图内容依据）
+- `intermediates/00-problem.json`：题面（problem.description，示意图内容依据）
 - 需要时：`intermediates/q{id}/04-formulation/symbols.json`（坐标轴符号统一）、`06-computation/figures/`（已有图复用或重画）
 
 ## 执行步骤

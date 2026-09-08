@@ -13,7 +13,7 @@
 ## 输入
 
 - `intermediates/00-problem.json`：subQuestions 清单（id/label/**dependsOn**——依赖链核验依据）
-- `intermediates/00-problem.md`：题面原文（术语与口径权威）
+- `intermediates/00-problem.json`：题面原文（problem.description，术语与口径权威）
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准，下同）的定稿产物：
   - `intermediates/q{id}/10-completed/question-summary.md`：小问定稿事实链（主依据，含来源标注）
   - `intermediates/q{id}/04-formulation/symbols.json`：符号登记（跨问符号一致性基准）

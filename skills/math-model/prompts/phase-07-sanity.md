@@ -27,12 +27,12 @@
 
 - `intermediates/q{id}/06-computation/results.json`：待核验结果
 - `intermediates/q{id}/04-formulation/draft.md` 与 `symbols.json`：公式与符号基准
-- `intermediates/00-problem.md`：题面（硬约束出处）
+- `intermediates/00-problem.json`：题面（problem.description，硬约束出处）
 
 ## 执行步骤（逐门禁核验，每条结论必须带证据）
 
 1. **数值检查**：扫描 results.json 全部数值 → NaN/Inf/量级异常
-2. **硬约束检查**：从 00-problem.md 与 draft.md 提取硬约束清单，逐条对照结果（如占比之和=1、概率∈[0,1]、厚度>0）
+2. **硬约束检查**：从 00-problem.json 的 problem.description 与 draft.md 提取硬约束清单，逐条对照结果（如占比之和=1、概率∈[0,1]、厚度>0）
 3. **单位/维度检查**：代码量纲注释与结果单位一致；draft.md 推导的维度关系成立
 4. **公式-实现一致性**：关键方程逐式对照 draft.md 与代码；符号映射与 symbols.json 一致
 5. **原始数据完整性**：确认输入数据文件未被写入（比对文件大小/mtime 与阶段 02 记录，并检查代码无写数据文件语句）

@@ -20,7 +20,7 @@
 - `intermediates/12-writing/fact-sheet.md`：事实源表（溯源基准）
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`10-completed/question-summary.md`、`06-computation/results.json`、`09-robustness/robustness.md`、`04-formulation/baseline-registry.md`、`08-visualization/figure-manifest.md` + `figures/`、`01-literature/literature.md`（引用登记）、`05-implementation/code/`
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS）
-- `intermediates/00-problem.md` / `00-problem.json`：题面、论文规则、题号、附件清单
+- `intermediates/00-problem.json`：题面、论文规则、题号、附件清单
 - 模板目录 `skills/math-model/templates/`：cumcm-paper.tex + assemble_from_template.py
 
 > ⚠️ 全题级：`q{id}` 指各小问实际目录 q1/、q2/、…（本阶段无占位符替换）；产物写 `intermediates/13-final/` 前缀。

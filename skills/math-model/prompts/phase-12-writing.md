@@ -16,7 +16,7 @@
 
 ## 输入
 
-- `intermediates/00-problem.md` / `00-problem.json`：题面/论文规则/附件清单/subQuestions
+- `intermediates/00-problem.json`：题面/论文规则/附件清单/subQuestions（题面在 problem.description、论文规则在 paperRules、附件清单在 attachments、子问在 analysis.subQuestions 字段）
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS，写作须保持其口径）
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`q{id}/10-completed/question-summary.md`（定稿事实链）、`q{id}/04-formulation/draft.md` + `symbols.json` + `baseline-registry.md`、`q{id}/06-computation/results.json`、`q{id}/08-visualization/figure-manifest.md` + `figures/`、`q{id}/01-literature/literature.md`（引用登记）、`q{id}/03-assumptions/assumption-vNN.md`、`07-sanity/sanity-report.md`、`09-robustness/robustness.md`、`02-data/eda.md` + `data-collection.json`（有外部数据时）
 
@@ -58,7 +58,7 @@
 
 ### 4. 顺序主编撰写
 
-按上表顺序逐章撰写（后写章节强制读前文，杜绝口径分叉；每个 writer 是同一「主编」的延续视角）。开写每章前：① `ls` + `Read` 已写章节（跳过自己的），延续符号/数字/口径/术语/衔接 ② `Read` fact-sheet.md + 相关问 question-summary.md + figure-manifest.md ③ 需要时 `Read 00-problem.md`。
+按上表顺序逐章撰写（后写章节强制读前文，杜绝口径分叉；每个 writer 是同一「主编」的延续视角）。开写每章前：① `ls` + `Read` 已写章节（跳过自己的），延续符号/数字/口径/术语/衔接 ② `Read` fact-sheet.md + 相关问 question-summary.md + figure-manifest.md ③ 需要题面原文时 `Read 00-problem.json` 的 problem.description。
 
 每章保存为 `intermediates/12-writing/paper-sections/section-<id>.md`：首行 `# <章节名>`，其后为本章 LaTeX body（含章节标题 `\section{...}`）；**不含** `\documentclass`/`\begin{document}`/`\maketitle`；引用用 `\cite{<登记表编号>}`（编号来自 literature.md 引用登记表；参考文献由终审统一生成，章节内不写 thebibliography）；无身份/学校/赛区信息。
 

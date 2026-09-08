@@ -16,7 +16,7 @@
 
 ## 输入
 
-- `intermediates/00-problem.md`（题目原文）与 `intermediates/00-problem.json`（数据画像 dataProfile、附件清单 attachments）
+- `intermediates/00-problem.json`：题目原文（problem.description）、数据画像（dataProfile）、附件清单（attachments）
 - `intermediates/q{id}/01-literature/literature.md`（文献：数据口径/来源参考）
 
 ## 步骤 A：数据需求评估

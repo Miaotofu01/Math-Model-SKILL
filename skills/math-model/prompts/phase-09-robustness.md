@@ -19,7 +19,7 @@
 - `intermediates/q{id}/06-computation/results.json`：基准结果（扰动基准）
 - `intermediates/q{id}/04-formulation/draft.md`：模型与参数（扰动对象）
 - `intermediates/q{id}/07-sanity/sanity-report.md`：已核验结论（稳健性实验不得与其矛盾）
-- `intermediates/00-problem.md`：题面约束与边界
+- `intermediates/00-problem.json`：题面约束与边界（problem.description）
 
 ## 执行步骤
 
