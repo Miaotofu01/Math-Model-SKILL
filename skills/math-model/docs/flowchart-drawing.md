@@ -14,6 +14,7 @@
 1. Read `/home/tofu/.dsh/skills/diagram-design/SKILL.md`，按 §3 选型（过程/决策类 → **flowchart**）
 2. Read `references/type-flowchart.md` 与 `references/style-guide.md`（**皮肤 token 用下方 §2 的论文中性色，忽略其默认值**）
 3. 复制 `assets/example-flowchart.html` 为基线，替换内容（不搬示例的样式之外的文案）
+4. **优先级**：本文档纪律优先于 skill 示例/SKILL.md 默认——SKILL §0 风格门直接跳过（按 §2 token 执行）；示例中非 4px 字号（9/8.5/11px）一律不采用
 
 ## 2. 皮肤 token（论文中性色，写死进 HTML）
 
@@ -32,7 +33,7 @@
 - **4px 网格**：所有坐标/字号/尺寸整除 4（字号 8/12/16/20/24…，x/y 倍数 4）
 - ≤9 节点、≤12 箭头、≤2 强调元素；目标密度 4/10（能删就删）
 - 连线**正交直角**（弯角 r=6–8），禁止斜线；连线先于节点绘制（z 序）
-- 箭头标签：不透明遮罩 + 与线 **6–10px 间隙**；标签遮罩不得压到后画的节点
+- 箭头标签：不透明遮罩 + 与线 **6–10px 间隙**；标签遮罩不得压到后画的节点；CJK 标签**字号 12px**（无衬线 500，遮罩高 16px），不缩 9px
 - 图例：底部横条（不放图区内部），viewBox 高度为其扩展 ~60px
 - **页面无大标题**：SVG 从页面顶部开始，body 无 padding；图注放图下方（§4 样式）
 - svg 根：`role="img"` + `aria-labelledby` → 前缀化 `title`/`desc` id（如 `slug-title`/`slug-desc`），`<title>` 为 svg 首子元素
@@ -63,12 +64,15 @@
 google-chrome --headless=new --no-sandbox --disable-gpu \
   --user-data-dir=<outputDir>/.chrome-tmp \
   --hide-scrollbars --virtual-time-budget=3000 \
-  --window-size=<W>,<H> \
+  --force-device-scale-factor=2 \
+  --window-size=<画布宽1x>,<画布高1x> \
   --screenshot=<PNG 绝对路径> "file://<HTML 绝对路径>"
 ```
 
-- W×H = 画布 2x（例：HTML 总高 812px → 窗口 1920×1624），`--window-size` 必须与画布比例一致
-- 截图后 `file <png>` 确认输出 "PNG image data"；无效则重试 1 次，仍失败 → 回退 matplotlib
+- **`--window-size` 用画布 1x（CSS 像素），配合 `--force-device-scale-factor=2` 输出真 2x**——窗口设成 2x 会把内容以 1x 留白在左上角、图注错位，且 `file` 无法区分，务必避免
+- 例：HTML 画布 1040×752 → `--window-size=1040,752 --force-device-scale-factor=2` → PNG 2080×1504
+- 截图后 `file <png>` 确认 "PNG image data" 且**尺寸 = 画布 2x**；再抽查图注在 PNG 中水平居中（可用 python3+PIL 查墨迹像素 x 范围中心 ≈ 宽度/2）
+- 无效则重试 1 次，仍失败 → 回退 matplotlib
 
 ## 8. 产物与登记
 
