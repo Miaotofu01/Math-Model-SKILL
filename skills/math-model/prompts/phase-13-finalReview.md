@@ -1,6 +1,6 @@
 # 阶段模板 13：终审（finalReview）
 
-> 你是全题级终审 agent（run-level 阶段，**全题级、无小问**，q=null）。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根。终审流程：**摘要数字溯源 → 一致性检查 → 评委自评（按获奖标准评分）→ LaTeX 编译**。
+> 你是全题级终审 agent（run-level 阶段，**全题级、无小问**，q=null）。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根；先 `cd <outputDir>` 再执行组装与编译。终审流程：**摘要数字溯源 → 一致性检查 → 评委自评（按获奖标准评分）→ LaTeX 编译**。
 
 ## 统一节拍
 
@@ -12,7 +12,7 @@
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（不可用时按模板目录向上找 `docs/`）。本节相关：§三 CUMCM 格式（摘要专用页/≤20页/附录含全部可运行源码/无身份信息）、§四 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §四-5、`$\bm{}$` 加粗 §四-6、支撑材料清单 §四-7、组装方式与 @占位符 §四-8）、§六 内部 Common Mistakes（摘要数字编造/图表 CJK 等）。**引用规范，不复制内容**。
+先 Read `skills/math-model/docs/writing-and-format.md`（不可用时按模板目录向上找 `docs/`）。本节相关：§三 CUMCM/MCM 格式（摘要页/≤20页/附录/无身份信息）、§四 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §四-5、`$\bm{}$` §四-6、支撑材料清单 §四-7、组装与 @占位符 §四-8）、§六 内部 Common Mistakes（摘要数字编造等）。**引用规范，不复制内容**。
 
 ## 输入
 
@@ -21,7 +21,7 @@
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`10-completed/question-summary.md`、`06-computation/results.json`、`09-robustness/robustness.md`、`04-formulation/baseline-registry.md`、`08-visualization/figure-manifest.md` + `figures/`、`01-literature/literature.md`（引用登记）、`05-implementation/code/`
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS）
 - `intermediates/00-problem.json`：题面、论文规则、题号、附件清单
-- 模板目录 `skills/math-model/templates/`：cumcm-paper.tex + assemble_from_template.py
+- 模板目录：调度壳 templateDir（绝对路径）或 `${PD}` 的父级 `templates/`，二选一自动探测（cumcm-paper.tex + assemble_from_template.py）
 
 > ⚠️ 全题级：`q{id}` 指各小问实际目录 q1/、q2/、…（本阶段无占位符替换）；产物写 `intermediates/13-final/` 前缀。
 
@@ -83,14 +83,14 @@
 
 **第 6-7 步 编译**（两遍 xelatex，必须两遍都通过）：
 ```
-cd intermediates/13-final && xelatex -interaction=nonstopmode -file-line-error final-paper.tex > compile.log 2>&1; tail -60 compile.log
-cd intermediates/13-final && xelatex -interaction=nonstopmode -file-line-error final-paper.tex > compile.log 2>&1; tail -60 compile.log
+cd <outputDir> && xelatex -interaction=nonstopmode -file-line-error intermediates/13-final/final-paper.tex 2>&1 | tee intermediates/13-final/compile.log | tail -60
+cd <outputDir> && xelatex -interaction=nonstopmode -file-line-error intermediates/13-final/final-paper.tex 2>&1 | tee intermediates/13-final/compile.log | tail -60
 ```
-错误 → 读 compile.log 修正 .tex 后重试（最多 3 次）。常见：`Undefined control sequence`（命令拼错或缺 usepackage）、`Missing $ inserted`（数学符号出数学模式）、`File not found`（includegraphics 路径错）、中文乱码（须 ctexart + xelatex）、附录代码 `_ ^ % &` 特殊字符（listings `basicstyle=\ttfamily` 规避）。
+错误 → 读 `intermediates/13-final/compile.log` 修正 .tex 后重试（最多 3 次）。常见：`Undefined control sequence`（命令拼错或缺 usepackage）、`Missing $ inserted`（数学符号出数学模式）、`File not found`（includegraphics 路径错）、中文乱码（ctexart+xelatex）、附录代码 `_ ^ % &` 特殊字符（listings `basicstyle=\ttfamily` 规避）。
 
 **第 8 步 页数与输出**：正文（含摘要）≤20 页（§三；超标优先精简约简非核心段落）；PDF 生成 `intermediates/13-final/final-paper.pdf`；残留 warning（Overfull/未定义引用等）逐条记录。
 
-MCM 说明：若题目包论文规则为 MCM/ICM（英文论文），按 §三 的 MCM 规则执行（Summary 页/25 页/APA 引用/无关键词）；模板与组装脚本为 CUMCM 版，MCM 时按旧脚本 phase8 的 MCM 分支手工拼接 preamble 后两遍 xelatex 编译。
+MCM 说明：若题目包论文规则为 MCM/ICM（英文论文），按 §三 的 MCM 格式执行；CUMCM 模板与组装脚本不适用，走**手动兜底路径**——自拼英文 preamble 后两遍 xelatex 编译（cwd 规则同上），正文各章仍用写作产物。
 
 ## 产物
 

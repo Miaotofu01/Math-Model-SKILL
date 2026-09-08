@@ -52,7 +52,7 @@ async function runFormulation(q, m, sc, a) {
   for (;;) {
     r++
     const raw = await parallel(PERS.map(p => () => ca(
-      `【评审r${r}-${p}】读 ${PD}/formulation-reviewer-${p}.md、${dr}、${sf}${r > 1 ? "、" + d + "/review-r" + (r - 1) + "-" + p + ".md" : ""}；写 ${d}/review-r${r}-${p}.md；${LG}；返回{status:"PASS"|"NEEDS_REVISION",artifact_path,summary}（PASS=无必须改）`,
+      `【评审r${r}-${p}】读 ${PD}/formulation-reviewer-${p}.md、${dr}、${sf}${r > 1 ? "、" + d + "/review-r" + (r - 1) + "-" + p + ".md" : ""}；写 ${d}/review-r${r}-${p}.md；不更新 state/ledger（收束节点统一写）；返回{status:"PASS"|"NEEDS_REVISION",artifact_path,summary}（PASS=无必须改）`,
       sc, "review:" + p)))
     const vs = raw.map(x => x && x.status)
     if (vs.length && vs.every(v => v === "PASS")) {

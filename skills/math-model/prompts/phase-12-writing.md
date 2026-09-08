@@ -1,6 +1,6 @@
 # 阶段模板 12：写作（writing）
 
-> 你是全题级写作 agent（run-level 阶段，**全题级、无小问**，q=null），本模板定义你要做的全部工作。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根。本阶段是全文 AI 味治理的最后防线，保留完整机制：**事实源表 → 叙事大纲 → 顺序主编撰写 → 交叉审查统一修复**。
+> 你是全题级写作 agent（run-level 阶段，**全题级、无小问**，q=null）。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根。本阶段是全文 AI 味治理的最后防线：**事实源表 → 叙事大纲 → 顺序主编撰写 → 交叉审查统一修复**。
 
 ## 统一节拍
 
@@ -12,11 +12,11 @@
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（不可用时按模板目录向上找 `docs/`）。本节相关：§一 论文写作规范（含 **AI 味治理 §一-13/14**、外部数据合规 §一-15）、§二 图表规范（CJK/单位/示意图自绘 §二-1..7）。**引用规范不复制内容**；AI 味检查项即 §一-13/14 与 §二-6 的落实清单。
+先 Read `skills/math-model/docs/writing-and-format.md`（不可用时按模板目录向上找 `docs/`）。本节相关：§一 论文写作规范（含 **AI 味治理 §一-13/14**、外部数据合规 §一-15）、§二 图表规范（CJK/单位/示意图自绘 §二-1..7）。**引用规范不复制内容**。
 
 ## 输入
 
-- `intermediates/00-problem.json`：题面/论文规则/附件清单/subQuestions（题面在 problem.description、论文规则在 paperRules、附件清单在 attachments、子问在 analysis.subQuestions 字段）
+- `intermediates/00-problem.json`：题面/论文规则/附件清单/subQuestions（题面 problem.description / 论文规则 paperRules / 附件 attachments / 子问 analysis.subQuestions）
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS，写作须保持其口径）
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`q{id}/10-completed/question-summary.md`（定稿事实链）、`q{id}/04-formulation/draft.md` + `symbols.json` + `baseline-registry.md`、`q{id}/06-computation/results.json`、`q{id}/08-visualization/figure-manifest.md` + `figures/`、`q{id}/01-literature/literature.md`（引用登记）、`q{id}/03-assumptions/assumption-vNN.md`、`07-sanity/sanity-report.md`、`09-robustness/robustness.md`、`02-data/eda.md` + `data-collection.json`（有外部数据时）
 
@@ -62,12 +62,14 @@
 
 每章保存为 `intermediates/12-writing/paper-sections/section-<id>.md`：首行 `# <章节名>`，其后为本章 LaTeX body（含章节标题 `\section{...}`）；**不含** `\documentclass`/`\begin{document}`/`\maketitle`；引用用 `\cite{<登记表编号>}`（编号来自 literature.md 引用登记表；参考文献由终审统一生成，章节内不写 thebibliography）；无身份/学校/赛区信息。
 
+> ⚠️ **分批落盘防上下文触顶**：每章写完立即落盘 `section-<id>.md` 再写下一章；多小问（3-4 问）全量写作可能触顶——必要时分多次会话继续（重读已写章节 + fact-sheet 延续口径）。
+
 **关键约束（逐章检查）**：
 - 数字纪律：每个数值必须来自 fact-sheet.md（可溯 sourcePath）；禁编造/推算/跨章不一致；缺失写[待定]
 - 逐问覆盖：摘要分段；模型/分析/结论章覆盖全部小问（模型→求解→结果）
 - 加粗只加答案（`$\bm{}$`）；禁止「创新点：」等标签（§一-2/3）
 - 图表：读 figure-manifest.md 并 `ls` figures/ 确认真实文件；按「对于问题N」位点分配（`fig_eda_*` 进数据章、`fig_cross_*` 进综合分析）；`\includegraphics{绝对路径}` + 「如图X所示…」解读；**includegraphics 文件必须真实存在，禁止空 figure**；需要示意图而没图 → matplotlib 自绘（§二-6：CJK 字体、dpi=200、bbox_inches='tight'、保存后 ls 确认）`fig_cross_示意图_<内容>.png` 存 `figures/` 根目录；单位 LaTeX math（`cm$^{-1}$`）
-- **AI 味治理检查项（逐条自查，§一-13/14 + §二-6）**：
+- **AI 味治理检查项（逐条自查）**：
   1. 一段一意：每段先答「这一小步解决什么问题」，一段只讲一件事
   2. 公式三步走：关键公式按「动机→推导→含义」给中间步骤、说明式子含义，**禁止只贴最终式加一句说明**
   3. 术语首次出现用一句大白话解释，一段内未解释术语 ≤3 个
@@ -81,7 +83,7 @@
 
 全部章节写完后进入交叉审查 loop（full 3 轮 / quick 1 轮；连续 2 轮无新问题收敛）。
 
-**每轮交叉审查**（写 `intermediates/12-writing/cross-review-r<N>.md`，逐项 `[P0/P1/P2] [章节] 问题 | 修复建议`）：
+**每轮交叉审查**（写 `intermediates/12-writing/cross-review-r<N>.md`，逐项 `[P0/P1/P2] [章节] 问题`）：
 1. 符号统一：重述→模型→结果符号一致（对照 fact-sheet symbols）
 2. 数据一致：**摘要每个数字在正文有出处**，找不到 → P0
 3. 逻辑连贯：假设→推导→结果→结论无断点

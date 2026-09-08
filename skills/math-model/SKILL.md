@@ -98,7 +98,7 @@ Workflow 返回后汇报：状态与各阶段产物摘要（artifactSummary）�
 
 Workflow 返回 `{ status, statePath, artifactSummary, ledgerTail, blocked? }`：
 
-- **status**：`"ok"`（全部阶段完成）／`"degraded"`（有阶段 2 次失败后降级 SKIPPED，结果仍可用但保守）／`"blocked"`（门禁未过或公式化未收敛）／`"error"`（启动错误：缺 00-problem.json 或契约读不到）
+- **status**：`"ok"`（全部阶段完成）／`"degraded"`（仅**显式可选**阶段 SKIPPED 时产出可用结果，如鲁棒性不适用；**实质阶段** 2 次失败降级后会被下游门禁拦下 → 最终 blocked，非"仍可用"）／`"blocked"`（门禁未过或公式化未收敛）／`"error"`（启动错误：缺 00-problem.json 或契约读不到）
 - **statePath**：`<outputDir>/intermediates/state.json`（中断恢复依据）
 - **artifactSummary**：各阶段状态与产物路径摘要（如 `q1.literature[PASS] intermediates/q1/01-literature/literature.md`，`；` 分隔）
 - **ledgerTail**：`intermediates/ledger.md` 最近 10 行（决策日志）
@@ -106,7 +106,7 @@ Workflow 返回 `{ status, statePath, artifactSummary, ledgerTail, blocked? }`�
 
 常见"非报错但你要解释给用户的信号"：
 - **blocked（门禁）**：求解前/写作前/终审前门禁 FAIL，或公式化未收敛 → 按 `blocked.detail` 修正后 `resume: true` 续跑，非 bug
-- **degraded**：个别阶段降级 SKIPPED（如鲁棒性不适用、求解两次失败）→ 结果仍可用，但汇报时说明
+- **degraded**：仅**显式可选**阶段降级 SKIPPED（如鲁棒性不适用）→ 结果可用，汇报时说明；**实质阶段** 2 次失败降级后 localComplete 产物核验 FAIL → write-start 门禁 FAIL → 整体 blocked（不是"仍可用但保守"）
 - **error**：`00-problem.json` 缺失（Stage 1 未落盘）或契约读不到 → 补 Step 5 落盘后重跑
 
 完整错误规范、写作/图表/格式/模板要求、内部 Common Mistakes 全部在 **`docs/writing-and-format.md`**。

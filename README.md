@@ -89,7 +89,7 @@ bash ~/math-model-skill/install.sh
 国赛模板内置往届实战经验：摘要专用页、不超过 20 页、不含参赛身份信息、支撑材料清单、AI 工具使用声明，排版编译两遍出 PDF。
 
 **支持美赛吗？**
-支持：题面论文规则（00-problem.json 的 paperRules）声明 MCM/ICM 时走英文路径——英文写作、Summary 页、25 页、APA 引用（写作规范 §三）；模板为 CUMCM 版，终审按 MCM 分支手工拼接 preamble 后编译。
+支持：题面论文规则（00-problem.json 的 paperRules）声明 MCM/ICM 时走英文路径——英文写作、Summary Sheet 首页、letterpaper/1in 页边距、全文 ≤25 页、APA 引用、不写关键词；CUMCM 模板不适用，终审按**手动兜底路径**自拼英文 preamble 后两遍 xelatex 编译（格式规则与步骤见 skills/math-model/prompts/phase-13-finalReview.md「MCM 说明」及写作规范 §三）。
 
 ---
 
