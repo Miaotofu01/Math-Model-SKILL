@@ -83,8 +83,8 @@
 
 **第 6-7 步 编译**（两遍 xelatex，必须两遍都通过）：
 ```
-cd <outputDir> && xelatex -interaction=nonstopmode -file-line-error intermediates/13-final/final-paper.tex 2>&1 | tee intermediates/13-final/compile.log | tail -60
-cd <outputDir> && xelatex -interaction=nonstopmode -file-line-error intermediates/13-final/final-paper.tex 2>&1 | tee intermediates/13-final/compile.log | tail -60
+cd <outputDir> && xelatex -output-directory=intermediates/13-final -interaction=nonstopmode -file-line-error intermediates/13-final/final-paper.tex 2>&1 | tee intermediates/13-final/compile.log | tail -60
+cd <outputDir> && xelatex -output-directory=intermediates/13-final -interaction=nonstopmode -file-line-error intermediates/13-final/final-paper.tex 2>&1 | tee intermediates/13-final/compile.log | tail -60
 ```
 错误 → 读 `intermediates/13-final/compile.log` 修正 .tex 后重试（最多 3 次）。常见：`Undefined control sequence`（命令拼错或缺 usepackage）、`Missing $ inserted`（数学符号出数学模式）、`File not found`（includegraphics 路径错）、中文乱码（ctexart+xelatex）、附录代码 `_ ^ % &` 特殊字符（listings `basicstyle=\ttfamily` 规避）。
 
