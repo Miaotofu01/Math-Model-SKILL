@@ -5,15 +5,15 @@
 
 ## 0. 依赖与回退
 
-- skill 位置：`/home/tofu/.dsh/skills/diagram-design`（SKILL.md + references/ + assets/ + scripts/）
+- skill 位置：**vendored 于本 skill 内** `tools/diagram-design/`（与 prompts/ docs/ 同级；完整路径 = `<模板目录>/tools/diagram-design`，下同）
 - 不可用判定：`ls` 失败，或 self_check / Chrome 截图失败且重试 1 次仍失败
 - 回退后：在 figure-manifest 与 ledger 注明「回退 matplotlib + 原因」
 
 ## 1. 读取（按序）
 
-1. Read `/home/tofu/.dsh/skills/diagram-design/SKILL.md`，按 §3 选型（过程/决策类 → **flowchart**）
-2. Read `references/type-flowchart.md` 与 `references/style-guide.md`（**皮肤 token 用下方 §2 的论文中性色，忽略其默认值**）
-3. 复制 `assets/example-flowchart.html` 为基线，替换内容（不搬示例的样式之外的文案）
+1. Read `<模板目录>/tools/diagram-design/SKILL.md`，按 §3 选型（过程/决策类 → **flowchart**）
+2. Read `<模板目录>/tools/diagram-design/references/type-flowchart.md` 与 `references/style-guide.md`（**皮肤 token 用下方 §2 的论文中性色，忽略其默认值**）
+3. 复制 `<模板目录>/tools/diagram-design/assets/example-flowchart.html` 为基线，替换内容（不搬示例的样式之外的文案）
 4. **优先级**：本文档纪律优先于 skill 示例/SKILL.md 默认——SKILL §0 风格门直接跳过（按 §2 token 执行）；示例中非 4px 字号（9/8.5/11px）一律不采用
 
 ## 2. 皮肤 token（论文中性色，写死进 HTML）
@@ -55,7 +55,7 @@
 
 ## 6. 自检
 
-- 运行 `/home/tofu/.dsh/skills/diagram-design/scripts/self_check.py <html>`，失败 → 修复后重跑，仍失败 → 回退
+- 运行 `<模板目录>/tools/diagram-design/scripts/self_check.py <html>`，失败 → 修复后重跑，仍失败 → 回退
 - 手工抽查：坐标整除 4、无斜线连线、标签遮罩与线有间隙、图注在 SVG 下方且居中
 
 ## 7. 截图（Chrome headless，命令模板）

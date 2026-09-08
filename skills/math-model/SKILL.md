@@ -145,7 +145,7 @@ outputDir/
 
 - PDF 用 `pdftotext`，不用 `read` 工具；阶段一等确认，阶段二不打断
 - Workflow 内 agent 失败 → 降级继续；**不要编辑 `workflow` 脚本**（薄壳只做路由/门禁/收敛，业务逻辑在 `prompts/phase-*.md` 与 `docs/writing-and-format.md`——改这些才生效；DSH 运行不吃 SKILL.md）
-- **示意图依赖 diagram-design skill**（`~/.dsh/skills/diagram-design`）：可视化/写作阶段优先用它画示意图（HTML→PNG，配方 `docs/flowchart-drawing.md`）；skill 缺失自动回退 matplotlib，不阻断
+- **示意图用 vendored diagram-design skill**（本 skill 内 `tools/diagram-design/`，MIT 许可，上游 SHA 见其 `VENDOR.md`）：可视化/写作阶段优先用它画示意图（HTML→PNG，配方 `docs/flowchart-drawing.md`）；skill 缺失自动回退 matplotlib，不阻断
 - **中断恢复**：args 加 `resume: true`，壳按 `intermediates/state.json` 的 problemId 匹配续跑（gates∈{PASS, PASS_WITH_WARNING, SKIPPED} 自动跳过）；已无 `resumeFrom`/`skipPhases` 机制
 - **3 处门禁边界**：求解前（`q{id}.solve-start`：该问 04-formulation PASS）／写作前（`write-start`：所有小问 localComplete 且跨问复核 PASS）／终审前（`final-start`：writing 产物完整）；门禁 FAIL → 整体 blocked（含 detail），修正后 resume 续跑
 - **公式化子流程**：formulator → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订（full max3 轮 / quick max2 轮），评审全 PASS 即收束；未收敛 → blocked

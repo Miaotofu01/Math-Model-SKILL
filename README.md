@@ -171,3 +171,7 @@ math-model/
 ## License
 
 MIT
+
+## Attributions
+
+- **diagram-design**（vendored 于 `skills/math-model/tools/diagram-design/`）：来自 [cathrynlavery/diagram-design](https://github.com/cathrynlavery/diagram-design)，MIT License ©2025 Cathryn Lavery，上游 commit `2724fd2`（v2.6.17），全量原样拷贝（含 `LICENSE`/`THIRD_PARTY_LICENSES.md`/`VENDOR.md`）。用于流水线示意图绘制（HTML→PNG）。
