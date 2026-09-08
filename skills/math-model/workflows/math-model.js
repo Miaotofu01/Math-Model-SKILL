@@ -26,7 +26,7 @@ function stagePrompt(q, s, m) {
     `## 阶段 ${k}：读模板 ${PD}/${m.prompts[s]}、状态 ${IM}/state.json、依赖 ${deps||"无"}`,
     `按模板执行，产物写 ${IM}/${lay}（mkdir -p）`,
     `完成后按 ${PD}/state-schema.md 更新 state.json，${LG}`,
-    `${BRIEF}；ctx q=${q||"全题"} mode=${A.mode||"full"} strict=${STRICT}`,
+    `${BRIEF}；ctx q=${q||"全题"} mode=${A.mode||"full"} strict=${STRICT} date=${new Date().toISOString().slice(0,10)}`,
   ].join("\n")
 }
 function gatePrompt(g, gk, q) {
@@ -64,7 +64,7 @@ async function runFormulation(q, m, sc, a) {
       await ca(finalizePrompt(k, v, r, dr), sc, "finalize")
       return { accepted: false, status: v, why: raw.filter(Boolean).map(x => x.summary).join(" | ").slice(0, 300) }
     }
-    const okR = await ca(`【修订r${r}】读 ${dr} 与 ${d}/review-r${r}-*.md；逐条回应（改或说明），覆盖写回 ${dr}；${LG}；${BRIEF}（不更新state）`, sc, "revise")
+    const okR = await ca(`【修订r${r}】读 ${dr} 与 ${d}/review-r${r}-*.md；逐条回应（改或说明），覆盖写回 ${dr}；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；${LG}；${BRIEF}（不更新state）`, sc, "revise")
     if (!okR) return null
   }
 }

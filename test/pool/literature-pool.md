@@ -1,54 +1,53 @@
-# 共享文献池（literature-pool）
+# 文献共享池（literature-pool）
 
-> 用途：跨小问共享文献条目，避免重复检索。追加式维护：后续小问只**追加**新来源，不覆盖已有条目。
-> 字段：标题 + URL + 检索角度 + 相关性 + 精读摘要 + 局限要点。
+> 用法：后续小问先 Read 本池，只对新增主题做补充搜索；新来源**追加**，不覆盖。格式：标题+URL+角度+相关性+精读摘要+局限要点。
 
-## q1 贡献条目
+## q1（题目 A：人口线性外推预测 + 95% 区间）
 
-### [1] 基于线性回归模型、马尔萨斯人口增长模型及 logistic 模型的全国人口预测
-- 角度：中文核心 | 相关性：high
-- URL：https://www.sinomed.ac.cn/article.do?ui=2024176458
-- 精读摘要：赵天伟、陈惠达（广东医科大学学报 2023,41(6)）用 1949–2014 数据依次建线性回归、马尔萨斯、logistic 三模型，以相对误差评价并预测 2020–2040；发现我国人口增长率呈下降趋势。三模型对比选优流程可直接支撑「说明模型选取依据」。
-- 局限要点：多模型对比只在长序列下有效；增长率下降 → 线性外推长时域有系统偏差。
+### [1] 牛海鹏, 宋建蕊. 基于一元线性回归和GM(1,1)模型的农村人口预测. 农村经济与科技, 2013(02)
+- URL: https://www.cnki.com.cn/Article/CJFDTotal-NCJI201302050.htm
+- 角度: ③ 中文核心 ｜ 相关性: high
+- 精读摘要: 焦作 2004-2011 农村人口与年份显著相关；一元线性回归与 GM(1,1) 并用预测（全文付费墙，仅摘要）。
+- 局限要点: 单看 R² 选模不够，需对照模型与留一验证；线性假设在长期外推下过强。
 
-### [2] Evaluating Methods for Short to Medium Term County Population Forecasting（ESRI WP143）
-- 角度：海外方法 | 相关性：high
-- URL：https://ideas.repec.org/p/esr/wpaper/wp143.html
-- 精读摘要：Morgenroth (2002) 用 1991–1996 历史误差评价多种县级人口预测方法，结论是简单份额外推不逊于队列-构成模型（"simple share extrapolation techniques perform well compared with the more elaborate cohort component model"）。支持短中期小区域外推用简单模型。
-- 局限要点：简单外推仍有可测 forecast error；需以误差口径评价方法。
+### [2] Real Statistics Using Excel — Confidence and prediction intervals for forecasted values
+- URL: https://real-statistics.com/regression/confidence-and-prediction-intervals/
+- 角度: ② 海外方法 ｜ 相关性: high
+- 精读摘要: 一元回归置信区间（回归线）与预测区间（单点）公式；对具体 x0 预测区间比置信区间更有意义且更宽。
+- 局限要点: 均值置信区间≠预测区间，误用会低估不确定性；区间依赖正态/同方差假设。
 
-### [3] Bayesian Matrix Factor Models for Demographic Analysis Across Age and Time（arXiv:2502.09255）
-- 角度：前沿学术 | 相关性：medium
-- URL：https://arxiv.org/abs/2502.09255
-- 精读摘要：Zens (2025) 用贝叶斯矩阵因子模型对多群体×年龄×时间人口矩阵做低维因子分解，MCMC 推断，预测优于标准基准；需面板数据。
-- 局限要点：数据要求高，单县 10 年总量序列不可用——反面支撑低参数模型选择。
+### [3] L. Belzile, lineaRmodels §4.1 Confidence and prediction intervals（线性模型讲义）
+- URL: https://lbelzile.github.io/lineaRmodels/confidence-and-prediction-intervals.html
+- 角度: ② 海外方法 ｜ 相关性: high
+- 精读摘要: 预测区间矩阵公式 x'β̂ ± t·√(s²[1+x'(X'X)⁻¹x])；正确模型下新观测约 95% 落入；区间随 x 远离均值双曲变宽。
+- 局限要点: 外推点离均值越远区间越宽——外推风险的结构性来源。
 
-### [4] Confidence and Prediction Intervals in Data Science（LMK89, GitHub）
-- 角度：开源代码 | 相关性：high
-- URL：https://github.com/LMK89/Machine-Learning-MD/blob/main/Data-Science/Confidence%20and%20Prediction%20Intervals%20in%20Data%20Science.md
-- 精读摘要：给出 OLS 预测区间标准误公式（含 1/n 与 (x₀−x̄)² 项，t_{n−2} 临界值）与可运行 Python 代码；明确预测区间宽于置信区间。
-- 局限要点：依赖正态/同方差/独立假设；小样本下区间覆盖对假设违反敏感。
+### [4] FilTheo, PI-Estimators-for-ML-and-Statistical-Models（GitHub/R 综述）
+- URL: https://github.com/FilTheo/PI-Estimators-for-ML-and-Statistical-Models
+- 角度: ② 海外方法 ｜ 相关性: medium
+- 精读摘要: 预测区间度量预测不确定性；综述统计（ETS 等）与 ML 模型的 PI 估计技术、优缺点与实现建议。
+- 局限要点: 点预测不足、区间必配；正态近似在小样本下覆盖率存疑，可换 bootstrap/conformal。
 
-### [5] statsmodels RegressionResults.get_prediction 官方文档
-- 角度：开源代码 | 相关性：high
-- URL：https://www.statsmodels.org/stable/generated/statsmodels.regression.linear_model.RegressionResults.get_prediction.html
-- 精读摘要：官方 API 文档；一次计算预测值、预测方差、均值置信区间与新观测预测区间（mean_ci / obs_ci），适合论文代码复现。
-- 局限要点：输出基于 OLS 正态理论，不覆盖模型设定误差。
+### [5] Abeysinghe, Balasooriya, Tsui. Small-Sample Forecasting: Regression or ARIMA Models? 2003（DOI 10.1007/BF03404652）
+- URL: https://doi.org/10.1007/BF03404652
+- 角度: ② 海外方法 ｜ 相关性: medium
+- 精读摘要: 小样本下回归 vs ARIMA 预测对比研究（摘要被出版社遮蔽，仅题录核实）。
+- 局限要点: 小样本（n=10 级）方法选择需比较而非默认线性；自相关存在时线性回归区间偏窄。
 
-### [6] Empirical Prediction Intervals for County Population Forecasts（Rayer, Smith & Tayman 2009）
-- 角度：海外方法 | 相关性：medium
-- URL：https://ideas.repec.org/a/kap/poprpr/v28y2009i6p773-793.html（DOI:10.1007/s11113-009-9128-7）
-- 精读摘要：期刊题录（摘要不可获取）；依据历史外推误差构造县级人口预测经验预测区间（keywords: Forecast uncertainty, Accuracy）。
-- 局限要点：无直接引文；作为解析区间之外的替代方案对照。
+### [6] statsmodels OLSResults.get_prediction 官方文档 v0.14.4
+- URL: https://www.statsmodels.org/v0.14.4/generated/statsmodels.regression.linear_model.OLSResults.get_prediction.html
+- 角度: ④ 开源代码 ｜ 相关性: high
+- 精读摘要: get_prediction 返回 PredictionResults，可算均值置信区间与新观测预测区间，支撑"预测可代码复现"。
+- 局限要点: 区间质量取决于模型假设是否成立；接口本身不校验残差诊断。
 
-### [7] Uncertainty in population projections: the state of the art（Meireles et al.）
-- 角度：海外方法 | 相关性：medium（不可访问）
-- URL：https://www.semanticscholar.org/paper/12c7d664b45fc3c6ac3b13990e32a6c36e4f136a
-- 精读摘要：正文/摘要均无法获取（OA 网关 502、数据库 JS 拦截），claims 留空，标 unreliable。
-- 局限要点：无。
+### [7] 城镇化进程中洛阳市人口发展的数学建模探讨（万方题录 sxjmjyqyy201402004）
+- URL: https://d.wanfangdata.com.cn/periodical/sxjmjyqyy201402004
+- 角度: ③ 中文核心 ｜ 相关性: medium
+- 精读摘要: 仅题录，全文未取到（付费墙）。
+- 局限要点: 未精读，写作阶段引用前需核实全文。
 
-### [8] Population-Forecast-Prediction / WildTrack（Vivek-Tate, GitHub）
-- 角度：开源代码 | 相关性：low
-- URL：https://github.com/Vivek-Tate/Population-Forecast-Prediction
-- 精读摘要：ML + 时间序列种群预测项目（5 年历史 + 卫星估计，外推 12 个月）；README 部分可见。
-- 局限要点：数据驱动 ML 需多源/高频数据，对本问数据量不适用。
+### [8] Columbia Statistical Modeling — Population forecasting for small areas（2024-04）
+- URL: https://statmodeling.stat.columbia.edu/2024/04/25/population-forecasting-for-small-areas-an-example-of-learning-through-a-social-network/
+- 角度: ② 海外方法 ｜ 相关性: medium
+- 精读摘要: 未读到（HTTP 403）；主题为小区域人口预测的不确定性。
+- 局限要点: 未精读，不建议引用。
