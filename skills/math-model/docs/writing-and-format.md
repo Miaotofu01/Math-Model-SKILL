@@ -12,14 +12,13 @@
 
 ## §〇 文档即共享（数据流总则）
 
-**Stage 1（提纯/审题/选题，主 agent 编排）** 与 **Stage 2（workflow Phase 3-8）** 之间的数据流统一为**落盘文档**：
+**Stage 1（提纯/审题/选题，主 agent 编排）** 与 **Stage 2（workflow 13 阶段逐问串行）** 之间的数据流统一为**落盘文档**：
 
 | 产物 | 落盘路径 | 写入方 | 消费方 |
 |---|---|---|---|
-| Stage 1 结构化产物（题目原文/数据画像/论文规则/审题JSON/附件清单） | `intermediates/00-problem.json` | 主 agent（SKILL.md Step 5，预先落盘可审查）；**主 agent 未落盘时由 workflow `ensure-stage1-doc` agent 从 args 补写（机制兜底，文件必然存在）** | workflow 启动 `load-stage1` agent 优先读取；读不到 fallback `args.problem` |
-| 题目原文全文（workflow 内部共享） | `intermediates/00-problem.md` | workflow `write-problem-doc` agent（启动时） | 全部下游 agent 按需 `Read` |
+| Stage 1 结构化产物（题目原文/数据画像/论文规则/审题JSON/附件清单） | `intermediates/00-problem.json` | 主 agent（SKILL.md Step 5，预先落盘可审查；**唯一写入方，无兜底**） | workflow 启动只读它（小问列表唯一来源）；缺失即 workflow error，不会自动补写 |
 
-> **为什么 Stage 1 也落盘**：旧设计 Stage 1 产物只存在于 workflow 的 `args.problem` 参数里（内存传参，无文件记录）——无法追溯、中断后无据可查。现改为 `<outputDir>/intermediates/00-problem.json` 为唯一权威（结构见 SKILL.md Step 5），workflow 启动时优先 `Read`；`args.problem` 仅作 fallback（兼容直接调用 args 的旧用法）。**文件存在性由机制保证**：主 agent 预先落盘是"可审查增强"，主 agent 忘记时 workflow 的 `ensure-stage1-doc` 会从内存状态补写，因此 Stage 1 产物有文件记录是确定事实，不依赖主 agent 的自觉。`00-problem.md` 仍由 workflow 生成，是 workflow 内部全文共享载体，两者并存不冲突。
+> **为什么 Stage 1 也落盘**：旧设计 Stage 1 产物只存在于 workflow 的 `args.problem` 参数里（内存传参，无文件记录）——无法追溯、中断后无据可查。现改为 `<outputDir>/intermediates/00-problem.json` 为唯一权威（结构见 SKILL.md Step 5），workflow 启动只读它；**无兜底**——主 agent 必须在 Step 5 真实落盘并确认，缺失则 workflow 直接返回 error（不会从 args 补写）。已移除机制（不再存在）：`ensure-stage1-doc`/`load-stage1` 自动补写、`args.problem` fallback、workflow 生成的 `00-problem.md` 全文共享载体——题面一律以 `00-problem.json` 为准。
 
 ---
 
@@ -43,7 +42,7 @@
     - 用了外部数据就**必须**在「数据预处理与探索性分析」章或脚注说明来源（来源名称 + URL + 获取日期），并在参考文献按 GB/T 7714 标注；
     - **禁止凭空编造数据**；收集不到就如实写「该数据需参赛者自行收集」或改用机理模型 + 文献权威参数（给引用），绝不伪造数字。
     - 数据出处记录在 `intermediates/q{id}/02-data/data-collection.json`（按小问），写作/审查 agent 直接 Read。
-16. **题面文档（文档即共享的"输入"端）**：题目原文 / 附件数据画像 / 论文规则三个"输入"在 workflow 启动时一次性写入 `intermediates/00-problem.md`（唯一一次全文注入）。此后所有下游 agent **不再内联题面**——凡任务涉及题目细节（题意/数据/规则/结论依据）一律先 `Read 00-problem.md`，与 EDA 报告、稳健性报告等中间产物同一套"文档即共享"机制；写作/审查/兜底时也照此从该文件取题目原文。
+16. **题面文档（文档即共享的"输入"端）**：题目原文 / 附件数据画像 / 论文规则三个"输入"在 Stage 1 由主 agent 落盘到 `intermediates/00-problem.json`（唯一权威，见 SKILL.md Step 5）。此后所有下游 agent **不再内联题面**——凡任务涉及题目细节（题意/数据/规则/结论依据）一律先 `Read 00-problem.json`，与 EDA 报告、稳健性报告等中间产物同一套"文档即共享"机制；写作/审查/兜底时也照此从该文件取题目原文。（旧设计另有 workflow 生成的 `00-problem.md` 全文共享载体，该机制已移除，不再存在。）
 
 ### 数据分析统计工具箱（数据题常用）
 
@@ -115,7 +114,7 @@
 | 图表CJK字体缺失 | 中文标签渲染为方框 | Noto Sans CJK SC；中文测试字体 |
 | 论文无图/空figure环境 | 只有 caption 没有图，或正文一张图都没有 | 写作阶段自绘示意图（§二-6）；交叉审查反向检查 includegraphics 文件真实存在 |
 | 术语堆砌/无推导链（AI味） | 论文读起来像技术白皮书：堆术语、直接甩公式、啰嗦铺垫 | §一-13 写作范式（动机→推导→含义；一段≤3未解释术语）；交叉审查 9/10 条 |
-| 编造外部数据 | 无附件时建模 agent 自己"构造"数据，评委查来源必挂 | Phase 4.0a 数据收集 agent（真实下载+来源URL+日期）；§一-15；找不到标 NOT_FOUND 明说 |
+| 编造外部数据 | 无附件时建模 agent 自己"构造"数据，评委查来源必挂 | 数据探索阶段（`prompts/phase-02-data.md`）数据收集（真实下载+来源URL+日期）；§一-15；找不到标 NOT_FOUND 明说 |
 | 外部数据无出处 | 论文引用了外部数据但没写来源 | §一-15；data_analysis 章 Read `q{id}/02-data/data-collection.json` 并列出来源 |
 
 ### 严重级
