@@ -14,7 +14,7 @@ const LG = "追加 ledger：<key>: <status> <产物> <50字>"
 let dg = false
 const sm = []
 const parseAny = x => { if (!x) return null; if (typeof x !== "string") return x; try { return JSON.parse(x.replace(/```/g, "").trim()) } catch (e) { return null } }
-async function ca(p, s, l) { try { return await agent(p, s ? { schema: s, label: l || "mm" } : { label: l || "mm" }) } catch (e) { return null } }
+async function ca(p, s, l) { try { return await agent(p, s ? { schema: s, label: l || "mm" } : { label: l || "mm" }) } catch (e) { log("⚠ agent 异常[" + (l || "mm") + "]: " + (e && e.message ? e.message : e)); return null } }
 async function rf(path) { const r = await ca(`Read ${path}; 存在输出内容，否则 "NOT_FOUND"。`, null); if (!r) return null; const t = typeof r === "string" ? r.trim() : JSON.stringify(r); return t === "NOT_FOUND" ? null : t }
 
 // 阶段 glue：模板/状态/依赖 → 执行 → 写产物 → 更新 state+ledger → 返回

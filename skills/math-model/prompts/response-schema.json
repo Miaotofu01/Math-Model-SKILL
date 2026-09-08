@@ -1,7 +1,7 @@
 {
   "type": "object",
   "properties": {
-    "status": { "enum": ["PASS","DRAFT","NEEDS_REVISION","FAIL","SKIPPED","PASS_WITH_WARNING"] },
+    "status": { "type": "string", "enum": ["PASS","DRAFT","NEEDS_REVISION","FAIL","SKIPPED","PASS_WITH_WARNING"] },
     "artifact_path": { "type": "string" },
     "summary": { "type": "string" }
   },
