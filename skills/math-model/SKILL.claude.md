@@ -69,7 +69,7 @@ Workflow({
 参数要点：
 - `outputDir`：**必须与 Step 5 落盘的 outputDir 一致**（00-problem.json 就在它的 intermediates/ 下）
 - `templateDir`：本 skill 根目录或 `templates/` 目录的绝对路径；壳据此定位 `prompts/`（传 `templates/` 时自动去掉尾缀）；不传则用默认 `skills/math-model/prompts`
-- `mode`：`"full"`（默认）或 `"quick"`（评审 1 轮，适合赶时间或初步验证）
+- `mode`：`"full"`（默认）或 `"quick"`（评审最多 2 轮，适合赶时间或初步验证）
 - `innovationStrictness`：`"strict"`（默认）／`"standard"`／`"loose"`
 - `resume`：`true` 时按 `intermediates/state.json` 的 problemId 匹配续跑（gates 为 PASS/PASS_WITH_WARNING/SKIPPED 的阶段自动跳过；匹配不上则全新开始）；默认 `false`
 - `problem`：壳不再读取（无兜底）——小问列表唯一来源是 Step 5 落盘的 `intermediates/00-problem.json`
@@ -81,10 +81,10 @@ Workflow({
 - Workflow 跑在前台，不要打断；结束后返回结果
 - **薄壳脚本约 10KB**（旧 244KB 的 1/24）：`scriptPath` 引用文件，无内联体积问题；业务逻辑全在磁盘（`prompts/` 模板 + `docs/` 规范），子代理自行 Read
 - **逐问串行**：每小问跑 10 个 per-question 阶段（文献调研→数据探索→假设定义→公式化→实现→计算→Sanity→可视化→鲁棒性→小问完成），全部小问完成后跑 3 个 run-level 阶段（跨问复核→写作→终审）
-- **公式化子流程**（壳内独立编排）：formulator 产出方案 + baseline 预注册 → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订——full 最多 3 轮 / quick 1 轮，评审全 PASS（无必须改）即收束
+- **公式化子流程**（壳内独立编排）：formulator 产出方案 + baseline 预注册 → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订——full 最多 3 轮 / quick 最多 2 轮，评审全 PASS（无必须改）即收束
 - **中途中断**：已完成的阶段由 `intermediates/state.json` 记录（门禁/产物/位置）；恢复时 args 加 `resume: true`，壳按 state.json 的 problemId 匹配续跑（不再有 `resumeFrom`/`skipPhases` 机制）
 - **门禁边界**：3 处——求解前（该问 04-formulation PASS）、写作前（所有小问 localComplete 且跨问复核 PASS）、终审前（writing 产物完整）；门禁 FAIL 时整体返回 blocked（含 detail），修正后 `resume: true` 续跑
-- **失败收敛**：阶段连续 2 次失败 → 降级 SKIPPED（整体 status=degraded）；公式化未收敛（full max3 轮 / quick 1 轮）→ blocked
+- **失败收敛**：阶段连续 2 次失败 → 降级 SKIPPED（整体 status=degraded）；公式化未收敛（full max3 轮 / quick max2 轮）→ blocked
 
 ## 阶段三：汇报 + 阶段二失败备用
 
@@ -140,7 +140,7 @@ outputDir/
 - Workflow 内 agent 失败 → 降级继续；**不要编辑 `workflow` 脚本**（薄壳只做路由/门禁/收敛，业务逻辑在 `prompts/phase-*.md` 与 `docs/writing-and-format.md`——改这些才生效；Claude 版从 `scriptPath` 加载，改仓库内文件后需同步到 `~/.claude/workflows/`）
 - **中断恢复**：args 加 `resume: true`，壳按 `intermediates/state.json` 的 problemId 匹配续跑（gates∈{PASS, PASS_WITH_WARNING, SKIPPED} 自动跳过）；已无 `resumeFrom`/`skipPhases` 机制
 - **3 处门禁边界**：求解前（`q{id}.solve-start`：该问 04-formulation PASS）／写作前（`write-start`：所有小问 localComplete 且跨问复核 PASS）／终审前（`final-start`：writing 产物完整）；门禁 FAIL → 整体 blocked（含 detail），修正后 resume 续跑
-- **公式化子流程**：formulator → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订（full max3 轮 / quick 1 轮），评审全 PASS 即收束；未收敛 → blocked
+- **公式化子流程**：formulator → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订（full max3 轮 / quick max2 轮），评审全 PASS 即收束；未收敛 → blocked
 - 各阶段中间产物存 `outputDir/intermediates/`；摘要数字需正文出处（终审硬门禁：任一数字无法溯源 → FAIL）
 - **文档即共享**：各阶段落盘的中间文档（各问 `question-summary.md` / `results.json` / `robustness.md`、写作的 `fact-sheet.md` 等）是下游环节的**唯一权威真源**——下游 agent **必须 `Read` 这些文档**拿完整内容，prompt 不再注入摘要备份。落盘须成功并确认（缺失即 FAIL/阻塞）
 - **REQUIRED BACKGROUND:** You MUST understand `superpowers:dispatching-parallel-agents` —— 阶段一大量使用并行 sub-agent 编排

@@ -8,9 +8,9 @@
   <strong>给题 → 选一道 → 论文 PDF 自己出来</strong>
 </p>
 
-> **审题、查资料、建模、求解、验证、写论文、排版——几十到上百个 AI 助手分工协作，最后直接给你一份能提交的 PDF。**
+> **审题 -> 查资料 -> 建模 -> 求解 -> 验证 -> 写论文 -> 排版——几十到上百个 AI 助手分工协作，直接给你一份能提交的 PDF。**
 >
-> 它不会"写一篇论文交差"——它像一支纪律严明的参赛队：方案要过专家评审团，结果要多角度验证，摘要里**每一个数字都要能在正文找到出处**。每一轮都是"挑毛病 → 改"，直到挑不出毛病。
+> 每一个方案要过agent评审，结果要多角度验证，摘要里**每一个数字都要能在正文找到出处**。每一轮都是"挑毛病 → 改"，直到挑不出毛病。
 
 <p align="center">
   <a href="#-快速开始"><img alt="Quickstart" src="https://img.shields.io/badge/快速开始-30s-4c6ef5"></a>
@@ -102,8 +102,6 @@ bash ~/math-model-skill/install.sh --dsh
 # 或手动：ln -sfn ~/math-model-skill/skills/math-model ~/.dsh/skills/math-model
 ```
 
-用链接方式安装：只维护一份代码，改一处所有地方同步生效，不用重复拷贝。
-
 ### Claude Code
 
 ```bash
@@ -135,7 +133,7 @@ bash ~/math-model-skill/install.sh --claude
 | `outputDir` | 结果输出到哪（默认 `./math-model-output`；00-problem.json 必须落盘在它的 intermediates/ 下） |
 | `resume` | `true` 时按 `intermediates/state.json` 的 problemId 匹配断点续跑（默认 false） |
 
-**预计耗时**：30 分钟 ~ 10 小时，主要看反复打磨和代码运行的耗时，问题越难越久。运行期间请勿打断；中断了加 `resume: true` 接着跑。
+**预计耗时**：30 分钟 ~ 10 小时，耗时的瓶颈在于建模算法程序的时间复杂度，问题越难越久。运行期间请勿打断；中断了加 `resume: true` 接着跑。
 
 ---
 

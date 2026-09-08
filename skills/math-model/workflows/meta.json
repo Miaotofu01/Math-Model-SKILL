@@ -1,12 +1,12 @@
 {
   "name": "math-model",
-  "description": "数学建模竞赛全流程（CUMCM/MCM）：审题→选题→逐问串行 10 阶段（文献调研/数据探索/假设定义/公式化/实现/计算/Sanity/可视化/鲁棒性/小问完成）→跨问复核→写作→终审。薄壳调度 + prompts/ 业务模板；公式化经三维自查与 3 视角评审团（judge/adversary/application）⇄修订（full max3 轮 / quick 1 轮）；3 处门禁边界；失败 2 次降级收敛；中断按 state.json problemId 匹配续跑。",
-  "whenToUse": "用户需要完成数学建模竞赛（国赛/美赛）的完整流程时。支持多小问逐问串行处理；full 模式评审 max3 轮 / quick 1 轮；Sanity 数值门禁 + 摘要数字溯源 + 失败收敛；中断可用 resume:true 续跑。",
+  "description": "数学建模竞赛全流程（CUMCM/MCM）：审题→选题→逐问串行 10 阶段（文献调研/数据探索/假设定义/公式化/实现/计算/Sanity/可视化/鲁棒性/小问完成）→跨问复核→写作→终审。薄壳调度 + prompts/ 业务模板；公式化经三维自查与 3 视角评审团（judge/adversary/application）⇄修订（full max3 轮 / quick max2 轮）；3 处门禁边界；失败 2 次降级收敛；中断按 state.json problemId 匹配续跑。",
+  "whenToUse": "用户需要完成数学建模竞赛（国赛/美赛）的完整流程时。支持多小问逐问串行处理；full 模式评审 max3 轮 / quick max2 轮；Sanity 数值门禁 + 摘要数字溯源 + 失败收敛；中断可用 resume:true 续跑。",
   "phases": [
     { "title": "文献调研", "detail": "逐问检索+精读+局限分析+引用登记；文献池首问全量、后续复用补检索" },
     { "title": "数据探索", "detail": "数据需求评估→外部数据收集（pool/external-data/ + data-collection.json，来源可溯）→EDA 探索" },
     { "title": "假设定义", "detail": "独立阶段，版本化（v01 起不可覆盖）；题面/数据一致性自检循环" },
-    { "title": "公式化", "detail": "单一建模方案 + baseline 预注册 → 三维自查 → 3 视角评审团（judge/adversary/application，并行）⇄修订（full max3 轮 / quick 1 轮）" },
+    { "title": "公式化", "detail": "单一建模方案 + baseline 预注册 → 三维自查 → 3 视角评审团（judge/adversary/application，并行）⇄修订（full max3 轮 / quick max2 轮）" },
     { "title": "实现", "detail": "可运行代码 + 符号一致性核对（对照 04-formulation/symbols.json）" },
     { "title": "计算", "detail": "求解运行（修复轮数 full 3 / quick 1）+ baseline 同场计算；结果落盘 results.json" },
     { "title": "Sanity", "detail": "数值硬门禁：NaN/Inf/约束违反→失败，脏结果不前进" },
