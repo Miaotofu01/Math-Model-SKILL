@@ -61,12 +61,12 @@
 3. **mathtext 启用**：`mathtext.default = 'regular'`。
 4. **附录浮动体 `[H]`**：附录图表用 `[H]`（`\usepackage{float}`），正文用 `[htbp]`。
 5. **验证**：检查无 `Glyph.*missing from font` 警告。
-6. **示意图由写作阶段按需生成（治「论文无图」）**：图表不只展示数据，更辅助理解——几何示意、方法流程图、方案示意图、结构图、区域划分图等**只有写作阶段才想得出**，写作 agent 若发现本章需要这类图而 `figures/` 没有，**自己用 python3 + matplotlib 画**：
-   - 命名：`fig_{子问题ID}_示意图_{内容}.png`（跨问题 `fig_cross_示意图_...`、EDA 章 `fig_eda_...`）；保存 `figures/` 目录，`dpi=200, bbox_inches='tight'`，保存后 `ls` 确认存在。
+6. **示意图由写作阶段按需生成（治「论文无图」）**：图表不只展示数据，更辅助理解——几何示意、方法流程图、方案示意图、结构图、区域划分图等**只有写作阶段才想得出**，写作 agent 若发现本章需要这类图而 `figures/` 没有，**优先用 diagram-design skill 画**（HTML→PNG，图注放图下方小字浅色 12px #6b7280 居中，完整配方 `docs/flowchart-drawing.md`）；skill 缺失或失败 → 回退 python3 + matplotlib 自绘：
+   - 命名：`fig_{子问题ID}_示意图_{内容}.png`（跨问题 `fig_cross_示意图_...`、EDA 章 `fig_eda_...`）；保存 `figures/` 目录，`dpi=200, bbox_inches='tight'`，保存后 `ls` 确认存在；diagram-design 路径另存同名 `.html` 源文件。
    - 文中用绝对路径 `\includegraphics{<outputDir>/figures/fig_xxx.png}` 引用，并配「如图X所示…」的解读句。
    - **禁止空 figure 环境**（有 caption 无图）；每张图必须能被一句话解释作用。
    - 优秀范例：D033 深弹论文图 1-16（积分区域示意图）、E010 交通论文图 4（转向识别方法）、图 6（时距图）。
-7. **结果图（代码阶段）与示意图（写作阶段）分工**：代码 agent 只负责数据结果图（曲线/对比/分布）；解释思路的示意图由写作 agent 自绘，二者互不阻塞。
+7. **结果图（代码阶段）与示意图分工**：代码 agent 只负责数据结果图（曲线/对比/分布）；解释思路的示意图优先用 diagram-design skill（`docs/flowchart-drawing.md`），可视化/写作阶段按需补画，二者互不阻塞。
 
 ## §三 CUMCM 格式
 

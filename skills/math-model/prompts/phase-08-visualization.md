@@ -12,7 +12,7 @@
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（如不可用，按调度壳的模板目录向上找 `docs/`）。本节相关：**§二 图表生成规范**（CJK 字体 §二-1、LaTeX math 单位 §二-2/3、Glyph 验证 §二-5、示意图自绘 §二-6、结果图/示意图分工 §二-7）。引用规范，不复制内容。
+先 Read `skills/math-model/docs/writing-and-format.md`（如不可用，按调度壳的模板目录向上找 `docs/`）。本节相关：**§二 图表生成规范**（CJK 字体 §二-1、LaTeX math 单位 §二-2/3、Glyph 验证 §二-5、示意图自绘 §二-6、结果图/示意图分工 §二-7）；示意图 HTML→PNG 路径另见 `docs/flowchart-drawing.md`。引用规范，不复制内容。
 
 ## 输入
 
@@ -34,7 +34,7 @@
 
 ### 3. 自绘示意图
 
-需要而现有图没有的示意图 → **自己用 python3 + matplotlib 画**，禁止留空：命名 `fig_{q{id}}_示意图_{内容}.png`；按 §二-6 配置与保存（dpi=200、bbox_inches='tight'），保存后 `ls` 确认文件真实存在。**分工调和**：本阶段按任务书强制自绘示意图（写作阶段可复用，不冲突 writing-and-format.md §二-7 的分工说明——本阶段产出先行，写作阶段负责最终编排）。
+需要而现有图没有的示意图 → **优先用 diagram-design skill 画**（HTML→PNG，完整配方 Read `docs/flowchart-drawing.md`）；skill 缺失或渲染失败（重试 1 次后）→ **回退 python3 + matplotlib**（§二-6，dpi=200、bbox_inches='tight'）。两种路径都**禁止留空**：命名 `fig_{q{id}}_示意图_{内容}.png`，保存后 `ls` 确认真实存在；diagram-design 路径**另存同名 `.html` 源文件**，figure-manifest 示意图行加「绘图方式」（diagram-design|matplotlib）。**分工调和**：本阶段按任务书强制自绘示意图（写作阶段可复用，不冲突 writing-and-format.md §二-7 的分工说明——本阶段产出先行，写作阶段负责最终编排）。
 
 ### 4. 图表规范自检
 
