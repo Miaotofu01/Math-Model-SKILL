@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "visual-check",
+  "status": "fail",
+  "visualReview": "pending",
+  "artifact": {
+    "path": "/home/tofu/我的项目/AIPlugins/math-model/docs/math-model-v3-workflow.html",
+    "sha256": "c06218357304e867575a225989cd3847278c610ce57a827b4f0bb1df84ce58c7",
+    "bytes": 646227
+  },
+  "state": {
+    "detail": "read",
+    "motion": "still"
+  },
+  "chrome": {
+    "status": "available",
+    "executable": "/usr/bin/google-chrome"
+  },
+  "containment": {
+    "status": "fail",
+    "viewports": []
+  },
+  "captures": {
+    "status": "fail",
+    "screenshots": [],
+    "contactSheet": null
+  },
+  "sidecars": {
+    "receipt": "math-model-v3-workflow.visual-check.json",
+    "contactSheet": "math-model-v3-workflow.visual-check.html"
+  },
+  "error": "Chrome exited before visual-check completed (null)"
+}
