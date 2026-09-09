@@ -6,8 +6,8 @@
   "visualReview": "pending",
   "artifact": {
     "path": "/home/tofu/我的项目/AIPlugins/math-model/docs/math-model-v3-workflow.html",
-    "sha256": "4e8212e82714c8b691fbe685c52048e5460a2a6a4cbfcb070bdf6a85f701c010",
-    "bytes": 639677
+    "sha256": "b2509798350a4a0bae99791acf7e5d1e868702316faebdfd4e287cab0ee929ac",
+    "bytes": 640901
   },
   "state": {
     "detail": "read",
@@ -15,7 +15,7 @@
   },
   "chrome": {
     "status": "available",
-    "executable": "/home/tofu/我的项目/AIPlugins/math-model/.archify-tmp/bin/chrome-no-sandbox"
+    "executable": "/usr/bin/google-chrome"
   },
   "containment": {
     "status": "pass",
