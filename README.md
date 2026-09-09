@@ -33,9 +33,9 @@
 
 ## 它怎么工作（一张图看懂）
 
-![工作流程总览](docs/images/workflow-overview.png)
+![工作流程总览](docs/math-model-v3-workflow.visual-check.1440x900.light.png)
 
-> 完整的可交互版本（浏览器打开，可放大、切换主题）：[math-model-v3-workflow.html](docs/math-model-v3-workflow.html)
+> 这张图是静态预览；完整的**可交互版本**（浏览器打开，可放大、切换明暗主题）在：[math-model-v3-workflow.html](docs/math-model-v3-workflow.html)
 
 两步：
 
