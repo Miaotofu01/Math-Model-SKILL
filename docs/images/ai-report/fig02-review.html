@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>建模方案评审机制</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ffffff; color: #1a1a1a; font-family: 'Geist', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
+  svg { display: block; }
+  .caption { font-size: 12px; color: #6b7280; text-align: center; padding-top: 8px; line-height: 16px; font-weight: 400; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1040 424" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig02-title fig02-desc">
+  <title id="fig02-title">建模方案评审机制</title>
+  <desc id="fig02-desc">建模方案初稿并行经过评审法官、对抗质疑、应用场景三类评审与自检，全部通过则放行，否则修订后在轮数上限内复审。</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+  </defs>
+
+  <!-- 修订回环（最左，先画） -->
+  <line x1="72" y1="300" x2="24" y2="300" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="24" y1="300" x2="24" y2="24" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="24" y1="24" x2="380" y2="24" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="32" y="148" width="160" height="16" rx="2" fill="#ffffff"/>
+  <text x="112" y="160" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">修订后复审（RND 轮内）</text>
+
+  <!-- 初稿 → 三评审 -->
+  <line x1="520" y1="48" x2="520" y2="64" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="220" y1="64" x2="820" y2="64" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="220" y1="64" x2="220" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="64" x2="520" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="820" y1="64" x2="820" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 三评审 → 自检 -->
+  <line x1="220" y1="136" x2="220" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="520" y1="136" x2="520" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="820" y1="136" x2="820" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="220" y1="160" x2="820" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="520" y1="160" x2="520" y2="192" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 自检 → 判定 -->
+  <line x1="520" y1="232" x2="520" y2="256" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 判定分支 -->
+  <line x1="670" y1="300" x2="760" y2="300" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="692" y="286" width="28" height="16" rx="2" fill="#ffffff"/>
+  <text x="706" y="298" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">是</text>
+  <line x1="370" y1="300" x2="248" y2="300" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="344" y="308" width="28" height="16" rx="2" fill="#ffffff"/>
+  <text x="358" y="320" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">否</text>
+
+  <!-- 节点 -->
+  <rect x="380" y="8" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="36" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">建模方案初稿 draft.md</text>
+
+  <rect x="80" y="96" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="220" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">评审一 · judge 评审法官</text>
+  <rect x="380" y="96" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">评审二 · adversary 对抗质疑</text>
+  <rect x="680" y="96" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="820" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">评审三 · application 应用场景</text>
+
+  <rect x="380" y="192" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="220" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">自检 self-check（数值复算 + 清单）</text>
+
+  <polygon points="520,256 670,300 520,344 370,300" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="520" y="296" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">评审 + 自检</text>
+  <text x="520" y="316" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">全部通过？</text>
+
+  <rect x="760" y="280" width="160" height="40" rx="6" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="840" y="308" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">放行 → 下一阶段</text>
+
+  <rect x="72" y="280" width="176" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="160" y="308" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">修订（同轮 ≤ TRY 2 次）</text>
+
+  <!-- 参数说明 -->
+  <text x="520" y="376" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">TRY=2：同一轮最多尝试 2 次 · 评审轮数 RND：quick 2 轮 / full 3 轮</text>
+  <text x="520" y="396" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">任一 must-fix 未清除 → 该小问整问重跑</text>
+</svg>
+<div class="caption">建模方案评审机制</div>
+</body>
+</html>

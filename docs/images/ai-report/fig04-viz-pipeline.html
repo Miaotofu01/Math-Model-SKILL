@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>可视化（示意图）绘制管线</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ffffff; color: #1a1a1a; font-family: 'Geist', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
+  svg { display: block; }
+  .caption { font-size: 12px; color: #6b7280; text-align: center; padding-top: 8px; line-height: 16px; font-weight: 400; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1040 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig04-title fig04-desc">
+  <title id="fig04-title">可视化（示意图）绘制管线</title>
+  <desc id="fig04-desc">示意图优先使用 vendored diagram-design 技能，从读取配方、选型、复制基线到应用皮肤与网格纪律，自检通过后由 Chrome 无头截图输出 2 倍 PNG，失败时重试一次，仍失败则回退 matplotlib。</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+  </defs>
+
+  <!-- 修复回环 -->
+  <line x1="360" y1="548" x2="264" y2="548" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="264" y1="548" x2="264" y2="404" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="264" y1="404" x2="520" y2="404" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="520" y1="404" x2="520" y2="416" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="272" y="432" width="96" height="16" rx="2" fill="#ffffff"/>
+  <text x="320" y="444" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">修复后复审</text>
+
+  <!-- 主链箭头 -->
+  <line x1="520" y1="48" x2="520" y2="72" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="112" x2="520" y2="136" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="176" x2="520" y2="208" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="248" x2="520" y2="280" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="320" x2="520" y2="352" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="392" x2="520" y2="416" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 通过 → 截图 → 登记 -->
+  <line x1="670" y1="460" x2="704" y2="460" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="676" y="468" width="28" height="16" rx="2" fill="#ffffff"/>
+  <text x="690" y="480" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">是</text>
+  <line x1="828" y1="480" x2="828" y2="528" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 未通过 → 修复 -->
+  <line x1="520" y1="504" x2="520" y2="528" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="528" y="508" width="28" height="16" rx="2" fill="#ffffff"/>
+  <text x="542" y="520" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">否</text>
+
+  <!-- 仍失败 → 回退 -->
+  <line x1="520" y1="568" x2="520" y2="600" stroke="#4f5d75" stroke-width="1.5" stroke-dasharray="6 6"/>
+  <line x1="520" y1="600" x2="736" y2="600" stroke="#4f5d75" stroke-width="1.5" stroke-dasharray="6 6" marker-end="url(#arr)"/>
+  <rect x="528" y="576" width="72" height="16" rx="2" fill="#ffffff"/>
+  <text x="564" y="588" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">仍失败</text>
+
+  <!-- 节点 -->
+  <rect x="360" y="8" width="320" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="36" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">读取配方 flowchart-drawing.md</text>
+  <rect x="360" y="72" width="320" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="100" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">选型：过程 / 决策类 → flowchart 类型</text>
+  <rect x="360" y="136" width="320" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="164" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">复制基线示例 example-flowchart.html</text>
+  <rect x="360" y="208" width="320" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="236" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">应用皮肤 token · 4px 网格纪律</text>
+  <rect x="360" y="280" width="320" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="308" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">生成 HTML（内联 SVG · 离线字体回退）</text>
+  <rect x="360" y="352" width="320" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="380" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">自检 self_check.py</text>
+
+  <polygon points="520,416 670,460 520,504 370,460" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="520" y="456" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">自检</text>
+  <text x="520" y="476" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">通过？</text>
+
+  <rect x="704" y="440" width="216" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="812" y="468" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">Chrome 无头截图（2x PNG）</text>
+  <rect x="704" y="528" width="216" height="40" rx="6" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="812" y="556" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">登记 figure-manifest + .html 源文件</text>
+
+  <rect x="360" y="528" width="320" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="556" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">修复（重试 1 次）</text>
+
+  <rect x="736" y="584" width="200" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 6"/>
+  <text x="836" y="612" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">回退 matplotlib（虚线）</text>
+</svg>
+<div class="caption">可视化（示意图）绘制管线</div>
+</body>
+</html>

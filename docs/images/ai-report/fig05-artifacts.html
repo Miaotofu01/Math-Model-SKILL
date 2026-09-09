@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中间产物目录结构</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ffffff; color: #1a1a1a; font-family: 'Geist', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
+  svg { display: block; }
+  .caption { font-size: 12px; color: #6b7280; text-align: center; padding-top: 8px; line-height: 16px; font-weight: 400; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1040 424" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig05-title fig05-desc">
+  <title id="fig05-title">中间产物目录结构</title>
+  <desc id="fig05-desc">intermediates 目录按小问与阶段组织全部运行产物，每个小问有完整的 01 至 10 阶段目录，跨问整合、写作与终审产物各自成目录，所有产物落盘为文件便于断点续跑与人工审阅。</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+  </defs>
+
+  <!-- 主干 -->
+  <line x1="520" y1="48" x2="520" y2="64" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="104" y1="64" x2="896" y2="64" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="104" y1="64" x2="104" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="312" y1="64" x2="312" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="64" x2="520" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="728" y1="64" x2="728" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="896" y1="64" x2="896" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 分支垂线 -->
+  <line x1="104" y1="136" x2="104" y2="296" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="312" y1="136" x2="312" y2="248" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="520" y1="136" x2="520" y2="200" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="728" y1="136" x2="728" y2="248" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="896" y1="136" x2="896" y2="272" stroke="#4f5d75" stroke-width="1.5"/>
+
+  <!-- 根 -->
+  <rect x="420" y="8" width="200" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="36" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">intermediates/（运行产物）</text>
+
+  <!-- 分支 -->
+  <rect x="16" y="96" width="176" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="104" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">q1/ · 小问一</text>
+  <rect x="224" y="96" width="176" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="312" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">q2/ · 小问二</text>
+  <rect x="432" y="96" width="176" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">11-cross-review/</text>
+  <rect x="640" y="96" width="176" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="728" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">12-writing/</text>
+  <rect x="808" y="96" width="176" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="896" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">13-final/</text>
+
+  <!-- 叶 -->
+  <text x="116" y="164" fill="#4f5d75" font-size="12" font-weight="400">01-literature · 文献池</text>
+  <text x="116" y="188" fill="#4f5d75" font-size="12" font-weight="400">04-formulation · 方案+评审</text>
+  <text x="116" y="212" fill="#4f5d75" font-size="12" font-weight="400">06-computation · results.json</text>
+  <text x="116" y="236" fill="#4f5d75" font-size="12" font-weight="400">08-visualization · figures/</text>
+  <text x="116" y="284" fill="#4f5d75" font-size="12" font-weight="400">…（01~10 阶段齐全）</text>
+
+  <text x="324" y="164" fill="#4f5d75" font-size="12" font-weight="400">01~10 · 与 q1 同构</text>
+  <text x="324" y="188" fill="#4f5d75" font-size="12" font-weight="400">04-formulation · 3 轮评审</text>
+  <text x="324" y="212" fill="#4f5d75" font-size="12" font-weight="400">06-computation · results.json</text>
+  <text x="324" y="236" fill="#4f5d75" font-size="12" font-weight="400">09-robustness · 实验输出</text>
+
+  <text x="532" y="164" fill="#4f5d75" font-size="12" font-weight="400">cross-question-report.md</text>
+  <text x="532" y="188" fill="#4f5d75" font-size="12" font-weight="400">（五维交叉核验）</text>
+
+  <text x="740" y="164" fill="#4f5d75" font-size="12" font-weight="400">paper-sections/（10 章分节）</text>
+  <text x="740" y="188" fill="#4f5d75" font-size="12" font-weight="400">fact-sheet.md</text>
+  <text x="740" y="212" fill="#4f5d75" font-size="12" font-weight="400">narrative-outline.md</text>
+  <text x="740" y="236" fill="#4f5d75" font-size="12" font-weight="400">cross-review-r1.md</text>
+
+  <text x="908" y="164" fill="#4f5d75" font-size="12" font-weight="400">final-paper.tex</text>
+  <text x="908" y="188" fill="#4f5d75" font-size="12" font-weight="400">final-paper.pdf</text>
+  <text x="908" y="212" fill="#4f5d75" font-size="12" font-weight="400">code-annex/</text>
+  <text x="908" y="236" fill="#4f5d75" font-size="12" font-weight="400">abstract-trace.md</text>
+  <text x="908" y="260" fill="#4f5d75" font-size="12" font-weight="400">judge-self-review</text>
+
+  <!-- 底部说明 -->
+  <text x="520" y="400" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">根级另有 state.json（断点续跑）、ledger.md（全程流水）；提交物经 files/ 同步，任何时刻可人工审阅</text>
+</svg>
+<div class="caption">中间产物目录结构</div>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>十三阶段主流程与三道门禁</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ffffff; color: #1a1a1a; font-family: 'Geist', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
+  svg { display: block; }
+  .caption { font-size: 12px; color: #6b7280; text-align: center; padding-top: 8px; line-height: 16px; font-weight: 400; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1040 1312" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig01-title fig01-desc">
+  <title id="fig01-title">十三阶段主流程与三道门禁</title>
+  <desc id="fig01-desc">从赛题输入到终稿输出的十三个处理阶段，阶段一至十按小问循环，阶段十一至十三为跨问整合与终审，途中设有三道人工审查门禁。</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+  </defs>
+
+  <!-- 逐问循环回路（先画，位于节点之下） -->
+  <line x1="660" y1="780" x2="704" y2="780" stroke="#4f5d75" stroke-width="1.5"/>
+  <line x1="704" y1="780" x2="704" y2="92" stroke="#4f5d75" stroke-width="1.5" stroke-dasharray="6 6" marker-end="url(#arr)"/>
+  <line x1="704" y1="92" x2="660" y2="92" stroke="#4f5d75" stroke-width="1.5"/>
+  <rect x="716" y="436" width="56" height="16" rx="2" fill="#ffffff"/>
+  <text x="744" y="448" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">下一小问</text>
+
+  <!-- 主流程竖向箭头 -->
+  <line x1="520" y1="48" x2="520" y2="72" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="112" x2="520" y2="136" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="176" x2="520" y2="200" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="240" x2="520" y2="264" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="304" x2="520" y2="328" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="416" x2="520" y2="440" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="480" x2="520" y2="504" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="544" x2="520" y2="568" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="608" x2="520" y2="632" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="672" x2="520" y2="696" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="736" x2="520" y2="760" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="800" x2="520" y2="824" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="864" x2="520" y2="888" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="976" x2="520" y2="1000" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="1040" x2="520" y2="1064" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="1152" x2="520" y2="1176" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="1216" x2="520" y2="1240" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 阶段分组标签（左侧） -->
+  <rect x="8" y="416" width="176" height="40" rx="4" fill="#ffffff" stroke="rgba(26,26,26,0.12)" stroke-width="1"/>
+  <text x="96" y="444" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">阶段一~十 · 逐问循环</text>
+  <rect x="8" y="880" width="176" height="40" rx="4" fill="#ffffff" stroke="rgba(26,26,26,0.12)" stroke-width="1"/>
+  <text x="96" y="908" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">阶段十一 · 跨问整合</text>
+  <rect x="8" y="1056" width="176" height="40" rx="4" fill="#ffffff" stroke="rgba(26,26,26,0.12)" stroke-width="1"/>
+  <text x="96" y="1084" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">阶段十二 · 写作</text>
+  <rect x="8" y="1176" width="176" height="40" rx="4" fill="#ffffff" stroke="rgba(26,26,26,0.12)" stroke-width="1"/>
+  <text x="96" y="1204" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">阶段十三 · 终审</text>
+
+  <!-- 输入 -->
+  <rect x="380" y="8" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="36" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">赛题 problem.json</text>
+
+  <!-- 阶段一~十 -->
+  <rect x="380" y="72" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="100" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段一 · 文献检索与知识池</text>
+  <rect x="380" y="136" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="164" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段二 · 数据核验与 EDA</text>
+  <rect x="380" y="200" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="228" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段三 · 假设设定</text>
+  <rect x="380" y="264" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="292" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段四 · 建模方案与评审</text>
+  <text x="716" y="292" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="start">评审修订 ≤ RND 轮</text>
+
+  <!-- 门禁一 -->
+  <polygon points="520,328 670,372 520,416 370,372" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="520" y="368" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">门禁一 · solve-start</text>
+  <text x="520" y="388" fill="#2e5aa8" font-size="12" font-weight="400" text-anchor="middle">人工审查：放行 / 打回</text>
+
+  <rect x="380" y="440" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="468" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段五 · 算法实现</text>
+  <rect x="380" y="504" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="532" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段六 · 数值计算</text>
+  <rect x="380" y="568" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="596" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段七 · 合理性检验</text>
+  <rect x="380" y="632" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="660" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段八 · 可视化</text>
+  <rect x="380" y="696" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="724" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段九 · 稳健性分析</text>
+  <rect x="380" y="760" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="788" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段十 · 单问收尾</text>
+
+  <!-- 阶段十一~十三 -->
+  <rect x="380" y="824" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="852" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段十一 · 跨问交叉审查</text>
+
+  <polygon points="520,888 670,932 520,976 370,932" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="520" y="928" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">门禁二 · write-start</text>
+  <text x="520" y="948" fill="#2e5aa8" font-size="12" font-weight="400" text-anchor="middle">人工审查：放行 / 打回</text>
+
+  <rect x="380" y="1000" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="1028" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段十二 · 论文写作</text>
+
+  <polygon points="520,1064 670,1108 520,1152 370,1108" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="520" y="1104" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">门禁三 · final-start</text>
+  <text x="520" y="1124" fill="#2e5aa8" font-size="12" font-weight="400" text-anchor="middle">人工审查：放行 / 打回</text>
+
+  <rect x="380" y="1176" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="520" y="1204" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">阶段十三 · 终审与摘要溯源</text>
+
+  <!-- 输出 -->
+  <rect x="380" y="1240" width="280" height="40" rx="6" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="520" y="1268" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">终稿 PDF · 提交物</text>
+</svg>
+<div class="caption">十三阶段主流程与三道门禁</div>
+</body>
+</html>

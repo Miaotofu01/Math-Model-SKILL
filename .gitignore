@@ -3,8 +3,6 @@ __pycache__/
 .DS_Store
 *.log
 # 提交归属测试
-# 冒烟测试运行产物（保留 00-problem.json 夹具）
-test/intermediates/*
-!test/intermediates/00-problem.json
-test/figures/
+# test/ 为本地实验区：整目录忽略，不入库
+/test/
 
