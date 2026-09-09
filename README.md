@@ -2,141 +2,136 @@
   <img src="icon.svg" alt="math-model icon" width="140">
 </p>
 
-# math-model — 数学建模竞赛 AI 全流程编排
+# math-model — 数学建模竞赛 AI 助手
+
+**只管把数模题目丢给AI，上百个 AI 助手分工协作，查论文、建模、跑代码、写论文、排版，最后直接交给你一份能提交的 PDF。**
+
 
 <p align="center">
-  <strong>给题 → 选一道 → 论文 PDF 自己出来</strong>
-</p>
-
-> **审题、查资料、建模、求解、验证、写论文、排版——一百多个 AI 助手分工协作，最后直接给你一份能提交的 PDF。**
->
-> 它不会"写一篇论文交差"——它像一支纪律严明的参赛队：方案要过专家评审团，结果要多角度验证，摘要里**每一个数字都要能在正文找到出处**。每一轮都是"挑毛病 → 改"，直到挑不出毛病。
-
-<p align="center">
-  <a href="#-快速开始"><img alt="Quickstart" src="https://img.shields.io/badge/快速开始-30s-4c6ef5"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.7.0-1c1a17">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-DSH%20%7C%20Claude%20Code-6d5a9e">
-  <img alt="Competition" src="https://img.shields.io/badge/CUMCM%20%7C%20MCM-2f7d4f">
+  <a href="#-30-秒上手"><img alt="快速开始" src="https://img.shields.io/badge/快速开始-30s-4c6ef5"></a>
+  <img alt="Version" src="https://img.shields.io/badge/version-3.0.0-1c1a17">
+  <img alt="Competition" src="https://img.shields.io/badge/国赛%20%7C%20美赛-2f7d4f">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-8a857d">
 </p>
 
 ---
 
-## 它解决什么问题
+## 为什么选择这个skill
 
-直接问 AI"帮我做一道数模题"时，你通常得到：一篇泛泛而谈的思路、**没法验证的数字**、靠猜的论文格式。而数模竞赛的评分逻辑是——**正确性第一，数据说话，摘要一锤定音**。
+这套系统采用 **workflow**——把任务拆成一组有依赖、有产物的串行环节，每个环节由独立子代理执行，仅注入该环节所需的上下文与规则。
 
-math-model 把"一个人 + 一个 AI"变成"**一支分工明确的 AI 参赛队**"：
-
-| 直接问 AI | 用 math-model |
-|---|---|
-| 一篇"看起来对"的思路 | 一步步帮你审题 → 推荐选题 → 你拍板 |
-| 数字可能是编的 | **每个数字都有正文出处，并和代码真实运行结果核对过** |
-| 方法自说自话 | 专家评审团反复改稿（最多 6 轮）后才动笔 |
-| 论文格式靠猜 | 国赛论文模板 + 排版编译检查 |
-| 跑一半断掉就白干 | 自动存档、随时续跑，换题自动拒绝旧数据 |
+- **抑制 AI 幻觉**：workflow 下每个关键结果（模型参数、预测值等）必须来自真实执行的产物文件（`results.json` 等），子代理只能引用、不能臆造；且建模方案经多角色独立复核，编造无法通过校验。
+- **避免上下文污染**：单次对话中所有子任务共用同一上下文，后续推理易被前序内容（含无关文本）带偏（如跨小问结论混用）。workflow 按环节隔离上下文——每个子代理仅见当前小问、相关数据与本环节规则，环节间以落盘产物交接，阻断内容串扰。
+- **注意力机制更聚焦**：注意力随输入长度增加而稀释，长上下文会降低对关键信号的聚焦度。环节化后每次调用上下文短而相关，注意力集中在有效信号上，推理更可靠——这也是抑制幻觉与避免污染能成立的原因。
+- **可控、可追溯**：每环节落盘真实产物与决策记录文档（`state.json` / `ledger.md`）；支持断点续跑；
 
 ---
 
-## 功能亮点
+## 工作流总览
 
-- **审题选题自动化**：输入提纯 → 并行审题 → 选题推荐，你全程只做一次决策——选哪道题
-- **多小问逐问处理**：一道题好几个小问时自动拆开，每一问独立建模、求解、写解答，符合逐问评分的规则
-- **对齐国一论文结构**：内置「问题分析」（逐问机理推理）、「数据预处理与探索性分析」（EDA 数据驱动建模）、「灵敏度与稳健性分析」、「模型的评价与推广」四章——历年优秀论文的标准骨架，从建模阶段就为这些章节准备素材
-- **建模与求解闭环**：建模方案过专家评审（最多 6 轮改稿）；求解代码真实运行并多角度验证，不达标就继续改，直到挑不出毛病
-- **摘要数字溯源 + 代码核对**：摘要每个数字在正文有出处，而且和代码实际跑出来的结果一一核对
-- **论文模板内置**：国赛格式固化在模板里，直接产出合规 PDF（摘要无编号、页边距、附录、支撑材料清单 + AI 使用声明都符合规范，换赛题不用改模板；美赛走独立英文路径）
+![工作流程总览](docs/math-model-v3-workflow.visual-check.1440x900.light.png)
 
----
+[流程图 html（可交互）](docs/math-model-v3-workflow.html)
 
-## 工作流程一览
 
-![math-model 工作流总览](docs/workflow-v2.png)
-
-**两步走**：第一步**审题 + 选题**（AI 帮你把题目读透、给出推荐，唯一要你做的决策就是选哪道题）；第二步**全自动执行**（查资料 → 建模 → 求解验证 → 写论文 → 终审，几个反复打磨的环节都内置了停止条件，不会无限循环）。
+1. **审题 + 选题**—— 子agent读题面、附件数据、论文规则，分析每道小题的难度和做法，生成一份报告交给你，让你选择一道题做。
+2. **全自动出论文**——查资料 → 建模 → 求解 → 验证 → 写论文 → 终审 → 编译 PDF。
 
 ---
 
-## 快速开始（30 秒）
+## 30 秒上手
 
 ```bash
+# 1. 克隆这个仓库并安装
 git clone git@github.com:Miaotofu01/Math-Model-SKILL.git ~/math-model-skill
 bash ~/math-model-skill/install.sh
-```
 
-然后在任意会话里输入：
-
-```
+# 2. 创建工作目录，把题目描述、规则、数据、附件等放进去
+# 3. 在会话里输入
 /math-model
+# 4. 等待5~20小时生成最终结果
 ```
 
-完事。剩下的由 AI 队接管。
+
+> 安装脚本会**自动检查环境缺不缺东西**（有没有 LaTeX、Python、中文字体），缺了会告诉你怎么补。
 
 ---
 
-## FAQ
+## 结果产物
 
-**跑一次要多久？多少钱？**
-30 分钟 ~ 10 小时（完整模式通常按小时算）。完整模式一次约 110~160 个 AI 助手、耗不少额度；快速模式压到 30-40 个，适合先出个初稿验证思路。花费大头在求解和验证的反复打磨——问题越难越贵。
 
-**和"直接让 AI 做一道题"到底有什么区别？**
-直接问会得到"看起来对"的结果，这套流程把**正确性变成了检查项**：数字必须有出处、方案必须过评审、代码必须真跑、论文必须能编译通过。
+
+| 产出       | 说明                                       |
+| ---------- | ------------------------------------------ |
+| 论文 PDF   | 国赛格式：摘要专用页、章节骨架、附录放代码 |
+| 结果图     | 曲线/对比/区间图                           |
+| 方法示意图 | 说明思路的流程图                           |
+| 过程文档   | 每一步的产物、数字来源、决策日志           |
+
+**论文首页**（示例）：
+
+![论文首页示例](docs/images/sample-paper-01.png)
+
+**结果图**：
+
+![结果图示例 - 数据拟合与预测](docs/images/sample-figure-ols.png)
+
+![结果图示例 - 预测区间](docs/images/sample-figure-interval.png)
+
+**方法示意图**：
+
+![方法示意图示例](docs/images/sample-flowchart.png)
+
+**运行过程**：
+
+![运行过程示例](docs/images/usage-screenshot.png)
+
+---
+
+## 大概要多久、花多少
+
+- **时间**：5 h ~ 20h，主要卡在建模和求解的计算量上，题目越难越久。
+- **AI 用量**：一道题会拆成几个小问，小问越多、跑得越贵。**完整模式**约 100~150 个子任务，**快速模式**约 100 个）。
+- 运行**期间不要打断**；实在断了，加 `resume: true` 从断点接着跑。
+- **注意**：一次运行会消耗大量token（以deepseek-flash为例，一次运行预计消耗1亿token）请提前做好准备
+
+---
+
+## 常见问题
 
 **中途失败了怎么办？**
-每个环节做完都会自动存档（带运行标记），从断点继续跑，不用从头再来。换题目、换参数会自动拒绝旧存档，不会把上一次的结果串进来。
+每一步完成都会写进一个 `state.json` 状态文件。中断后重跑并加 `resume: true`，从断点继续。它还会记住是"哪道题"的存档——**换题会自动不用旧数据**，不会串。
 
 **论文格式合规吗？**
-国赛模板内置往届实战经验：摘要专用页、不超过 20 页、不含参赛身份信息、支撑材料清单、AI 工具使用声明，排版编译两遍出 PDF。
+合规。国赛模板内置：摘要专用页、正文 ≤ 20 页、不含参赛者身份信息、支撑材料清单、AI 工具使用声明，编译两遍出 PDF。
 
 **支持美赛吗？**
-支持（`competition: "mcm"`）：英文写作、美式摘要页、美式纸张、英文引用格式。
+支持（英文论文路径）。但美赛目前走的是**手动兜底**流程，国赛是主推、最稳的。
+
 
 ---
 
-## 安装（详细）
+## 环境依赖
 
-### DeepSeek Harness（推荐）
-
-```bash
-bash ~/math-model-skill/install.sh --dsh
-# 或手动：ln -sfn ~/math-model-skill/skills/math-model ~/.dsh/skills/math-model
-```
-
-用链接方式安装：只维护一份代码，改一处所有地方同步生效，不用重复拷贝。
-
-### Claude Code
-
-```bash
-bash ~/math-model-skill/install.sh --claude
-```
-
-### 环境依赖
-
-| 依赖 | 用途 | 缺失影响 |
-|---|---|---|
-| `pdftotext`（poppler-utils） | 读取 PDF 里的题目文字 | 只能手动粘贴题目 |
-| `xelatex` + ctex（TeX Live） | 论文排版成 PDF | 无法产出 PDF |
-| `python3` + numpy/scipy/pandas/matplotlib/openpyxl | 运行建模代码 | 无法执行求解 |
-| Noto Sans CJK SC 字体 | 图表里的中文 | 中文显示为方框 |
-
-安装脚本会自动检测这些依赖，缺了什么会告诉你怎么办。
+| 依赖                                      | 干嘛用              | 缺了会怎样     |
+| ----------------------------------------- | ------------------- | -------------- |
+| `pdftotext`（poppler-utils）              | 读题目 PDF 里的文字 | 只能手动粘题目 |
+| `xelatex` + ctex（TeX Live）              | 排版出 PDF          | 出不了论文     |
+| `python3` + numpy/scipy/pandas/matplotlib | 跑建模代码          | 算不了结果     |
+| Noto Sans CJK SC 中文字体                 | 图/文里的中文       | 中文变方框     |
 
 ---
 
-## 配置
+## 想自己调参数
 
-常用可调参数：
+由你在 AI 会话里调（工具调用参数），常用四个：
 
-| 参数 | 说明 |
-|---|---|
-| `competition` | `"cumcm"`（国赛，默认）／ `"mcm"`（美赛：英文、美式摘要页） |
-| `mode` | `"full"`（完整模式，默认，约 110~160 个 AI 助手）／ `"quick"`（快速模式，约 30-40 个） |
-| `templateDir` | 论文模板目录；不填会自动找 |
-| `outputDir` | 结果输出到哪（默认 `./math-model-output`） |
-| `resumeFrom` / `skipPhases` | 从上次中断处继续 / 跳过某些环节 |
-| `innovationStrictness` | `strict` / `standard` / `loose`（对"创新点"的严格程度） |
-
-**预计耗时**：30 分钟 ~ 10 小时，主要看反复打磨和代码运行的耗时，问题越难越久。运行期间请勿打断；中断了用 `resumeFrom` 接着跑。
+| 参数                   | 是什么                                                |
+| ---------------------- | ----------------------------------------------------- |
+| `mode`                 | `full`（完整，默认）/ `quick`（快，检查轮少）         |
+| `innovationStrictness` | 对"创新点"的严格程度：`strict` / `standard` / `loose` |
+| `outputDir`            | 结果输出到哪（默认 `./math-model-output`）            |
+| `resume`               | `true` 时从断点续跑（默认 `false`）                   |
 
 ---
 
@@ -144,32 +139,20 @@ bash ~/math-model-skill/install.sh --claude
 
 ```
 math-model/
-├── skills/math-model/            # 技能本体（一份代码两处用）
-│   ├── SKILL.md                  # DeepSeek Harness 版说明（主 agent 操作手册）
-│   ├── SKILL.claude.md           # Claude Code 版说明（主 agent 操作手册）
-│   ├── prompts/                  # 审题阶段的三份指令
-│   ├── templates/                # 论文模板 + 组装工具
-│   ├── workflows/                # 主流程脚本 + 元数据
-│   └── docs/                     # 内部执行规范（writing-and-format.md：写作/图表/格式/模板/创新唯一真源）
-├── install.sh                    # 一键安装（--dsh / --claude / --both）
-├── env-check.sh                  # 环境依赖自检
-├── docs/                         # 总览图 + 蒸馏/审计设计文档（paper-structure-distillation.md 等）
-└── .claude-plugin/plugin.json
+├── skills/math-model/        # 技能本体：操作的说明书 + 各环节模板 + 论文模板
+├── install.sh                # 一键安装（--dsh / --claude / --both）
+├── env-check.sh              # 环境自检
+└── docs/                     # 总览图 + 设计文档
 ```
 
----
 
-## 变更历史
 
-- **v2.7.0**：治「AI味」与「论文无图」两大致命差异；并新增**外部数据收集**能力（真实比赛常需自行查数据）。① 写作范式：注入国一论文「推导叙事」风格（先想后写、公式「动机→推导→含义」三步走、术语用人话解释一次、删啰嗦铺垫），并新增范文基准（2024 板凳龙 A053）；② 交叉审查新增可读性维度（推导链 / 术语堆砌 / 内部流程术语检查），并反向校验每个 `\includegraphics` 文件真实存在（防空 figure 环境）；③ 移除「必须引用内部评审/重设计历史」等强制条款，禁止「对抗性审查 / 模型重设计 / adversarialFindings」等内部流程字样泄漏进论文；④ 图表分工：代码阶段出结果图，**写作 agent 按需自绘示意图**（几何示意 / 方法流程图 / 方案图），命名 `fig_*_示意图_*`，CJK 字体规范同求解阶段；⑤ **外部数据收集（Phase 4.0a）**：审题后评估是否需要外部数据（无附件 / 附件不足 / 题目明确要求查数据）→ 搜权威源 → 下载清洗 → 落盘 `data/external/`，每条记录来源 URL + 获取日期，接入 EDA / 问题分析 / 求解 / 数据验证 / 写作；**禁止编造数据**，找不到标 NOT_FOUND，外部数据在论文中必须列出出处；⑥ **文档即共享打通到入口**：Stage 1（提纯/审题/选题）产物由主 agent 落盘 `intermediates/00-problem.json`（SKILL.md Step 5），workflow 启动 `load-stage1` agent 优先 `Read` 该文件、`args.problem` 仅作 fallback；workflow 内部再生成 `intermediates/00-problem.md` 作为全文共享载体（19+ 处 agent 不再内联全文、需要时 Read）——从 Stage 1 到 Stage 2 全链路文档共享，可追溯、可断点恢复
-- **v2.6.0**：对齐国一优秀论文的章节骨架（问题分析 / 数据预处理与探索性分析 / 灵敏度与稳健性分析 / 模型的评价与推广）；信息流重构为「文档即共享 + 规范单一真源」（`skill/docs/writing-and-format.md`，写作/图表/编译 agent 直接 Read）；CHECKPOINT 轻量化；大规模死代码清理（`PAPER_RULES` 死配置字段等）；`SKILL.md` 瘦身为「主 agent 操作手册」
-- **v2.5.0**：单一建模方案 agent（原 3 角度提案+综合合并，少 3-4 个 agent）；写作上下文按需裁剪（根治 agent 输入超限）；EDA / 事实源表等下游改读真实落盘文档；新增问题分析 / EDA 数据探索 agent；验证增至 6 维度 + 稳健性报告
-- **v2.4.0**：修掉一个会导致国赛流程中途崩溃的 bug；AI 各环节的修改现在会真正写进最终 PDF；自动存档加了运行标记防串数据；模板路径自动定位；快速模式；修掉多处"看起来在检查其实没检查"的质量门
-- v2.3.0：写作环节重构（先定事实清单，按顺序一章章写，再交叉检查）
-- v2.2.0：同步实际运行版本、修文档和代码不一致、删无用代码
+## License & 致谢
+
+MIT License。
+
+工具内嵌了第三方技能 **diagram-design**（用于自动画方法流程图），来自 [cathrynlavery/diagram-design](https://github.com/cathrynlavery/diagram-design)，MIT License ©2025 Cathryn Lavery（上游 commit `2724fd2`），完整许可证与来源见 `skills/math-model/tools/diagram-design/` 下的 `LICENSE` / `THIRD_PARTY_LICENSES.md` / `VENDOR.md`。
 
 ---
 
-## License
-
-MIT
+*完整实现细节、历史改动见 `git log` 与 `skills/math-model` 内的设计文档。*

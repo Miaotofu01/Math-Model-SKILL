@@ -1,0 +1,55 @@
+{
+  "schema": "v1",
+  "perQuestionStages": ["literature","data","assumption","formulation","implementation","computation","sanity","visualization","robustness","localComplete"],
+  "runLevelStages": ["crossReview","writing","finalReview"],
+  "prompts": {
+    "literature": "phase-01-literature.md",
+    "data": "phase-02-data.md",
+    "assumption": "phase-03-assumption.md",
+    "formulation": "phase-04-formulation.md",
+    "implementation": "phase-05-implementation.md",
+    "computation": "phase-06-computation.md",
+    "sanity": "phase-07-sanity.md",
+    "visualization": "phase-08-visualization.md",
+    "robustness": "phase-09-robustness.md",
+    "localComplete": "phase-10-localComplete.md",
+    "crossReview": "phase-11-crossReview.md",
+    "writing": "phase-12-writing.md",
+    "finalReview": "phase-13-finalReview.md"
+  },
+  "deps": {
+    "literature": ["00-problem"],
+    "data": ["00-problem", "{id}/01-literature"],
+    "assumption": ["00-problem", "{id}/01-literature", "{id}/02-data"],
+    "formulation": ["00-problem", "{id}/02-data", "{id}/03-assumptions"],
+    "implementation": ["{id}/04-formulation", "{id}/02-data"],
+    "computation": ["{id}/05-implementation", "{id}/04-formulation"],
+    "sanity": ["{id}/06-computation", "{id}/04-formulation"],
+    "visualization": ["{id}/06-computation", "{id}/07-sanity"],
+    "robustness": ["{id}/06-computation", "{id}/04-formulation", "{id}/07-sanity"],
+    "localComplete": ["{id}/01..09 全部阶段产物"],
+    "crossReview": ["全部小问的 10-completed"],
+    "writing": ["全部产物"],
+    "finalReview": ["12-writing", "全部产物"]
+  },
+  "gates": [
+    { "before": "implementation", "boundary": "solve-start", "check": "该问 04-formulation 产物存在且 state.gates[该问.formulation]=PASS" },
+    { "before": "writing", "boundary": "write-start", "check": "所有小问 localComplete 且 crossReview PASS" },
+    { "before": "finalReview", "boundary": "final-start", "check": "writing 产物完整" }
+  ],
+  "outputLayout": {
+    "literature": "{id}/01-literature/literature.md",
+    "data": "{id}/02-data/eda.md",
+    "assumption": "{id}/03-assumptions/assumption-v01.md",
+    "formulation": "{id}/04-formulation/draft.md",
+    "implementation": "{id}/05-implementation/code/",
+    "computation": "{id}/06-computation/results.json",
+    "sanity": "{id}/07-sanity/sanity-report.md",
+    "visualization": "{id}/08-visualization/figure-manifest.md",
+    "robustness": "{id}/09-robustness/robustness.md",
+    "localComplete": "{id}/10-completed/question-summary.md",
+    "crossReview": "11-cross-review/cross-question-report.md",
+    "writing": "12-writing/paper-sections/",
+    "finalReview": "13-final/final-paper.tex"
+  }
+}

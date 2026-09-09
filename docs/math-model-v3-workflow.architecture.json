@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "math-model：数模竞赛 AI 全流程编排",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1200,
+      580
+    ],
+    "legend": {
+      "entries": {
+        "external": {
+          "label": "人 / 外部输入"
+        },
+        "backend": {
+          "label": "AI 阶段（子代理）"
+        },
+        "cloud": {
+          "label": "代码执行"
+        },
+        "security": {
+          "label": "评审 / 门禁"
+        },
+        "database": {
+          "label": "状态与产物"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "problem",
+      "type": "external",
+      "label": "竞赛题目",
+      "sublabel": "PDF + 附件数据",
+      "pos": [
+        40,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ]
+    },
+    {
+      "id": "triage",
+      "type": "backend",
+      "label": "审题 + 选题",
+      "sublabel": "提纯 → 并行审题 → 推荐",
+      "pos": [
+        174,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ],
+      "tag": "并行子代理"
+    },
+    {
+      "id": "decide",
+      "type": "external",
+      "label": "你拍板选一道",
+      "sublabel": "全程唯一决策",
+      "pos": [
+        308,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ]
+    },
+    {
+      "id": "research",
+      "type": "backend",
+      "label": "文献 + 数据",
+      "sublabel": "文献池 · EDA · 外部数据",
+      "pos": [
+        506,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ]
+    },
+    {
+      "id": "formulate",
+      "type": "backend",
+      "label": "假设 + 公式化",
+      "sublabel": "3 视角评审团 ⇄ 修订",
+      "pos": [
+        640,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ],
+      "tag": "最多 3 轮"
+    },
+    {
+      "id": "solve",
+      "type": "cloud",
+      "label": "求解 + 验证",
+      "sublabel": "代码真跑 · Sanity · 鲁棒性",
+      "pos": [
+        774,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ]
+    },
+    {
+      "id": "write",
+      "type": "backend",
+      "label": "复核 + 写作",
+      "sublabel": "事实清单 → 逐章 → 交叉检查",
+      "pos": [
+        908,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ]
+    },
+    {
+      "id": "final",
+      "type": "security",
+      "label": "终审 + 排版",
+      "sublabel": "摘要数字溯源 → PDF",
+      "pos": [
+        1042,
+        210
+      ],
+      "size": [
+        108,
+        60
+      ],
+      "tag": "国赛 / 美赛模板"
+    },
+    {
+      "id": "review",
+      "type": "security",
+      "label": "3 视角评审团",
+      "sublabel": "三视角并行评审",
+      "pos": [
+        640,
+        420
+      ],
+      "size": [
+        108,
+        56
+      ]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "state.json",
+      "sublabel": "断点续跑 · 决策日志",
+      "pos": [
+        774,
+        420
+      ],
+      "size": [
+        108,
+        56
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "阶段一 · 审题 + 选题",
+      "wraps": [
+        "problem",
+        "triage",
+        "decide"
+      ],
+      "pad": 30
+    },
+    {
+      "kind": "region",
+      "label": "阶段二 · Workflow 逐问循环（每个小问跑一遍）",
+      "wraps": [
+        "research",
+        "formulate",
+        "solve",
+        "write",
+        "final",
+        "review",
+        "state"
+      ],
+      "pad": 30
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "from": "problem",
+      "to": "triage"
+    },
+    {
+      "id": "c2",
+      "from": "triage",
+      "to": "decide",
+      "label": "推荐选题",
+      "labelAt": [
+        295,
+        304
+      ]
+    },
+    {
+      "id": "c3",
+      "from": "decide",
+      "to": "research",
+      "label": "选定一道",
+      "variant": "emphasis",
+      "labelAt": [
+        461,
+        304
+      ]
+    },
+    {
+      "id": "c4",
+      "from": "research",
+      "to": "formulate"
+    },
+    {
+      "id": "c5",
+      "from": "formulate",
+      "to": "solve",
+      "label": "方案 PASS",
+      "variant": "emphasis",
+      "labelAt": [
+        761,
+        304
+      ]
+    },
+    {
+      "id": "c6",
+      "from": "solve",
+      "to": "write",
+      "label": "全部小问完成",
+      "labelAt": [
+        895,
+        304
+      ]
+    },
+    {
+      "id": "c7",
+      "from": "write",
+      "to": "final"
+    },
+    {
+      "id": "c8",
+      "from": "formulate",
+      "to": "review",
+      "label": "送审",
+      "variant": "dashed",
+      "labelAt": [
+        653,
+        290
+      ]
+    },
+    {
+      "id": "c9",
+      "from": "review",
+      "to": "formulate",
+      "label": "修订",
+      "variant": "dashed",
+      "labelAt": [
+        735,
+        330
+      ]
+    },
+    {
+      "id": "c10",
+      "from": "solve",
+      "to": "state",
+      "label": "每阶段落盘",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        884,
+        330
+      ]
+    },
+    {
+      "id": "c11",
+      "from": "solve",
+      "to": "research",
+      "label": "下一小问",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "正确性第一",
+      "items": [
+        "摘要每个数字都要在正文找到出处，并与代码真实运行结果核对",
+        "建模方案过 3 视角评审团（judge / adversary / application），最多 3 轮修订",
+        "求解结果过 Sanity 数值门禁，不达标就继续改",
+        "3 处门禁：求解前 / 写作前 / 终审前；连续失败 2 次降级收敛"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "逐问串行 · 可续跑",
+      "items": [
+        "一道题多个小问自动拆开，逐问独立建模、求解、写解答",
+        "每阶段落盘 state.json + ledger.md：门禁 / 产物 / 决策日志",
+        "中断后加 resume: true 按 problemId 从断点续跑，换题自动拒绝旧存档"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "交付合规论文",
+      "items": [
+        "国赛模板内置：摘要专用页、页边距、附录、AI 使用声明",
+        "美赛走英文路径：Summary Sheet、APA 引用、全文 ≤25 页",
+        "两遍 xelatex 编译出 PDF；完整模式约 70~120 个子代理"
+      ]
+    }
+  ]
+}
