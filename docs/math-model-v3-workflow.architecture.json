@@ -186,7 +186,7 @@
     },
     {
       "kind": "region",
-      "label": "阶段二 · Workflow 全自动执行",
+      "label": "阶段二 · Workflow 逐问循环（每个小问跑一遍）",
       "wraps": [
         "research",
         "formulate",
@@ -291,6 +291,15 @@
         884,
         330
       ]
+    },
+    {
+      "id": "c11",
+      "from": "solve",
+      "to": "research",
+      "label": "下一小问",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top"
     }
   ],
   "cards": [

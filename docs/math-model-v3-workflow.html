@@ -4913,7 +4913,7 @@
         <text x="18" y="198" class="t-cloud" font-size="9" font-weight="600">阶段一 · 审题 + 选题</text>
 
         <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" x="476" y="180" width="704" height="316" rx="12" class="c-region" stroke-width="1"/>
-        <text x="484" y="198" class="t-cloud" font-size="9" font-weight="600">阶段二 · Workflow 全自动执行</text>
+        <text x="484" y="198" class="t-cloud" font-size="9" font-weight="600">阶段二 · Workflow 逐问循环（每个小问跑一遍）</text>
 
         <!-- Connection paths (before components for correct z-order) -->
         <path data-edge-from="problem" data-edge-to="triage" data-edge-key="0" data-edge-id="c1" data-composition-points="148,240;174,240" d="M 148 240 L 174 240" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
@@ -4926,6 +4926,7 @@
         <path data-edge-from="formulate" data-edge-to="review" data-edge-label="送审" data-edge-key="7" data-edge-id="c8" data-composition-points="694,270;694,420" d="M 694 270 L 694 420" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="review" data-edge-to="formulate" data-edge-label="修订" data-edge-key="8" data-edge-id="c9" data-composition-points="694,420;694,270" d="M 694 420 L 694 270" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="solve" data-edge-to="state" data-edge-label="每阶段落盘" data-edge-key="9" data-edge-id="c10" data-composition-points="828,270;828,420" d="M 828 270 L 828 420" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="solve" data-edge-to="research" data-edge-label="下一小问" data-edge-key="10" data-edge-id="c11" data-composition-points="828,210;828,186;560,186;560,210" d="M 828 210 L 828 194 Q 828 186 820 186 L 568 186 Q 560 186 560 194 L 560 210" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Components -->
         <g id="node-problem" data-node-id="problem" data-node-label="竞赛题目" tabindex="0" role="button" aria-label="Focus 竞赛题目, PDF + 附件数据, 阶段一 · 审题 + 选题" aria-pressed="false" data-node-kind="external" data-node-sublabel="PDF + 附件数据" data-node-context="阶段一 · 审题 + 选题">
@@ -4964,8 +4965,8 @@
         <text data-detail="context" x="362" y="254" class="t-muted" font-size="9" text-anchor="middle">全程唯一决策</text>
         </g>
 
-        <g id="node-research" data-node-id="research" data-node-label="文献 + 数据" tabindex="0" role="button" aria-label="Focus 文献 + 数据, 文献池 · EDA · 外部数据, 阶段二 · Workflow 全自动执行" aria-pressed="false" data-node-kind="backend" data-node-sublabel="文献池 · EDA · 外部数据" data-node-context="阶段二 · Workflow 全自动执行">
-          <title>文献 + 数据 · 文献池 · EDA · 外部数据 · 阶段二 · Workflow 全自动执行</title>
+        <g id="node-research" data-node-id="research" data-node-label="文献 + 数据" tabindex="0" role="button" aria-label="Focus 文献 + 数据, 文献池 · EDA · 外部数据, 阶段二 · Workflow 逐问循环（每个小问跑一遍）" aria-pressed="false" data-node-kind="backend" data-node-sublabel="文献池 · EDA · 外部数据" data-node-context="阶段二 · Workflow 逐问循环（每个小问跑一遍）">
+          <title>文献 + 数据 · 文献池 · EDA · 外部数据 · 阶段二 · Workflow 逐问循环（每个小问跑一遍）</title>
           <rect x="506" y="210" width="108" height="60" rx="6" class="c-mask"/>
           <rect x="506" y="210" width="108" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(512 216) scale(0.6875)">
@@ -4975,8 +4976,8 @@
         <text data-detail="context" x="560" y="254" class="t-muted" font-size="7.2" text-anchor="middle">文献池 · EDA · 外部数据</text>
         </g>
 
-        <g id="node-formulate" data-node-id="formulate" data-node-label="假设 + 公式化" tabindex="0" role="button" aria-label="Focus 假设 + 公式化, 3 视角评审团 ⇄ 修订, 阶段二 · Workflow 全自动执行" aria-pressed="false" data-node-kind="backend" data-node-sublabel="3 视角评审团 ⇄ 修订" data-node-tag="最多 3 轮" data-node-context="阶段二 · Workflow 全自动执行">
-          <title>假设 + 公式化 · 3 视角评审团 ⇄ 修订 · 阶段二 · Workflow 全自动执行 · 最多 3 轮</title>
+        <g id="node-formulate" data-node-id="formulate" data-node-label="假设 + 公式化" tabindex="0" role="button" aria-label="Focus 假设 + 公式化, 3 视角评审团 ⇄ 修订, 阶段二 · Workflow 逐问循环（每个小问跑一遍）" aria-pressed="false" data-node-kind="backend" data-node-sublabel="3 视角评审团 ⇄ 修订" data-node-tag="最多 3 轮" data-node-context="阶段二 · Workflow 逐问循环（每个小问跑一遍）">
+          <title>假设 + 公式化 · 3 视角评审团 ⇄ 修订 · 阶段二 · Workflow 逐问循环（每个小问跑一遍） · 最多 3 轮</title>
           <rect x="640" y="210" width="108" height="60" rx="6" class="c-mask"/>
           <rect x="640" y="210" width="108" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(646 216) scale(0.6875)">
@@ -4987,8 +4988,8 @@
         <text data-detail="fine" x="694" y="262" class="t-backend" font-size="7" text-anchor="middle">最多 3 轮</text>
         </g>
 
-        <g id="node-solve" data-node-id="solve" data-node-label="求解 + 验证" tabindex="0" role="button" aria-label="Focus 求解 + 验证, 代码真跑 · Sanity · 鲁棒性, 阶段二 · Workflow 全自动执行" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="代码真跑 · Sanity · 鲁棒性" data-node-context="阶段二 · Workflow 全自动执行">
-          <title>求解 + 验证 · 代码真跑 · Sanity · 鲁棒性 · 阶段二 · Workflow 全自动执行</title>
+        <g id="node-solve" data-node-id="solve" data-node-label="求解 + 验证" tabindex="0" role="button" aria-label="Focus 求解 + 验证, 代码真跑 · Sanity · 鲁棒性, 阶段二 · Workflow 逐问循环（每个小问跑一遍）" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="代码真跑 · Sanity · 鲁棒性" data-node-context="阶段二 · Workflow 逐问循环（每个小问跑一遍）">
+          <title>求解 + 验证 · 代码真跑 · Sanity · 鲁棒性 · 阶段二 · Workflow 逐问循环（每个小问跑一遍）</title>
           <rect x="774" y="210" width="108" height="60" rx="6" class="c-mask"/>
           <rect x="774" y="210" width="108" height="60" rx="6" class="c-cloud" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(780 216) scale(0.6875)">
@@ -4998,8 +4999,8 @@
         <text data-detail="context" x="828" y="254" class="t-muted" font-size="6.4" text-anchor="middle">代码真跑 · Sanity · 鲁棒性</text>
         </g>
 
-        <g id="node-write" data-node-id="write" data-node-label="复核 + 写作" tabindex="0" role="button" aria-label="Focus 复核 + 写作, 事实清单 → 逐章 → 交叉检查, 阶段二 · Workflow 全自动执行" aria-pressed="false" data-node-kind="backend" data-node-sublabel="事实清单 → 逐章 → 交叉检查" data-node-context="阶段二 · Workflow 全自动执行">
-          <title>复核 + 写作 · 事实清单 → 逐章 → 交叉检查 · 阶段二 · Workflow 全自动执行</title>
+        <g id="node-write" data-node-id="write" data-node-label="复核 + 写作" tabindex="0" role="button" aria-label="Focus 复核 + 写作, 事实清单 → 逐章 → 交叉检查, 阶段二 · Workflow 逐问循环（每个小问跑一遍）" aria-pressed="false" data-node-kind="backend" data-node-sublabel="事实清单 → 逐章 → 交叉检查" data-node-context="阶段二 · Workflow 逐问循环（每个小问跑一遍）">
+          <title>复核 + 写作 · 事实清单 → 逐章 → 交叉检查 · 阶段二 · Workflow 逐问循环（每个小问跑一遍）</title>
           <rect x="908" y="210" width="108" height="60" rx="6" class="c-mask"/>
           <rect x="908" y="210" width="108" height="60" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(914 216) scale(0.6875)">
@@ -5009,8 +5010,8 @@
         <text data-detail="context" x="962" y="254" class="t-muted" font-size="6.4" text-anchor="middle">事实清单 → 逐章 → 交叉检查</text>
         </g>
 
-        <g id="node-final" data-node-id="final" data-node-label="终审 + 排版" tabindex="0" role="button" aria-label="Focus 终审 + 排版, 摘要数字溯源 → PDF, 阶段二 · Workflow 全自动执行" aria-pressed="false" data-node-kind="security" data-node-sublabel="摘要数字溯源 → PDF" data-node-tag="国赛 / 美赛模板" data-node-context="阶段二 · Workflow 全自动执行">
-          <title>终审 + 排版 · 摘要数字溯源 → PDF · 阶段二 · Workflow 全自动执行 · 国赛 / 美赛模板</title>
+        <g id="node-final" data-node-id="final" data-node-label="终审 + 排版" tabindex="0" role="button" aria-label="Focus 终审 + 排版, 摘要数字溯源 → PDF, 阶段二 · Workflow 逐问循环（每个小问跑一遍）" aria-pressed="false" data-node-kind="security" data-node-sublabel="摘要数字溯源 → PDF" data-node-tag="国赛 / 美赛模板" data-node-context="阶段二 · Workflow 逐问循环（每个小问跑一遍）">
+          <title>终审 + 排版 · 摘要数字溯源 → PDF · 阶段二 · Workflow 逐问循环（每个小问跑一遍） · 国赛 / 美赛模板</title>
           <rect x="1042" y="210" width="108" height="60" rx="6" class="c-mask"/>
           <rect x="1042" y="210" width="108" height="60" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(1048 216) scale(0.6875)">
@@ -5022,8 +5023,8 @@
         <text data-detail="fine" x="1096" y="262" class="t-security" font-size="7" text-anchor="middle">国赛 / 美赛模板</text>
         </g>
 
-        <g id="node-review" data-node-id="review" data-node-label="3 视角评审团" tabindex="0" role="button" aria-label="Focus 3 视角评审团, 三视角并行评审, 阶段二 · Workflow 全自动执行" aria-pressed="false" data-node-kind="security" data-node-sublabel="三视角并行评审" data-node-context="阶段二 · Workflow 全自动执行">
-          <title>3 视角评审团 · 三视角并行评审 · 阶段二 · Workflow 全自动执行</title>
+        <g id="node-review" data-node-id="review" data-node-label="3 视角评审团" tabindex="0" role="button" aria-label="Focus 3 视角评审团, 三视角并行评审, 阶段二 · Workflow 逐问循环（每个小问跑一遍）" aria-pressed="false" data-node-kind="security" data-node-sublabel="三视角并行评审" data-node-context="阶段二 · Workflow 逐问循环（每个小问跑一遍）">
+          <title>3 视角评审团 · 三视角并行评审 · 阶段二 · Workflow 逐问循环（每个小问跑一遍）</title>
           <rect x="640" y="420" width="108" height="56" rx="6" class="c-mask"/>
           <rect x="640" y="420" width="108" height="56" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(646 426) scale(0.6875)">
@@ -5034,8 +5035,8 @@
         <text data-detail="context" x="694" y="462" class="t-muted" font-size="9" text-anchor="middle">三视角并行评审</text>
         </g>
 
-        <g id="node-state" data-node-id="state" data-node-label="state.json" tabindex="0" role="button" aria-label="Focus state.json, 断点续跑 · 决策日志, 阶段二 · Workflow 全自动执行" aria-pressed="false" data-node-kind="database" data-node-sublabel="断点续跑 · 决策日志" data-node-context="阶段二 · Workflow 全自动执行">
-          <title>state.json · 断点续跑 · 决策日志 · 阶段二 · Workflow 全自动执行</title>
+        <g id="node-state" data-node-id="state" data-node-label="state.json" tabindex="0" role="button" aria-label="Focus state.json, 断点续跑 · 决策日志, 阶段二 · Workflow 逐问循环（每个小问跑一遍）" aria-pressed="false" data-node-kind="database" data-node-sublabel="断点续跑 · 决策日志" data-node-context="阶段二 · Workflow 逐问循环（每个小问跑一遍）">
+          <title>state.json · 断点续跑 · 决策日志 · 阶段二 · Workflow 逐问循环（每个小问跑一遍）</title>
           <rect x="774" y="420" width="108" height="56" rx="6" class="c-mask"/>
           <rect x="774" y="420" width="108" height="56" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(780 426) scale(0.6875)">
@@ -5077,6 +5078,10 @@
         <g data-detail="context" data-edge-from="solve" data-edge-to="state" data-edge-label="每阶段落盘" data-edge-key="9" data-edge-id="c10">
           <rect x="855" y="320" width="58" height="14" rx="3" class="c-mask"/>
           <text x="884" y="330" class="t-messagebus" font-size="8" text-anchor="middle">每阶段落盘</text>
+        </g>
+        <g data-detail="context" data-edge-from="solve" data-edge-to="research" data-edge-label="下一小问" data-edge-key="10" data-edge-id="c11">
+          <rect x="669.8" y="166" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="694" y="176" class="t-messagebus" font-size="8" text-anchor="middle">下一小问</text>
         </g>
 
         <!-- Legend -->
