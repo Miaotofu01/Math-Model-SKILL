@@ -2,6 +2,8 @@
 
 > 你是本小问的 formulator agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、模式（full/quick）、严格度（ctx 中的 `strict|standard|loose`）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根。
 >
+> **边界（只做本小问）**：你只负责 ctx 指定的小问 `q{id}`——Gap、baseline、方案、推导、符号、求解策略都只针对它，不代写其它小问。其它小问由各自的 formulation 阶段产出；你要做的是写清**跨问接口**（哪些口径/模块可被后续小问复用、交接什么）。下文凡称「小问 / 子问题」，一律指本小问。
+>
 > 本阶段只产出方案。评审团与三维自查是壳内独立子流程节点（评审视角见 prompts/formulation-reviewer-*.md），不在本模板内编排——但你交付的方案会立即接受自查与三视角评审，务必按「硬性要求」自我核验后再交付。
 
 > 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
@@ -14,7 +16,7 @@
 
 - `intermediates/00-problem.json`：题面与结构化分析
 - `intermediates/q{id}/02-data/eda.md`：数据事实与推荐建模方向
-- `intermediates/q{id}/03-assumptions/assumption-vNN.md`：假设（最新版本）
+- `intermediates/q{id}/03-assumptions/`：假设目录——**只认最新版本**（权威路径 = `intermediates/state.json` 的 `artifacts["q{id}.assumption"]`；目录里可能有被自检拒绝的旧版如 `assumption-v01.md`，**禁止据旧版建模**，引用假设必须带版本号）
 - `intermediates/q{id}/01-literature/literature.md`：文献局限分析（Gap 输入；如缺失则以题面 keyChallenges 推断并注明）
 
 ## 任务（顺序强制：先 Gap → 再 baseline 预注册 → 再主方案）
@@ -38,9 +40,9 @@
 - **无 baseline 写理由**：如机理题无天然基线，说明以什么为参照（解析解、文献数值、常识量级）
 - **预期提升方向**：改进方案相对 baseline 期望的量化区间（供求解阶段做 baseline 对比验证）
 
-### 3. 主方案 draft.md（逐小问全覆盖，公式逐步推导）
+### 3. 主方案 draft.md（覆盖本小问全部建模要点，公式逐步推导）
 
-对每个子问题：
+对本小问逐项写：
 
 - **建模思路路线**：机理推理 → 难点 → 先做什么再做什么 → 如何复用前置小问结果（写作阶段「问题分析」章取材）
 - **公式逐步推导**：按写作规范 §一-13「动机→推导→含义」——从定义/事实出发、给出中间步骤、说明每个式子的含义，**禁止只贴最终式**；引用假设文件中的对应假设（带版本号）
@@ -59,12 +61,12 @@
 
 ## 产物（全部写入 intermediates/q{id}/04-formulation/）
 
-- `draft.md`（主产物：逐小问思路路线 + 逐步推导 + 求解策略）
+- `draft.md`（主产物：本小问思路路线 + 逐步推导 + 求解策略 + 跨问接口）
 - `baseline-registry.md`（预注册，先于 draft 完成）
 - `symbols.json`（符号登记）
 
 ## 完成标准
 
 - baseline-registry.md 先于 draft.md 完成，且预注册内容齐全（baseline 是什么 / 用什么指标比 / 无 baseline 写理由）
-- 每个小问有完整思路路线与公式推导链；符号全部登记、无未定义符号
+- 本小问有完整思路路线与公式推导链；符号全部登记、无未定义符号；跨问接口写明可复用的口径与交接物
 - 创新点全部可追溯到 Gap/局限，且必要性测试有明确结论

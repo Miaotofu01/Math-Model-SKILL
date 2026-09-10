@@ -11,7 +11,6 @@ const TRY = 2, RND = A.mode === "quick" ? 2 : 3
 const T = { literature: "文献调研", data: "数据探索", assumption: "假设定义", formulation: "公式化", implementation: "实现", computation: "计算", sanity: "Sanity", visualization: "可视化", robustness: "鲁棒性", localComplete: "小问完成", crossReview: "跨问复核", writing: "写作", finalReview: "终审" }
 const PERS = ["judge", "adversary", "application"]
 const BRIEF = "返回{status,artifact_path,summary}；status∈PASS/DRAFT/NEEDS_REVISION/FAIL/SKIPPED/PASS_WITH_WARNING；≤200字"
-const LG = "追加 ledger：<key>: <status> <产物> <50字>"
 let dg = false
 let envPy = "python3"   // 默认系统 python；ensureEnv 后按 env-report.json 更新
 const PYLINE = () => `\n## Python 环境（以 ${IM}/env-report.json 为准）：${envPy}；所有 python 执行一律用该路径；依赖缺失→优先 venv 安装、失败降级纯 numpy/scipy，绝不因缺库 FAIL`
@@ -74,7 +73,7 @@ function stagePrompt(q, s, m) {
     `## 阶段 ${k}：一次并列 Read ${PD}/_common.md 与 ${PD}/${m.prompts[s]}（公共纪律 + 本阶段模板）、状态 ${IM}/state.json、依赖 ${deps||"无"}、可复用资产清单 ${MANIFESTS.join("、")}`,
     `执行：按两份模板执行（冲突时以阶段模板 ${m.prompts[s]} 为准）；技能根 ${SD}（规范 ${SD}/docs/、工具 ${SD}/scripts/，用法见 _common.md §6）；产物写 ${IM}/${lay}（mkdir -p）`,
     assetsLine(true),
-    `完成后按 ${PD}/state-schema.md 更新 state.json（artifacts 一律用相对 intermediates/ 路径），${LG}`,
+    `完成后按 ${PD}/state-schema.md 更新 state.json（artifacts 一律用相对 intermediates/ 路径；就地合并，其余键保留），并追加 ledger 一行 \`${k}: <status> <产物相对路径> <≤50字>\``,
     `${BRIEF}；ctx q=${q||"全题"} mode=${A.mode||"full"} strict=${STRICT} date=${new Date().toISOString().slice(0,10)}`,
     PYLINE(),
   ].join("\n")
@@ -83,12 +82,28 @@ function gatePrompt(g, gk, q) {
   return [
     `## 门禁 ${gk}→${g.before}：验证 ${q ? g.check.replace(/该问/g, q) : g.check}；根目录 ${IM}`,
     `工具纪律：一次并列 Read 所需文件再核对，不逐文件往返。`,
-    `按事实置 state.json gates["${gk}"]="PASS"|"FAIL"；${LG}；返回{status:"PASS"|"FAIL",artifact_path:"",summary}`,
+    `按事实置 state.json gates["${gk}"]="PASS"|"FAIL"（就地合并，其余键保留）；追加 ledger 一行 \`${gk}: <PASS|FAIL> - <≤50字：核对了什么、结论依据>\`；返回{status:"PASS"|"FAIL",artifact_path:"",summary:"≤200字"}`,
     PYLINE(),
   ].join("\n")
 }
-const degradePrompt = k => `## 降级 ${k}：连续 ${TRY} 次失败。state.json：gates["${k}"]="SKIPPED"；${LG}；返回{status:"SKIPPED",artifact_path:"",summary}`
-const finalizePrompt = (k, v, r, dr) => `【收束 ${k}】state.json：iter["${k}"]=${r + 1}；gates["${k}"]="${v}"；artifacts["${k}"]="${dr}"；current={"question":null,"stage":null}；${LG}；返回{status:"${v}",artifact_path:"${dr}",summary}` + PYLINE()
+const degradePrompt = k => [
+  `## 降级 ${k}（专职状态节点）：该阶段已连续 ${TRY} 次失败，壳判定不再重试。`,
+  `你的唯一职责是**记录降级事实**：不补做该阶段任务、不产出该阶段产物、不重试。`,
+  `一次并列 Read ${PD}/state-schema.md（§键约定 + §更新职责·失败降级节点）、${IM}/state.json、${IM}/ledger.md 尾部；然后**就地合并** state.json（schema/problemId/其它 question.stage 记录等既有键一律保留，禁止整体覆盖）。`,
+  `写 state.json：gates["${k}"]="SKIPPED"；**不写** iterations/artifacts（该阶段没有可用产物，见 schema）。`,
+  `追加 ledger 一行（append，不删改既有行）：\`${k}: SKIPPED - <≤50字：失败原因与对下游的影响>\``,
+  `返回 {status:"SKIPPED", artifact_path:"", summary:"≤200字：降级原因 + 下游影响"}`,
+  PYLINE(),
+].join("\n")
+const finalizePrompt = (k, v, r, dr) => [
+  `## 公式化收束 ${k}（专职状态节点）：第 ${r} 轮三视角评审结束，子流程结论 = ${v}。`,
+  `你的唯一职责是**把该结论写进状态文件与账本**：不改产物（draft.md / review-r*.md / self-check.md 只读）、不重跑评审、不补写分析。`,
+  `一次并列 Read ${PD}/state-schema.md（§键约定 + §更新职责·公式化子流程）、${IM}/state.json、${IM}/ledger.md 尾部；然后**就地合并** state.json（schema/problemId/其它 question.stage 记录等既有键一律保留，禁止整体覆盖）。`,
+  `写 state.json：iterations["${k}"] = 读到的旧值 + 1 + ${r}（旧值缺失时取 1 + ${r}；含义 = 本次 formulator 1 次 + 本轮评审 ${r} 轮，多次尝试累加，只增不减）；gates["${k}"]="${v}"（**必须原样写入该值**——本键由评审收敛判定，PASS 已含「仅建议级意见」之意，不得改写为 PASS_WITH_WARNING/DRAFT）；artifacts["${k}"]="${dr}"；current={"question":null,"stage":null}。`,
+  `追加 ledger 一行（append，不删改既有行；本阶段已有 formulator/修订行，继续追加即可）：\`${k}.finalize: ${v} ${dr} <≤50字：第${r}轮三视角结论 + 遗留必须改项去向>\``,
+  `返回 {status:"${v}", artifact_path:"${dr}", summary:"≤200字：轮数 / 三视角结论 / 遗留项去向"}`,
+  PYLINE(),
+].join("\n")
 
 // 公式化子流程：formulator→自查→评审团(3 视角并行)⇄修订（full 最多 3 轮 / quick 最多 2 轮；三评审全 PASS 即收束）
 async function runFormulation(q, m, sc, a) {
@@ -97,9 +112,9 @@ async function runFormulation(q, m, sc, a) {
   const dr = d + "/draft.md"
   const drRel = q + "/04-formulation/draft.md"  // 记录用相对路径（artifacts 契约），写入仍用 dr 绝对路径
   const sf = d + "/self-check.md"
-  const ok1 = await ca(stagePrompt(q, "formulation", m) + (a > 1 ? "\n【第2次】改策略：重写主线或调假设，解决上轮必须改" : "") + `\n【节点1】产方案+baseline预注册，写 ${dr}、${d}/baseline-registry.md；gates["${k}"]="NEEDS_REVISION"`, sc, "formulator")
+  const ok1 = await ca(stagePrompt(q, "formulation", m) + (a > 1 ? "\n【第2次】改策略：重写主线或调假设，解决上轮必须改" : "") + `\n【节点1 · formulator】按阶段模板产本小问方案：${dr}（主产物）+ ${d}/baseline-registry.md（预注册，**先于 draft 完成**）+ ${d}/symbols.json；写完追加 ledger 一行 \`${k}: DRAFT ${drRel} <≤50字>\`，并在 state.json 里**就地合并** gates["${k}"]="NEEDS_REVISION"、artifacts["${k}"]="${drRel}"、current（其余既有键保留，禁止整体覆盖）`, sc, "formulator")
   if (!ok1) return null
-  const ok2 = await ca(`【节点2 自查】读 ${dr}，按数学正确/可实现/创新真实自查，改进写 ${sf}；${BRIEF}（不更新state）`, sc, "selfcheck")
+  const ok2 = await ca(`【节点2 · 三维自查】读 ${dr}，按数学正确 / 可实现 / 创新真实三方面自查（关键处独立重算，不采信草案自述）；结论与需改进项写入 ${sf}；**不改 ${dr}、不改 state.json/ledger.md**（改进由后续修订节点落到 draft）；${BRIEF}`, sc, "selfcheck")
   if (!ok2) return null
   let r = 0
   for (;;) {
@@ -121,7 +136,7 @@ async function runFormulation(q, m, sc, a) {
       await ca(finalizePrompt(k, v, r, drRel), sc, "finalize")
       return { accepted: false, status: v, why: raw.filter(Boolean).map(x => x.summary).join(" | ").slice(0, 300) }
     }
-    const okR = await ca(`【修订r${r}】一次并列 Read ${PD}/_common.md、${dr} 与 ${d}/review-r${r}-*.md；逐条回应（改或说明），覆盖写回 ${dr}；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；${LG}；${BRIEF}（不更新state）` + PYLINE(), sc, "revise")
+    const okR = await ca(`【修订r${r}】一次并列 Read ${PD}/_common.md、${dr} 与 ${d}/review-r${r}-*.md；逐条回应（改或说明），覆盖写回 ${dr}；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；追加 ledger 一行 \`${k}.revision-r${r}: <status> ${drRel} <≤50字>\`（**不改 state.json**）；${BRIEF}` + PYLINE(), sc, "revise")
     if (!okR) return null
   }
 }

@@ -14,6 +14,8 @@ const RESUME = argv.includes("--resume") || argv.includes("--resume-mismatch")
 const MISMATCH = argv.includes("--resume-mismatch")   // state.json problemId 失配 → 必须拒绝覆盖
 const MODE = argv.includes("--mode") ? argv[argv.indexOf("--mode") + 1] : "full"
 const FIXTURE_MANIFESTS = !!process.env.FIXTURE_MANIFESTS   // 注入三份 manifest 夹具 → 验证「已登记」分支（F1）
+const FAIL_STAGES = (process.env.FAIL_STAGES || "").split(",").filter(Boolean)   // 例：FAIL_STAGES=run:q1.robustness → 触发降级路径断言
+const REVIEW_STATUS = process.env.REVIEW_STATUS || "PASS"   // REVIEW_STATUS=NEEDS_REVISION → 走「修订→轮次用尽收束→二次尝试→blocked」路径
 const FULL_STAGES = 23   // 夹具 2 小问：10×2 + 3 个 run 级（formulation 计入 formulator）
 
 const FIXTURE = resolve(HERE, "intermediates")
@@ -68,14 +70,21 @@ async function stub(prompt, opts, label) {
   if (AGENTS[label]) return AGENTS[label](prompt)
   if (label === "env") { files[`${IM}/env-report.json`] = JSON.stringify({ problemId: "A", python: "/usr/bin/python3", fallback: false, libs: {} }); return JSON.stringify({ status: "PASS", artifact_path: `${IM}/env-report.json`, summary: "stub env" }) }
   if (label === "init") { files[`${IM}/state.json`] = JSON.stringify({ schema: "v1", problemId: "A", current: {}, iterations: {}, gates: {}, artifacts: {}, deps: {} }); return JSON.stringify({ status: "PASS", artifact_path: `${IM}/state.json`, summary: "init" }) }
-  if (label.startsWith("gate:")) return JSON.stringify({ status: "PASS", artifact_path: "", summary: "gate ok" })
+  if (label.startsWith("gate:")) {
+    if (!prompt.includes(label.slice(5) + ": <PASS|FAIL>")) throw new Error("门禁提示词未给出固定 ledger 键: " + label)
+    return JSON.stringify({ status: "PASS", artifact_path: "", summary: "gate ok" })
+  }
   if (label.startsWith("review:")) {
     // 校验：评审提示词必须并列读入 _common.md 与视角模板，且带可复用资产清单（§1.3-4）
     if (!prompt.includes("_common.md")) throw new Error("评审提示词未注入 _common.md")
     if (!prompt.includes("可复用资产")) throw new Error("评审提示词未注入可复用资产清单")
-    return JSON.stringify({ status: "PASS", artifact_path: "x/review.md", summary: "no must-fix" })
+    return JSON.stringify({ status: REVIEW_STATUS, artifact_path: "x/review.md", summary: "stub review" })
   }
   if (label === "formulator" || label === "selfcheck" || label === "finalize" || label === "revise") {
+    if (label === "formulator") {   // 公式化入口 agent 拿的是 stagePrompt：依赖须为「假设目录」，不得硬编码 assumption-v01（v01 可能是被自检拒绝的版本）
+      if (!/依赖 [^\n]*intermediates\/q\d+\/03-assumptions\//.test(prompt)) throw new Error("formulation 依赖未渲染为假设目录")
+      if (prompt.includes("assumption-v01")) throw new Error("formulation 依赖仍硬编码 assumption-v01")
+    }
     return JSON.stringify({ status: "PASS", artifact_path: "q/04-formulation/draft.md", summary: label })
   }
   if (label.startsWith("run:") || label.startsWith("degrade:")) {
@@ -85,7 +94,9 @@ async function stub(prompt, opts, label) {
     if (label.startsWith("run:") && !prompt.includes("pool/problem/manifest.json")) throw new Error("阶段提示词未列可复用资产清单路径: " + label)
     // deps 渲染两分支：非 {id} 路径补 intermediates/ 前缀；{id} 路径替换为当前小问
     if (label === "run:q1.literature" && !prompt.includes(`依赖 ${IM}/00-problem.json`)) throw new Error("阶段提示词依赖未渲染为完整路径: " + label)
+    if (label === "run:q1.literature" && !prompt.includes("q1.literature: <status>")) throw new Error("阶段提示词未给出固定 ledger 键: " + label)
     if (label === "run:q1.data" && !prompt.includes(`${IM}/q1/01-literature/literature.md`)) throw new Error("阶段提示词 {id} 依赖未替换: " + label)
+    if (label.startsWith("run:") && FAIL_STAGES.includes(label)) return JSON.stringify({ status: "FAIL", artifact_path: "", summary: "stub fail" })
     return JSON.stringify({ status: "PASS", artifact_path: "stub/out.md", summary: label })
   }
   return JSON.stringify({ status: "PASS", artifact_path: "stub", summary: label })
@@ -105,9 +116,10 @@ const result = await run(agent, parallel, phase, log, {
 
 // ── 断言 ──
 const fails = []
+const NEG = REVIEW_STATUS !== "PASS"   // 三视角全 NEEDS_REVISION → 走修订 + 轮次用尽收束 + 二次尝试 + blocked
 const stages = calls.filter(c => c.startsWith("run:") || c === "formulator")
-if ("blocked" in result) fails.push("被阻塞：" + JSON.stringify(result.blocked))
-if (!RESUME) {
+if ("blocked" in result && !NEG) fails.push("被阻塞：" + JSON.stringify(result.blocked))
+if (!RESUME && !NEG) {
   if (result.status === "error") fails.push("壳返回 error：" + JSON.stringify(result))
   if (stages.length === 0) fails.push("没有任何阶段被调度")
   for (const need of ["q1.literature", "q2.localComplete", "crossReview", "writing", "finalReview"]) {
@@ -121,13 +133,52 @@ if (MISMATCH) {
   if (RESUME_GATES.length && stages.length >= FULL_STAGES) fails.push("resume 未跳过已完成阶段（仍调度 " + stages.length + " / " + FULL_STAGES + "）")
   const skipped = (result.artifactSummary || "").split("；").filter(x => x.includes("RESUMED")).length
   console.log("✓ resume 跳过 " + skipped + " 个已 PASS 阶段，实调 " + stages.length + " 个（state.gates 已完成 " + RESUME_GATES.length + " 项）")
-} else if (stages.length !== FULL_STAGES) {
-  fails.push("阶段数不符：期望 " + FULL_STAGES + "，实得 " + stages.length)
+} else if (!RESUME && !NEG && stages.length !== FULL_STAGES + FAIL_STAGES.length) {   // 失败阶段重试一次 → 多一个 run: 调用
+  fails.push("阶段数不符：期望 " + (FULL_STAGES + FAIL_STAGES.length) + "，实得 " + stages.length)
+}
+if (NEG) {   // 修订 + 轮次用尽收束路径
+  if (!("blocked" in result)) fails.push("三视角全 NEEDS_REVISION 时未按 blocked 收束")
+  const ri = calls.indexOf("revise")
+  if (ri < 0) fails.push("修订节点未被调度")
+  else if (!stubPrompts[ri].includes("q1.formulation.revision-r1")) fails.push("修订提示词未给出固定 ledger 键")
+  const lastF = stubPrompts[calls.lastIndexOf("finalize")]
+  if (!lastF.includes("结论 = NEEDS_REVISION")) fails.push("收束提示词未带出 NEEDS_REVISION 结论")
+  if (!lastF.includes(`gates["q1.formulation"]="NEEDS_REVISION"`)) fails.push("收束提示词未写明 NEEDS_REVISION 值")
 }
 
-if (process.env.DUMP_PROMPT) {           // 调试：DUMP_PROMPT=1 node test/dryrun-shell.mjs → 打印首个阶段提示词
-  const i = calls.findIndex(c => c.startsWith("run:"))
-  console.log("── 首个阶段提示词 ──\n" + stubPrompts[i] + "\n────────────────")
+if (process.env.DUMP_PROMPT) {           // 调试：DUMP_PROMPT=1 → 首个阶段提示词；DUMP_PROMPT=finalize|degrade:q1.robustness → 打印匹配 label 的提示词
+  const sel = process.env.DUMP_PROMPT
+  const idxs = sel === "1" ? [calls.findIndex(c => c.startsWith("run:"))] : calls.map((c, i) => (c.includes(sel) ? i : -1)).filter(i => i >= 0)
+  for (const i of idxs) console.log(`── ${calls[i]} ──\n${stubPrompts[i]}\n────────────────`)
+}
+// 专职状态节点提示词断言：必须自述职责、给全路径、用 schema 真字段名与注入值（resume/mismatch 不跑这些节点）
+if (!RESUME) {
+const fi = calls.indexOf("finalize")
+if (fi < 0) fails.push("收束节点未被调度")
+else {
+  const fp = stubPrompts[fi]
+  if (!/收束 q1\.formulation/.test(fp) || !fp.includes("唯一职责")) fails.push("收束提示词未自述职责")
+  if (!fp.includes(`iterations["q1.formulation"]`)) fails.push("收束提示词未用 schema 字段名 iterations")
+  if (/\biter\[/.test(fp)) fails.push("收束提示词仍在写不存在的 iter 字段")
+  if (!fp.includes(`${IM}/state.json`) || !fp.includes(`${IM}/ledger.md`) || !fp.includes("state-schema.md")) fails.push("收束提示词未给出 state/ledger/schema 路径")
+  if (!fp.includes(`gates["q1.formulation"]="${NEG ? "NEEDS_REVISION" : "PASS"}"`)) fails.push("收束提示词未写明 gates 键与注入值")
+  if (!fp.includes("q1.formulation.finalize")) fails.push("收束提示词未给出固定 ledger 键")
+}
+// 阶段/评审模板的边界口径（静态）：draft 只覆盖本小问、假设只认最新版、评审不要求跨问展开
+const p04 = readFileSync(PD + "/phase-04-formulation.md", "utf8")
+if (!p04.includes("只做本小问")) fails.push("phase-04 未声明「只做本小问」边界")
+if (!p04.includes("禁止据旧版建模")) fails.push("phase-04 未写明假设只认最新版")
+const pj = readFileSync(PD + "/formulation-reviewer-judge.md", "utf8")
+if (!pj.includes("本小问全覆盖") || pj.includes("对照 00-problem.json 的小问清单，每个子问题")) fails.push("judge 评审仍要求单问 draft 覆盖全部小问")
+for (const fs0 of FAIL_STAGES) {
+  const k = fs0.replace(/^run:/, ""), di = calls.indexOf("degrade:" + k)
+  if (di < 0) { fails.push("降级节点未被调度：" + k); continue }
+  const dp = stubPrompts[di]
+  if (!/降级 /.test(dp) || !dp.includes("唯一职责")) fails.push("降级提示词未自述职责：" + k)
+  if (!dp.includes(`${IM}/state.json`) || !dp.includes("state-schema.md")) fails.push("降级提示词未给出 state/schema 路径：" + k)
+  if (!dp.includes(`gates["${k}"]="SKIPPED"`)) fails.push("降级提示词未写明 gates 键与值：" + k)
+  if (!dp.includes("**不写** iterations/artifacts")) fails.push("降级提示词未禁写 iterations/artifacts：" + k)
+}
 }
 console.log("阶段调用序列（" + stages.length + "）：")
 console.log("  " + stages.join("\n  "))

@@ -237,6 +237,16 @@ run 布局夹具（pool + q1 + q2 各抄一份 point_segment_distance）
 
 **新增回归资产**：`test/scripts-smoke.sh`（17 用例，覆盖上述每条修复），`.gitignore` 已放行入库（与 `dryrun-shell.mjs` 同级）。
 
+### 0.6d 实战 run 暴露的两处「专职节点不知道自己要干什么」（2026-09-10 深夜，run 进行中修）
+
+用户实跑 2026 国赛 A 题时点名：`q1.formulation` 阶段 agent 与 **`【收束 q1.formulation】`** 节点「似乎并不清楚自己的工作是什么」。查证 3 条（全部只改提示词/壳文案，**不新增任何 agent 会话**）：
+
+1. **收束 / 降级两个专职状态节点的提示词只有一串状态赋值**：`【收束 q1.formulation】state.json：iter["q1.formulation"]=…`——不自述职责、不给 `state.json`/`ledger.md` 路径、不要求先读再**就地合并**，且 `iter` **不是 schema 字段**（schema 是 `iterations`，口径为「累计执行次数」而非单轮 `r+1`）。实跑旁证：该 run 的 `state.json` 出现 `gates["q1.formulation"]="PASS_WITH_WARNING"`（该键按 schema 与键约定只有 `PASS|NEEDS_REVISION|FAIL`，壳注入的也是 `PASS`）与 `iterations=5`（单轮口径推不出）——即节点自行改写了注入值。修：两节点改为「自述职责 + 只做状态收尾（不改产物/不重跑） + 一次并列 Read（state-schema / state.json / ledger 尾部） + 就地合并（其余键保留） + 精确字段与值（`iterations` 累计、`gates` 原样写入注入值） + 固定 ledger 键 + 返回契约」。ledger 键写进 `state-schema.md`：`q.formulation`（formulator）/ `q.formulation.revision-r<n>`（修订）/ `q.formulation.finalize`（收束）——此前实跑出现两条同名 `q1.formulation:` 与自拟的 `revision-rN`，审计难分辨。同类修正：常规阶段与门禁节点的 `<key>` 占位符也换成注入的具体键（`q1.literature: <status>`、`q1.solve-start: <PASS|FAIL>`），壳内 `LG` 常量随之删除。
+2. **`deps.formulation` 仍硬编码 `assumption-v01.md`**（§0.6 只修了 `outputLayout` 的同类冲突）：假设阶段「绝不覆盖已存在的版本文件」→ v01 很可能正是被自检拒绝的版本（本次实跑即 v01 被拒、v02 定稿），注入依赖指向废稿，与模板「最新版本」自相矛盾。修：依赖改注入**目录** `{id}/03-assumptions/`；phase-04 与 judge 模板统一写「权威路径 = `state.json.artifacts["q{id}.assumption"]`，禁止据旧版建模」。
+3. **单问 draft 的边界口径自相矛盾**：phase-04 原写「逐小问全覆盖 / 对每个子问题」，judge 判据 5 更要求「对照 00-problem.json 的小问清单，每个子问题都有对应方案」——但 draft 是**单问**产物（`q{id}/04-formulation/draft.md`），字面上要求它展开 q1–q4。修：phase-04 增「边界（只做本小问）」段与「本小问全覆盖」，judge 判据 5 改为「本小问全覆盖 + 跨问接口写清，不要求在本文档展开其它小问」。
+
+**回归**：`test/dryrun-shell.mjs` 7 种模式全绿。新增 3 类断言——收束/降级提示词形状（职责、路径、真字段名、固定 ledger 键、注入值）、formulation 依赖渲染为假设目录（含反向断言「不得出现 `assumption-v01`」）、模板静态口径（「只做本小问」「禁止据旧版建模」「本小问全覆盖」）；新增桩开关 `FAIL_STAGES=<stage>`（走降级路径）、`REVIEW_STATUS=NEEDS_REVISION`（走修订 → 轮次用尽收束 → 二次尝试 → blocked），`DUMP_PROMPT=<label>` 可打印渲染后的提示词。
+
 ### 0.5 未做（本次赛前明确不做）
 
 - §1.1 会话复用（**不可实现**，见 C1）、§1.2 draft 整读治理（待裁决，赛前不动评审循环）

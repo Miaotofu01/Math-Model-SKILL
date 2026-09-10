@@ -10,7 +10,7 @@ set -e
 PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_SRC="${PLUGIN_DIR}/skills/math-model"
 
-echo "==> math-model v2.5.0 安装脚本"
+echo "==> math-model v2.5.1 安装脚本"
 
 # ═══ 参数解析 ═══
 INSTALL_DSH=0

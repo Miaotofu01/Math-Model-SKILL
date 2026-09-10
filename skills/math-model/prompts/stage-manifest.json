@@ -48,7 +48,7 @@
     "formulation": [
       "00-problem.json",
       "{id}/02-data/eda.md",
-      "{id}/03-assumptions/assumption-v01.md"
+      "{id}/03-assumptions/"
     ],
     "implementation": [
       "{id}/04-formulation/draft.md",
