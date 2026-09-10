@@ -3,83 +3,108 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>建模方案评审机制</title>
+<title>公式化子流程：评审、修订、两次尝试与收束</title>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #ffffff; color: #1a1a1a; font-family: 'Geist', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
-  svg { display: block; }
-  .caption { font-size: 12px; color: #6b7280; text-align: center; padding-top: 8px; line-height: 16px; font-weight: 400; }
+  svg { display: block; width: 100%; height: auto; }
+  .caption { font-size: 12px; color: #6b7280; text-align: center; padding-top: 12px; line-height: 16px; font-weight: 400; }
 </style>
 </head>
 <body>
-<svg viewBox="0 0 1040 424" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig02-title fig02-desc">
-  <title id="fig02-title">建模方案评审机制</title>
-  <desc id="fig02-desc">建模方案初稿并行经过评审法官、对抗质疑、应用场景三类评审与自检，全部通过则放行，否则修订后在轮数上限内复审。</desc>
+<svg viewBox="0 0 1000 1032" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig02-title fig02-desc">
+  <title id="fig02-title">公式化子流程：评审、修订、两次尝试与收束</title>
+  <desc id="fig02-desc">公式化阶段先由 formulator 产出建模方案并做三维自查，再由评委、对抗、应用三个视角并行评审：三视角全通过则收束 PASS 并放行到实现阶段；否则在最多三轮内修订复审，三轮后仍有必须改则收束 NEEDS_REVISION 并把整条子流程改策略重来一次，两次尝试都不收敛时该阶段 blocked。</desc>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+    <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
   </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
 
-  <!-- 修订回环（最左，先画） -->
-  <line x1="72" y1="300" x2="24" y2="300" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="24" y1="300" x2="24" y2="24" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="24" y1="24" x2="380" y2="24" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-  <rect x="32" y="148" width="160" height="16" rx="2" fill="#ffffff"/>
-  <text x="112" y="160" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">修订后复审（RND 轮内）</text>
-
-  <!-- 初稿 → 三评审 -->
-  <line x1="520" y1="48" x2="520" y2="64" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="220" y1="64" x2="820" y2="64" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="220" y1="64" x2="220" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="520" y1="64" x2="520" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="820" y1="64" x2="820" y2="96" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- 三评审 → 自检 -->
-  <line x1="220" y1="136" x2="220" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="520" y1="136" x2="520" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="820" y1="136" x2="820" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="220" y1="160" x2="820" y2="160" stroke="#4f5d75" stroke-width="1.5"/>
-  <line x1="520" y1="160" x2="520" y2="192" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- 自检 → 判定 -->
-  <line x1="520" y1="232" x2="520" y2="256" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- 判定分支 -->
-  <line x1="670" y1="300" x2="760" y2="300" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-  <rect x="692" y="286" width="28" height="16" rx="2" fill="#ffffff"/>
-  <text x="706" y="298" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">是</text>
-  <line x1="370" y1="300" x2="248" y2="300" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
-  <rect x="344" y="308" width="28" height="16" rx="2" fill="#ffffff"/>
-  <text x="358" y="320" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">否</text>
+  <!-- 连线（先画，压在节点之下） -->
+  <line x1="440" y1="104" x2="440" y2="136" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="440" y1="200" x2="440" y2="240" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="440" y1="304" x2="440" y2="340" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="600" y1="404" x2="700" y2="404" stroke="#2e5aa8" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <line x1="440" y1="468" x2="440" y2="500" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="440" y1="628" x2="440" y2="668" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="440" y1="796" x2="440" y2="836" stroke="#4f5d75" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- 修订回边：本轮未满 3 轮 -->
+  <path d="M280 564 H172 A8 8 0 0 1 164 556 V424" fill="none" stroke="#4f5d75" stroke-width="1.5" stroke-dasharray="6 6" marker-end="url(#arr)"/>
+  <path d="M164 360 V272 A8 8 0 0 1 172 264 H280" fill="none" stroke="#4f5d75" stroke-width="1.5" stroke-dasharray="6 6" marker-end="url(#arr)"/>
+  <!-- 第 2 次尝试回边：整条子流程改策略重来 -->
+  <path d="M280 732 H48 A8 8 0 0 1 40 724 V176 A8 8 0 0 1 48 168 H280" fill="none" stroke="#4f5d75" stroke-width="1.5" stroke-dasharray="6 6" marker-end="url(#arr)"/>
 
   <!-- 节点 -->
-  <rect x="380" y="8" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="520" y="36" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">建模方案初稿 draft.md</text>
+  <rect x="280" y="40" width="320" height="64" rx="20" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="440" y="68" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">进入 q.formulation</text>
+  <text x="440" y="88" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">前置 01–03 阶段已 PASS</text>
 
-  <rect x="80" y="96" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="220" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">评审一 · judge 评审法官</text>
-  <rect x="380" y="96" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="520" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">评审二 · adversary 对抗质疑</text>
-  <rect x="680" y="96" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="820" y="124" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">评审三 · application 应用场景</text>
+  <rect x="280" y="136" width="320" height="64" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="440" y="164" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">节点1 formulator 产方案 · 节点2 三维自查</text>
+  <text x="440" y="184" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">draft.md · baseline-registry.md · symbols.json · self-check.md</text>
 
-  <rect x="380" y="192" width="280" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="520" y="220" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">自检 self-check（数值复算 + 清单）</text>
+  <rect x="280" y="240" width="320" height="64" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="440" y="268" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">三视角并行评审（第 r 轮）</text>
+  <text x="440" y="288" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">judge · adversary · application</text>
 
-  <polygon points="520,256 670,300 520,344 370,300" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
-  <text x="520" y="296" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">评审 + 自检</text>
-  <text x="520" y="316" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">全部通过？</text>
+  <polygon points="440,340 600,404 440,468 280,404" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="440" y="408" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">三视角全 PASS？</text>
 
-  <rect x="760" y="280" width="160" height="40" rx="6" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
-  <text x="840" y="308" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">放行 → 下一阶段</text>
+  <rect x="700" y="372" width="240" height="64" rx="20" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1.5"/>
+  <text x="820" y="400" fill="#2e5aa8" font-size="12" font-weight="600" text-anchor="middle">收束 → PASS</text>
+  <text x="820" y="420" fill="#2e5aa8" font-size="12" font-weight="400" text-anchor="middle">过 solve-start 门禁 → 05 实现</text>
 
-  <rect x="72" y="280" width="176" height="40" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="160" y="308" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">修订（同轮 ≤ TRY 2 次）</text>
+  <polygon points="440,500 600,564 440,628 280,564" fill="rgba(26,26,26,0.03)" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="440" y="556" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">本尝试已满 3 轮？</text>
+  <text x="440" y="576" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">RND = full 3 / quick 2</text>
 
-  <!-- 参数说明 -->
-  <text x="520" y="376" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">TRY=2：同一轮最多尝试 2 次 · 评审轮数 RND：quick 2 轮 / full 3 轮</text>
-  <text x="520" y="396" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">任一 must-fix 未清除 → 该小问整问重跑</text>
+  <rect x="64" y="360" width="200" height="64" rx="6" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="164" y="388" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">修订（第 r 轮）</text>
+  <text x="164" y="408" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">逐条回应 → 写回 draft</text>
+
+  <polygon points="440,668 600,732 440,796 280,732" fill="rgba(26,26,26,0.03)" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="440" y="736" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">已用满 2 次尝试？</text>
+
+  <rect x="280" y="836" width="320" height="64" rx="20" fill="rgba(26,26,26,0.03)" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="440" y="864" fill="#1a1a1a" font-size="12" font-weight="600" text-anchor="middle">收束 → NEEDS_REVISION → blocked</text>
+  <text x="440" y="884" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">solve-start 未过，等人工裁决</text>
+
+  <!-- 分支标注（遮罩 + 6–10px 间隙） -->
+  <rect x="632" y="376" width="32" height="16" rx="2" fill="#ffffff"/>
+  <text x="648" y="388" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">是</text>
+  <rect x="452" y="480" width="32" height="16" rx="2" fill="#ffffff"/>
+  <text x="468" y="492" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">否</text>
+  <rect x="180" y="540" width="88" height="16" rx="2" fill="#ffffff"/>
+  <text x="224" y="552" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">否 · 继续修订</text>
+  <rect x="176" y="304" width="96" height="16" rx="2" fill="#ffffff"/>
+  <text x="224" y="316" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">修订后重评 r+1</text>
+  <rect x="452" y="640" width="104" height="16" rx="2" fill="#ffffff"/>
+  <text x="504" y="652" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">是 · 轮次用尽</text>
+  <rect x="52" y="240" width="224" height="16" rx="2" fill="#ffffff"/>
+  <text x="164" y="252" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">第 2 次尝试：改策略重写，r 从 1 重计</text>
+  <rect x="452" y="808" width="120" height="16" rx="2" fill="#ffffff"/>
+  <text x="512" y="820" fill="#4f5d75" font-size="12" font-weight="500" text-anchor="middle">是 · 两次都不收敛</text>
+
+  <!-- 参数脚注 -->
+  <text x="500" y="936" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">RND：每轮 = 三视角评审 ⇄ 修订，full 3 轮 / quick 2 轮；TRY=2：整条子流程最多 2 次尝试</text>
+  <text x="500" y="956" fill="#4f5d75" font-size="12" font-weight="400" text-anchor="middle">iterations = 每次尝试的（1 次 formulator + 该次评审轮数）之和；收束节点负责写 state.json 与 ledger.md</text>
+
+  <!-- 图例 -->
+  <line x1="40" y1="984" x2="960" y2="984" stroke="rgba(26,26,26,0.12)" stroke-width="1"/>
+  <text x="40" y="1012" fill="#6b7280" font-size="12" font-weight="500" letter-spacing="0.12em">图例</text>
+  <rect x="88" y="1000" width="24" height="16" rx="8" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="120" y="1012" fill="#4f5d75" font-size="12" font-weight="400">起止</text>
+  <rect x="216" y="1000" width="24" height="16" rx="2" fill="#ffffff" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="248" y="1012" fill="#4f5d75" font-size="12" font-weight="400">执行节点</text>
+  <polygon points="344,1008 360,1000 376,1008 360,1016" fill="rgba(26,26,26,0.03)" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="388" y="1012" fill="#4f5d75" font-size="12" font-weight="400">判定</text>
+  <rect x="476" y="1000" width="24" height="16" rx="8" fill="rgba(46,90,168,0.08)" stroke="#2e5aa8" stroke-width="1"/>
+  <text x="508" y="1012" fill="#4f5d75" font-size="12" font-weight="400">通过路径</text>
+  <line x1="612" y1="1008" x2="640" y2="1008" stroke="#4f5d75" stroke-width="1.5" stroke-dasharray="6 6"/>
+  <text x="648" y="1012" fill="#4f5d75" font-size="12" font-weight="400">重试回边</text>
 </svg>
-<div class="caption">建模方案评审机制</div>
+<div class="caption">建模方案评审机制 · 公式化子流程与收束判定（q.formulation）</div>
 </body>
 </html>
