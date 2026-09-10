@@ -2,17 +2,13 @@
 
 > 你是全题级终审 agent（run-level 阶段，**全题级、无小问**，q=null）。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根；先 `cd <outputDir>` 再执行组装与编译。终审流程：**摘要数字溯源 → 一致性检查 → 评委自评（按获奖标准评分）→ LaTeX 编译**。
 
-## 统一节拍
+> 工具纪律（减回合）：10 章 + fact-sheet 一次并列读；两遍 xelatex 用一条命令连跑（`xelatex ... && xelatex ...`），不逐遍手动试错。
 
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（不可用时按模板目录向上找 `docs/`）。本节相关：§三 CUMCM/MCM 格式（摘要页/≤20页/附录/无身份信息）、§四 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §四-5、`$\bm{}$` §四-6、支撑材料清单 §四-7、组装与 @占位符 §四-8）、§六 内部 Common Mistakes（摘要数字编造等）。**引用规范，不复制内容**。
+先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§三 CUMCM/MCM 格式（摘要页/≤20页/附录/无身份信息）、§四 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §四-5、`$\bm{}$` §四-6、支撑材料清单 §四-7、组装方式与 @占位符见 §四 末段）、§六 内部 Common Mistakes（摘要数字编造等）。**引用规范，不复制内容**。
 
 ## 输入
 
@@ -21,7 +17,7 @@
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`10-completed/question-summary.md`、`06-computation/results.json`、`09-robustness/robustness.md`、`04-formulation/baseline-registry.md`、`08-visualization/figure-manifest.md` + `figures/`、`01-literature/literature.md`（引用登记）、`05-implementation/code/`
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS）
 - `intermediates/00-problem.json`：题面、论文规则、题号、附件清单
-- 模板目录：调度壳 templateDir（绝对路径）或 `${PD}` 的父级 `templates/`，二选一自动探测（cumcm-paper.tex + assemble_from_template.py）
+- 模板目录 = **技能根下的 `templates/`**（`<技能根>/templates/`，内含 `cumcm-paper.tex` + `assemble_from_template.py`；技能根由阶段指令给出；若 `templates/` 为空则按技能根向上/向下探测）
 
 > ⚠️ 全题级：`q{id}` 指各小问实际目录 q1/、q2/、…（本阶段无占位符替换）；产物写 `intermediates/13-final/` 前缀。
 
@@ -44,7 +40,8 @@
 
 - 摘要按子问题分段（「对于问题1…」逐问方法+数值）且逐问覆盖；正文问题分析/模型/分析/结论各章覆盖全部小问
 - 内部流程术语扫描（§一-14：「对抗性审查/模型重设计/adversarialFindings/验证器/重设计历史」）→ 出现即 P1 改写
-- 图表反向检查：每个 `\includegraphics` 文件真实存在于 figures/；无空 figure 环境；CJK 字体无 Glyph 缺失警告（§二-1/5）
+- 图表反向检查：每个 `\includegraphics` 文件真实存在且属于 §二-9 的三处口径（`q{id}/08-visualization/figures/`、根 `figures/fig_eda_*`、根 `figures/fig_cross_示意图_*`）；无空 figure 环境；CJK 字体无 Glyph 缺失警告（§二-1/5）；对最终图件跑 `python <技能根>/scripts/figure_lint.py --png ... --svg ...`（见 `_common.md` §6），P0 清零
+- 数字口径：跑 `python <技能根>/scripts/artifact_lint.py --root <outputDir>` 核对关键数字散落 ≥3 处（口径分叉），有则定位并收敛到各问 results.json；正文/摘要数字逐字可溯 fact-sheet
 - 加粗只加答案（§一-2）；无「创新点：」等标签（§一-3）；无调试笔记/文件路径/对账清单残留（§一-12）
 
 ### 4. 评委自评（按获奖标准评分）
@@ -59,11 +56,11 @@
 
 **第 0.5 步 组装**（用 skill 模板，不手工拼接 preamble）：
 1. 提取引用键：`grep -ho '\\cite{[^}]*}' intermediates/12-writing/paper-sections/*.md | grep -o '{[^}]*}' | tr -d '{}' | tr ',' '\n' | sort -u`
-2. 生成参考文献：按 literature.md 引用登记表逐键生成 GB/T 7714 bibitem（中文：作者.题名.刊名,年份,卷(期):页码；英文同理；`ai_tool` 键固定用：AI工具使用声明：大语言模型辅助写作工具（Claude, 版本2026, Anthropic公司, 使用日期2026-08）[Z]. 使用详情见支撑材料《AI工具使用详情》。），包进 `\begin{thebibliography}{N}...\end{thebibliography}` 写入 /tmp/refs.tex
+2. 生成参考文献：按 literature.md 引用登记表逐键生成 GB/T 7714 bibitem（中文：作者.题名.刊名,年份,卷(期):页码；英文同理；**登记缺 DOI/卷期页的不合格项按 `q{id}/01-literature/lit-verify.md` 补齐；L3 来源只能作存在性提及、L4 不得进参考文献；正文引用数值锚点须标明同行评审值/社区复现值**；`ai_tool` 键**如实填写本次实际使用的模型与厂商**（形如「AI工具使用声明：大语言模型辅助写作工具（<模型名>, <厂商>, 使用日期<YYYY-MM>）[Z]. 使用详情见支撑材料《AI工具使用详情》。」）——**禁止沿用占位厂商/模型名**；不确定时在 final-paper.tex 留 `% TODO: 核对 ai_tool 模型名` 并在 summary 中提示），包进 `\begin{thebibliography}{N}...\end{thebibliography}` 写入 `intermediates/13-final/refs.tex`（用产物目录而非 /tmp：可追溯、失败可回看）
 3. 章节格式转换：组装脚本读 `section-*.json`（{"section","content"}）；把 12-writing 的 section-*.md 转成该格式（首行 `# 章节名` → section 字段，其余 → content），存临时目录（如 `intermediates/13-final/sections-json/`），不改动 12-writing 的 .md 产物
 4. 运行组装：
    ```
-   python3 <templates>/assemble_from_template.py \
+   <注入的解释器> <技能根>/templates/assemble_from_template.py \
      --template <templates>/cumcm-paper.tex \
      --sections intermediates/13-final/sections-json \
      --output intermediates/13-final/final-paper.tex \

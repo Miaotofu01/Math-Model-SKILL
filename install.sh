@@ -10,7 +10,7 @@ set -e
 PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_SRC="${PLUGIN_DIR}/skills/math-model"
 
-echo "==> math-model v2.4.0 安装脚本"
+echo "==> math-model v2.5.0 安装脚本"
 
 # ═══ 参数解析 ═══
 INSTALL_DSH=0
@@ -53,19 +53,32 @@ fi
 if [[ $INSTALL_CLAUDE -eq 1 ]]; then
   echo ""
   echo "── 安装到 Claude Code（~/.claude）──"
-  # skill 目录：prompts/templates 链接，SKILL.md 用 Claude 版拷贝
+  # skill 目录：全部子目录链接（docs/scripts/tools 缺一不可——提示词会引用 <技能根>/docs 与 <技能根>/scripts 的工具），
+  # 只有 SKILL.md 用 Claude 版拷贝（两份内容不同：DSH 版讲 workflow 工具参数，Claude 版讲 scriptPath）
   mkdir -p "${HOME}/.claude/skills/math-model"
-  for d in prompts templates workflows; do
-    ln -sfn "${SKILL_SRC}/${d}" "${HOME}/.claude/skills/math-model/${d}"
+  for d in prompts templates workflows docs scripts tools; do
+    if [[ -e "${SKILL_SRC}/${d}" ]]; then
+      ln -sfn "${SKILL_SRC}/${d}" "${HOME}/.claude/skills/math-model/${d}"
+    fi
   done
   if [[ -f "${SKILL_SRC}/SKILL.claude.md" ]]; then
     cp "${SKILL_SRC}/SKILL.claude.md" "${HOME}/.claude/skills/math-model/SKILL.md"
     echo "  ✓ ~/.claude/skills/math-model/SKILL.md（Claude 版）"
   fi
-  # workflow 脚本（带 export const meta，Claude 版 Workflow scriptPath 直接可用）
+  # workflow 脚本：仓库正文是 DSH 薄壳（**不含** export const meta，DSH 把 meta 当工具参数传），
+  # Claude 版 scriptPath 需要文件自带 meta → 安装时**生成**：meta 头 + 仓库正文，单一事实源仍是仓库
   mkdir -p "${HOME}/.claude/workflows"
-  ln -sfn "${SKILL_SRC}/workflows/math-model.js" "${HOME}/.claude/workflows/math-model.js"
-  echo "  ✓ ~/.claude/workflows/math-model.js -> 仓库（Claude 版）"
+  {
+    cat <<'META'
+export const meta = {
+  name: 'math-model',
+  description: '数学建模竞赛 13 阶段确定性工作流（文献→数据→假设→公式化(3 视角评审⇄修订)→实现→计算→Sanity→可视化→鲁棒性→小问完成→跨问复核→写作→终审）',
+  whenToUse: '需要端到端完成一道数学建模竞赛题（CUMCM/MCM）或其中一段流程时',
+}
+META
+    cat "${SKILL_SRC}/workflows/math-model.js"
+  } > "${HOME}/.claude/workflows/math-model.js"
+  echo "  ✓ ~/.claude/workflows/math-model.js（meta 头 + 仓库薄壳正文，重新安装即同步）"
 fi
 
 echo ""

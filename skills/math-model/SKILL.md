@@ -42,7 +42,11 @@ disable-model-invocation: true
     "description": "<Step 1 \"=== 题目原文 ===\" 机械提取>",
     "dataProfile": "<Step 1 \"=== 附件清单 ===\" + \"=== 附件数据画像 ===\">",
     "paperRules": "<Step 1 \"=== 论文规则 ===\">",
-    "analysis": "<Step 2 完整 JSON>"
+    "analysis": {
+      "subQuestions": [{"id": "1", "title": "<小问标题>"}, {"id": "2", "title": "..."}],
+      "dataSufficiency": "<Step 2 结论>",
+      "其余字段": "<Step 2 完整 JSON 的其它键>"
+    }
   },
   "attachments": ["<Step 1 附件清单中的绝对路径>"]
 }
@@ -115,11 +119,15 @@ Workflow 返回 `{ status, statePath, artifactSummary, ledgerTail, blocked? }`�
 
 ```
 outputDir/
+├── pool/                       # 共享池（run 级，随产物走，**不在 intermediates 里**）
+│                               #   文献池 literature-pool.md ｜ 外部数据 external-data/
+│                               #   代码池 primitives.py（通用原语）+ problem/（题专用核心），各带 manifest.json
+├── probes/                     # 探针池：<角色>/<目的>.py + results/（指纹缓存）+ manifest.json
+├── figures/                    # EDA 图（fig_eda_*）；求解/示意图在 q{id}/08-visualization/figures/
 └── intermediates/              # 全部中间产物（壳只路由，不搬运内容）
     ├── 00-problem.json         # Stage 1 落盘：题面/数据画像/论文规则/审题JSON/附件清单（小问列表唯一来源）
     ├── state.json              # 状态契约：current/gates/iterations/artifacts/deps（中断恢复 + 审计）
     ├── ledger.md               # 追加式决策日志（每节点一行）
-    ├── pool/                   # 共享池：literature-pool.md（文献池）、external-data/（外部数据）
     ├── q1/                     # 每小问独立目录（串行天然隔离）——10 个 per-question 阶段产物
     │   ├── 01-literature/literature.md            # 文献调研（含引用登记）
     │   ├── 02-data/eda.md + data-collection.json  # 数据探索（外部数据来源记录）

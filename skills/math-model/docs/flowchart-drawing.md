@@ -5,15 +5,16 @@
 
 ## 0. 依赖与回退
 
-- skill 位置：**vendored 于本 skill 内** `tools/diagram-design/`（与 prompts/ docs/ 同级；完整路径 = `<模板目录>/tools/diagram-design`，下同）
+- skill 位置：**vendored 于本 skill 内** `tools/diagram-design/`（与 prompts/ docs/ 同级；完整路径 = `<技能根>/tools/diagram-design`，下同）
+- **路径唯一性（硬规则）**：只用上述 vendored 路径的 SKILL.md / references / assets / scripts。全局 skill `~/.dsh/skills/diagram-design` **不得使用**——它是上游默认皮肤（与本文件 §2 的论文中性色 token 不同），且版本可能漂移；两者混用会造成同一篇论文里示意图皮肤不一致
 - 不可用判定：`ls` 失败，或 self_check / Chrome 截图失败且重试 1 次仍失败
 - 回退后：在 figure-manifest 与 ledger 注明「回退 matplotlib + 原因」
 
 ## 1. 读取（按序）
 
-1. Read `<模板目录>/tools/diagram-design/SKILL.md`，按 §3 选型（过程/决策类 → **flowchart**）
-2. Read `<模板目录>/tools/diagram-design/references/type-flowchart.md` 与 `references/style-guide.md`（**皮肤 token 用下方 §2 的论文中性色，忽略其默认值**）
-3. 复制 `<模板目录>/tools/diagram-design/assets/example-flowchart.html` 为基线，替换内容（不搬示例的样式之外的文案）
+1. Read `<技能根>/tools/diagram-design/SKILL.md`，按 §3 选型（过程/决策类 → **flowchart**）
+2. Read `<技能根>/tools/diagram-design/references/type-flowchart.md` 与 `references/style-guide.md`（**皮肤 token 用下方 §2 的论文中性色，忽略其默认值**）
+3. 复制 `<技能根>/tools/diagram-design/assets/example-flowchart.html` 为基线，替换内容（不搬示例的样式之外的文案）
 4. **优先级**：本文档纪律优先于 skill 示例/SKILL.md 默认——SKILL §0 风格门直接跳过（按 §2 token 执行）；示例中非 4px 字号（9/8.5/11px）一律不采用
 
 ## 2. 皮肤 token（论文中性色，写死进 HTML）
@@ -53,10 +54,12 @@
   - 衬线（标题/旁注）：`'Instrument Serif', 'Noto Serif CJK SC', serif`
 - CJK 文字 ≥12px；不依赖 Google Fonts 加载成功
 
-## 6. 自检
+## 6. 自检（两道，缺一不可）
 
-- 运行 `<模板目录>/tools/diagram-design/scripts/self_check.py <html>`，失败 → 修复后重跑，仍失败 → 回退
-- 手工抽查：坐标整除 4、无斜线连线、标签遮罩与线有间隙、图注在 SVG 下方且居中
+1. **上游契约**：运行 `<技能根>/tools/diagram-design/scripts/self_check.py <html>`，失败 → 修复后重跑，仍失败 → 回退。注意它**只查无障碍/单文件安全契约，不查本文件的排版纪律**——通过它 ≠ 合格。
+2. **本文件纪律（机械）**：运行 `<技能根>/scripts/figure_lint.py --svg <html> --png <png>`，P0 必须清零（4px 网格、连线正交、标签遮罩与线 6–10px 间隙、皮肤 token 白名单、墨迹贴边 ≥8px、2× 画布）。已知历史事故：`I(t)` 标签遮罩压在竖线上（覆盖 24px 连线中的 16px）、文本基线离网 2px、用了非 token 的 `rgba(26,26,26,0.05)`。
+3. **视觉复核（人眼级）**：用图像读取工具逐张看 PNG，核对 ①标签有无重叠/被裁 ②图例是否压住图元 ③文字是否完整 ④图注与图形是否都在画布内。机械项全过但视觉上重叠/裁切 → 仍须重画。
+4. 手工抽查（兜底）：坐标整除 4、无斜线连线、标签遮罩与线有间隙、图注在 SVG 下方且居中
 
 ## 7. 截图（Chrome headless，命令模板）
 

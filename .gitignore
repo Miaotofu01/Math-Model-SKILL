@@ -3,6 +3,20 @@ __pycache__/
 .DS_Store
 *.log
 # 提交归属测试
-# test/ 为本地实验区：整目录忽略，不入库
-/test/
+# test/ 为本地实验区：默认不入库；但**壳的干跑测试与其夹具必须入库**
+# （否则换机器后失去唯一的壳验证手段：node test/dryrun-shell.mjs）
+/test/*
+!/test/dryrun-shell.mjs
+!/test/scripts-smoke.sh
+!/test/intermediates/
+/test/intermediates/*
+!/test/intermediates/00-problem.json
+!/test/intermediates/state.json
+# 工具缓存/临时目录（lit_verify 的 HTTP 缓存、图表质检临时产物）
+.litcache/
+**/.litcache/
+.qc_tmp/
+# venv 环境目录
+.venv/
+**/.venv/
 

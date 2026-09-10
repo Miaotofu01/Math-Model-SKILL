@@ -2,17 +2,11 @@
 
 > 你是本小问的计算 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、模式（full/quick）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根。
 
-## 统一节拍
-
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（如不可用，按调度壳的模板目录向上找 `docs/`）。本节相关：§二 图表生成规范（代码含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。引用规范，不复制内容。
+先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§二 图表生成规范（代码含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
 
 ## 输入
 
@@ -40,7 +34,7 @@
 
 ```json
 {
-  "runs": {"finalScript": "solution_v2.py", "mode": "full"},
+  "runs": {"finalScript": "<本次最终实际执行的脚本文件名>", "mode": "<ctx 的 full|quick，按实际填>"},
   "results": {
     "<分点>": {
       "summary": "具体数值结论（禁「待实现」「见代码」）",
@@ -65,7 +59,18 @@
 - `solver`：求解器状态/迭代数；MILP 求解器给出 mip_gap；约束残差（硬约束违反量）；达时限标记
 - `seeds`：固定并记录全部随机种子；未固定 → 如实记录缺失（sanity 阶段核验）
 - `baselineComparison`：≥3 个对比维度（精度/效率/稳定性等）；每指标给 baseline 值、improved 值、improvement 百分比、isLowerIsBetter；summary 一句话总结提升；significance 显著程度；weaknessExposed 诚实写弱点
+- **数字单一真源**：`results.json` 是本问**唯一数字权威**（下游 draft/sanity/robustness/question-summary/figure-manifest/绘图脚本/论文只写锚点引用，不重复抄数值，见 `_common.md` §4）；keyValues 必须覆盖论文会出现的**全部**关键数字并带口径注记，漏登记会让下游无源可引
 - 代码含绘图语句 → 图保存到 `intermediates/q{id}/06-computation/figures/`（结果图原始输出，可视化阶段复用/重画），本阶段不要求出图
+
+### 5. 性能与耗时记录（按 docs/performance.md，可选加速）
+
+- **Python 环境**：所有 python 执行一律用调度壳注入的环境路径（`intermediates/env-report.json` 为准（文件不存在 → 用系统 python3））；依赖缺失 → 优先 venv 安装、失败降级纯 numpy/scipy，绝不因缺库 FAIL。
+- **复用核心实现（禁止重写）**：若 `pool/` 或前序小问已有同口径核心实现（如判据/求解器等核心算法；先查 `pool/manifest.json` 与 `pool/problem/manifest.json`），必须 import 复用，禁止重写慢副本；**复用前核对常量/维度/场景作用域与本问一致，不一致禁止复用**；结果与已有数值一致性核对。通用原语（`--list` 查条目）从 `pool/primitives.py` import（首次 `cp <技能根>/scripts/primitives.py pool/primitives.py`，`--manifest` 生成 `pool/manifest.json`）；单题条目见 `pool/problem/`。**写完/跑通后自查重复实现**：`python <技能根>/scripts/reuse_lint.py --scan --root <outputDir>` → 同形且同口径的改 import（重跑计算，固定种子数字不变），口径不同则写差异理由；改不完 → 返回 `NEEDS_REVISION` 让调度壳重跑本阶段。**import 路径口径**：`PYTHONPATH=<outputDir>/pool:<outputDir>`（或 `pc.bootstrap_sys_path()`）——直接 `python` 跑脚本时默认 `import primitives` 会失败，撞到先修路径、禁止内联抄代码。
+- **重计算走探针池**：单次 >1s 的评估/扫描/敏感性实验写成 `probes/<角色>/<目的>.py` 并用 `probe_cache.py` 缓存（指纹含原语版本+输入+配置，命中秒回），结果登记 `probes/manifest.json`；**禁止每轮重写重算**（上次 run 同类脚本重写 53 份 / 231 次写入，单次重算白付约 25s）。
+- 运行前探测可用加速（numba/joblib/cupy/torch，**可选**；缺失自动回退纯 numpy/scipy，绝不因依赖缺失 FAIL）。
+- 重计算选型：向量化 → numba jit（纯循环核，禁 prange 内 linalg）→ joblib 并行（单任务 ≥20ms 的独立任务，n_jobs=min(核数,8)）→ GPU（大矩阵且驱动/库可用）。
+- 长耗时任务：先降样本/放宽收敛精度控制单次 ≤15 分钟；确实超时 → 如实记录（不伪造、不无限等待）。
+- **耗时留档**：results.json 增加 `perf: {wallTime_s, method, parallel, notes}`（真实测量值），供 sanity 核验与论文如实披露。
 
 ## 产物
 

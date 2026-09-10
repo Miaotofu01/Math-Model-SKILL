@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# scripts-smoke.sh —— 6 个技能工具的语义回归（无网络用例全跑；网络用例失败不判死）
+# 用法：bash test/scripts-smoke.sh
+# 每个用例对应一次真实缺陷（来源：2026-09-10 脚本审计），修完即回归。
+set -u
+PY=/usr/bin/python3
+HERE="$(cd "$(dirname "$0")" && pwd)"
+SC="$(cd "${HERE}/../skills/math-model/scripts" && pwd)"
+PASS=0; FAIL=0
+ok()   { PASS=$((PASS+1)); printf "  ✓ %s\n" "$1"; }
+bad()  { FAIL=$((FAIL+1)); printf "  ✗ %s\n" "$1"; }
+W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
+
+echo "== 1. reuse_lint：扫描根路径含 outputs/results 段时不能误杀整棵树 =="
+mkdir -p "$W/outputs/out/intermediates/q1/05-implementation/code" "$W/outputs/out/intermediates/q2/06-computation"
+cat > "$W/outputs/out/intermediates/q1/05-implementation/code/core.py" <<'EOF'
+import numpy as np
+def dist(P, A, B):
+    AB = B - A
+    t = np.clip(((P - A) @ AB) / float(np.dot(AB, AB)), 0.0, 1.0)
+    return np.linalg.norm(P - (A + t[..., None] * AB), axis=-1)
+EOF
+cp "$W/outputs/out/intermediates/q1/05-implementation/code/core.py" "$W/outputs/out/intermediates/q2/06-computation/scan.py"
+out=$($PY "$SC/reuse_lint.py" --scan --root "$W/outputs/out" --strict 2>&1); rc=$?
+if [ $rc -eq 1 ] && echo "$out" | grep -q "同形重复组 1"; then ok "路径含 outputs 仍检出重复组并 --strict 退 1"; else bad "路径含 outputs 时漏检（rc=$rc）"; fi
+
+echo "== 2. reuse_lint：--dirs 拼错目录要报错，不能静默 0 文件 =="
+$PY "$SC/reuse_lint.py" --scan --root "$W" --dirs no_such_dir >/dev/null 2>&1
+[ $? -eq 2 ] && ok "--dirs 不存在 → 退出码 2" || bad "--dirs 不存在未报错"
+
+echo "== 3. reuse_lint：--pairs 支持 ndarray vs list =="
+printf 'import numpy as np\ndef f(x):\n    return np.array([x, x+1])\n' > "$W/A.py"
+printf 'def f(x):\n    return [x, x+1]\n' > "$W/B.py"
+out=$($PY "$SC/reuse_lint.py" --pairs "$W/A.py" "$W/B.py" --inputs '{"x":1}' 2>&1); rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -q MATCH; then ok "ndarray/list 混比判 MATCH"; else bad "ndarray/list 混比失败（rc=$rc）：$out"; fi
+out=$($PY "$SC/reuse_lint.py" --pairs "$W/A.py" "$W/missing.py" 2>&1); rc=$?
+if [ $rc -eq 2 ] && echo "$out" | grep -q "无法加载待对拍脚本"; then ok "缺文件 → 明确报错 + 退出码 2"; else bad "缺文件报错不清晰（rc=$rc）"; fi
+
+echo "== 4. artifact_lint：根路径含 results 段时探针登记不能误报幽灵 =="
+mkdir -p "$W/results/out/probes/adversary" "$W/results/out/intermediates"
+printf '{"schema":"v1","probes":{"k1":{"purpose":"x","script":"probes/adversary/p.py"}}}' > "$W/results/out/probes/manifest.json"
+printf 'print(1)\n' > "$W/results/out/probes/adversary/p.py"
+out=$($PY "$SC/artifact_lint.py" --root "$W/results/out" 2>&1)
+echo "$out" | grep -q "probes.ghost" && bad "根路径含 results 时误报幽灵条目" || ok "根路径含 results 不误报"
+
+echo "== 5. artifact_lint：论文正文关键数字要计数（漏报 P0 的旧缺陷） =="
+D="$W/al"; mkdir -p "$D/intermediates/q1/03-assumptions" "$D/intermediates/q1/07-sanity" "$D/intermediates/12-writing/paper-sections" "$D/intermediates/q1/06-computation"
+echo '{"results":{"a":{"keyValues":{"k":4.5856}}}}' > "$D/intermediates/q1/06-computation/results.json"
+for f in "$D/intermediates/q1/03-assumptions/a.md" "$D/intermediates/q1/07-sanity/s.md" "$D/intermediates/12-writing/paper-sections/section-model.md"; do echo "数值 4.5856 在此" > "$f"; done
+out=$($PY "$SC/artifact_lint.py" --root "$D" 2>&1)
+echo "$out" | grep -q "P0=1" && ok "论文正文数字计入 P0" || bad "论文正文数字未计数（漏报）"
+
+echo "== 6. artifact_lint：题面给定常量出现在论文不算无源 =="
+D2="$W/al2"; mkdir -p "$D2/intermediates/12-writing/paper-sections" "$D2/intermediates/q1/06-computation"
+echo '{"problem":{"description":"给定 1234 万人"}}' > "$D2/intermediates/00-problem.json"
+echo '{"results":{"a":{"keyValues":{"k":4.5856}}}}' > "$D2/intermediates/q1/06-computation/results.json"
+echo "题面给定 1234 万人，结果 4.5856" > "$D2/intermediates/12-writing/paper-sections/s.md"
+out=$($PY "$SC/artifact_lint.py" --root "$D2" 2>&1)
+echo "$out" | grep -q "paper.unsourced.*1234" && bad "题面给定常量仍被误报无源" || ok "题面给定常量不误报"
+
+echo "== 6b. artifact_lint：非契约位置的同名 results.json 不能被当真源 =="
+D3="$W/al3"; mkdir -p "$D3/intermediates/q1/02-data" "$D3/intermediates/q1/06-computation" "$D3/intermediates/q1/03-assumptions"
+echo '{"junk":{"k":9.87654}}' > "$D3/intermediates/q1/02-data/results.json"
+echo '{"results":{"a":{"keyValues":{"k":1.23456}}}}' > "$D3/intermediates/q1/06-computation/results.json"
+out=$($PY "$SC/artifact_lint.py" --root "$D3" 2>&1)
+if echo "$out" | grep -q "9.87654"; then bad "非契约位置的 results.json 被当真源"; else ok "真源只在契约位置"; fi
+
+echo "== 7. figure_lint：单引号属性不能绕过 P0 判据 =="
+cat > "$W/sq.svg" <<'EOF'
+<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg"><rect x='13' y='7' width='130' height='50' fill='#ff00ff'/><line x1='13' y1='7' x2='137' y2='99' stroke='#ff00ff'/><text x='13' y='21' font-size='9'>x</text></svg>
+EOF
+out=$($PY "$SC/figure_lint.py" --svg "$W/sq.svg" 2>&1)
+echo "$out" | grep -q "svg.color" && ok "单引号 fill/stroke 被检出（svg.color）" || bad "单引号属性绕过判据"
+
+echo "== 8. figure_lint：非 UTF-8 文件要按文件问题报，不能崩栈 =="
+printf '# -*- coding: gbk -*-\nplt.title("\xd4\xf6\xb3\xa4")\n' > "$W/gbk.py"
+out=$($PY "$SC/figure_lint.py" --py "$W/gbk.py" 2>&1); rc=$?
+if echo "$out" | grep -q "Traceback"; then bad "非 UTF-8 仍打印 traceback"; else ok "非 UTF-8 不崩栈（rc=$rc）"; fi
+
+echo "== 9. figure_lint：--json 路径不可写时报告不能丢 =="
+out=$($PY "$SC/figure_lint.py" --py "$W/gbk.py" --json /nonexistent-dir/x.json 2>/dev/null)
+[ -n "$out" ] && ok "--json 失败仍输出 stdout 报告" || bad "--json 失败导致报告丢失"
+
+echo "== 10. probe_cache：改 pool/ 内容后缓存必须失效 =="
+D3="$W/pc"; mkdir -p "$D3/pool" "$D3/probes"
+cp "$SC/primitives.py" "$D3/pool/primitives.py"
+cat > "$D3/probes/p.py" <<'EOF'
+import primitives as P, json
+print(json.dumps({"ver": P.VERSION}))
+EOF
+( cd "$D3" && $PY "$SC/probe_cache.py" --run probes/p.py --inputs '{}' >/dev/null 2>&1 )
+r1=$( cd "$D3" && $PY "$SC/probe_cache.py" --run probes/p.py --inputs '{}' 2>&1 >/dev/null | grep -c "命中缓存" )
+printf '\n# 改池\n' >> "$D3/pool/primitives.py"
+r2=$( cd "$D3" && $PY "$SC/probe_cache.py" --run probes/p.py --inputs '{}' 2>&1 >/dev/null | grep -c "命中缓存" )
+if [ "$r1" -eq 1 ] && [ "$r2" -eq 0 ]; then ok "命中→改池后重算（未命中）"; else bad "改池后仍命中缓存（r1=$r1 r2=$r2）"; fi
+
+echo "== 11. probe_cache：--run 结果要打到 stdout =="
+out=$( cd "$D3" && $PY "$SC/probe_cache.py" --run probes/p.py --inputs '{}' 2>/dev/null )
+echo "$out" | grep -q '"ver"' && ok "--run 输出 JSON 到 stdout" || bad "--run 未输出结果到 stdout"
+
+echo "== 12. probe_cache：--clear 不能删 probes/manifest.json =="
+( cd "$D3" && PROBE_CACHE_DIR="$D3/probes" $PY "$SC/probe_cache.py" --clear >/dev/null 2>&1 )
+[ -f "$D3/probes/manifest.json" ] && ok "manifest 未被当缓存删除" || bad "--clear 删掉了 manifest"
+
+echo "== 13. primitives：改内容未递增 VERSION 要持续报警 =="
+D4="$W/pr"; mkdir -p "$D4"; cp "$SC/primitives.py" "$D4/primitives.py"
+( cd "$D4" && $PY primitives.py --manifest m.json >/dev/null 2>&1 )
+printf '\n# 偷偷改\n' >> "$D4/primitives.py"
+( cd "$D4" && $PY primitives.py --manifest m.json >/dev/null 2>&1 ); e1=$?
+( cd "$D4" && $PY primitives.py --manifest m.json >/dev/null 2>&1 ); e2=$?
+sed -i 's/^VERSION = "2.0.0"/VERSION = "2.0.9"/' "$D4/primitives.py"
+( cd "$D4" && $PY primitives.py --manifest m.json >/dev/null 2>&1 ); e3=$?
+if [ $e1 -eq 1 ] && [ $e2 -eq 1 ] && [ $e3 -eq 0 ]; then ok "持续报警（1/1/0）"; else bad "版本守卫语义错（$e1/$e2/$e3）"; fi
+
+echo "== 14. primitives：--manifest 目标目录不存在时自动创建 =="
+( cd "$D4" && $PY primitives.py --manifest sub/dir/m.json >/dev/null 2>&1 )
+[ $? -eq 0 ] && ok "自动 mkdir 并写出" || bad "目标目录不存在即失败"
+
+echo "== 15. primitives：--selftest（含空点集边界） =="
+$PY "$SC/primitives.py" --selftest | grep -q "通过" && ok "selftest 全绿" || bad "selftest 失败"
+
+echo
+echo "结果：通过 $PASS ／ 失败 $FAIL"
+[ $FAIL -eq 0 ] || exit 1

@@ -2,6 +2,19 @@
 
 > 你是本小问的 sanity 核验 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、模式（full/quick）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根。
 
+## 数字口径核查（与数值门禁并列）
+
+- 运行 `python <技能根>/scripts/artifact_lint.py --root <outputDir>`（`<技能根>` 见 `_common.md` §6）：关键数字在产物中散落 ≥3 处即报口径分叉 → **优先整改报告末尾列出的高发文件**（收敛到 `q{id}/06-computation/results.json`，其余改锚点引用）；本轮无法全部收敛时，把残留项与理由写进 sanity-report.md（不阻塞本阶段）
+- 核对 results.json 的 keyValues 是否覆盖本问全部结论数字；缺失 → 补登记（不新造数字）
+
+## 性能与复用核查（不阻塞，只登记）
+
+- 读本问 `06-computation/results.json` 的 `perf`（`wallTime_s/method/parallel/notes`）：字段缺失 → warning（要求计算阶段补齐，不 FAIL）；`wallTime_s > 900`（15 分钟单次预算）或存在明显重算白付 → warning 写「原因 + 影响 + 建议」
+- 核对 `probes/manifest.json`：同一用途/输入的实验是否被重复跑（应命中缓存秒回）→ 重复计算记 warning
+- **重复实现核验**：跑 `python <技能根>/scripts/reuse_lint.py --scan --root <outputDir> --json intermediates/q{id}/07-sanity/reuse-lint.json` → 把**重复组数 / 跨小问组数 / 权威份未登记数**写入 sanity-report.md 的「性能与复用」段（复用率在 run 内唯一可读的数字）；权威份未登记 → 补登记；跨小问重复 → 记 warning 并转入 11 阶段整改清单（**不回改历史小问代码**）
+- **池登记完整性**：`artifact_lint.py` 的「池登记」段会报 `pool/*.py`、`probes/*.py` 未登记或幽灵条目 → 未登记的**立即补登记**（探针重跑一次即自动登记；题专用核心手写 `pool/problem/manifest.json`），否则后问看不见、必然重写
+- 结论写进 sanity-report.md 的「性能与复用」段；**本段只登记不 FAIL**（性能是技术债，不是数值门禁）
+
 ## 数值硬门禁（AutoMM 核心纪律，最高优先级）
 
 **以下任一情况 → 必须返回 FAIL，不允许带病前进：**
@@ -15,13 +28,9 @@
 
 **非关键技术债（mip_gap 缺失、达到时限、求解器警告等）→ 不阻塞，但必须 PASS_WITH_WARNING 并记录在案**：state.json 的 gates 写 `PASS_WITH_WARNING`，返回 status 同为 `PASS_WITH_WARNING`，sanity-report.md 的 warning 段逐条登记（原因 + 影响 + 建议）。
 
-## 统一节拍
+> 工具纪律（减回合）：输入（results/draft/symbols/题面）一次并列 Read；六门禁核验用一次脚本批量跑完，不逐门禁往返。
 
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 输入
 

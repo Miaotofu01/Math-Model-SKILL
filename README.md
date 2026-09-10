@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="#-30-秒上手"><img alt="快速开始" src="https://img.shields.io/badge/快速开始-30s-4c6ef5"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-3.0.0-1c1a17">
+  <img alt="Version" src="https://img.shields.io/badge/version-3.1.0-1c1a17">
   <img alt="Competition" src="https://img.shields.io/badge/国赛%20%7C%20美赛-2f7d4f">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-8a857d">
 </p>
@@ -69,6 +69,20 @@
 
 ---
 
+## 性能与可移植机制
+
+一次运行要跑 5~20 小时，机制层做了五件事让时间可控、换机器不崩：
+
+- **项目级 venv 自动环境**：运行启动时自动创建专属 Python 环境并补齐常用科学计算库（numpy/scipy/pandas/statsmodels/matplotlib/joblib/numba），缺库优先自动装、装不上自动降级回系统 Python，**绝不因环境问题中断**；环境状态写入 `intermediates/env-report.json` 供全程审计。
+- **复用核心、禁止重写**：同一物理/算法核心只实现一次（题专用核心存 `pool/problem/<题>/` 并登记 manifest），后续小问必须 import 复用并**核对作用域一致**（如单机核心不得用于多机题），禁止各自重写慢副本——实测重写会让单段计算从 3 秒级变成 18 分钟。
+- **性能纪律**：向量化优先、闭式解优先、单次求解 ≤15 分钟预算、可选 numba/joblib/GPU 加速（缺库自动回退纯 numpy，绝不因缺库失败）。
+- **批量工具调用**：一次并列读多个文件、一个脚本跑完所有检查，减少 AI 回合往返（agent 会话耗时主因）。
+- **评审探针预算**：建模评审的数值验证必须复用已有结果、限量限时、一次批量算完，探针不污染产物目录。
+
+实测（24 核机器）：向量化 231×、numba 196×；把纯 Python 核心重写为纯 numpy 后 6.5×（无新依赖）、numba 版 500×。详见 `skills/math-model/docs/performance.md` 与 `test/perf/`。
+
+---
+
 ## 30 秒上手
 
 ```bash
@@ -120,7 +134,7 @@ bash ~/math-model-skill/install.sh
 
 ## 大概要多久、花多少
 
-- **时间**：5 h ~ 20h，主要卡在建模和求解的计算量上，题目越难越久。
+- **时间**：5 h ~ 20h，主要卡在建模评审轮次和求解计算量上，题目越难越久；评审数值探针与重计算已加预算/复用纪律，可明显压缩耗时。
 - **AI 用量**：一道题会拆成几个小问，小问越多、跑得越贵。**完整模式**约 100~150 个子任务，**快速模式**约 100 个）。
 - 运行**期间不要打断**；实在断了，加 `resume: true` 从断点接着跑。
 - **注意**：一次运行会消耗大量token（以deepseek-flash为例，一次运行预计消耗1亿token）请提前做好准备
@@ -147,7 +161,7 @@ bash ~/math-model-skill/install.sh
 | ----------------------------------------- | ------------------- | -------------- |
 | `pdftotext`（poppler-utils）              | 读题目 PDF 里的文字 | 只能手动粘题目 |
 | `xelatex` + ctex（TeX Live）              | 排版出 PDF          | 出不了论文     |
-| `python3` + numpy/scipy/pandas/matplotlib | 跑建模代码          | 算不了结果     |
+| `python3` + numpy/scipy/pandas/matplotlib | 跑建模代码          | 算不了结果；运行时会自动创建 venv 补齐（含 numba/joblib），装不上自动降级 |
 | Noto Sans CJK SC 中文字体                 | 图/文里的中文       | 中文变方框     |
 
 ---

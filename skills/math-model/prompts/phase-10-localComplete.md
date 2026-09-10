@@ -2,13 +2,9 @@
 
 > 你是本小问的完成核验 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、模式（full/quick）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根。
 
-## 统一节拍
+> 工具纪律（减回合）：9 项产物清单用一次 bash `ls` 全量核对 + 一次并列读，不逐项往返。
 
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 输入
 

@@ -2,23 +2,18 @@
 
 > 你是全题级写作 agent（run-level 阶段，**全题级、无小问**，q=null）。调度壳已注入：模式（full/quick）、依赖与产物路径。所有相对路径基于 outputDir 根。本阶段是全文 AI 味治理的最后防线：**事实源表 → 叙事大纲 → 顺序主编撰写 → 交叉审查统一修复**。
 
-## 统一节拍
-
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（不可用时按模板目录向上找 `docs/`）。本节相关：§一 论文写作规范（含 **AI 味治理 §一-13/14**、外部数据合规 §一-15）、§二 图表规范（CJK/单位/示意图自绘 §二-1..7）。**引用规范不复制内容**。
+先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§一 论文写作规范（含 **AI 味治理 §一-13/14**、外部数据合规 §一-15）、§二 图表规范（CJK/单位/示意图自绘 §二-1..7）。**引用规范不复制内容**。
 
 ## 输入
 
 - `intermediates/00-problem.json`：题面/论文规则/附件清单/subQuestions（题面 problem.description / 论文规则 paperRules / 附件 attachments / 子问 analysis.subQuestions）
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS，写作须保持其口径）
-- 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`q{id}/10-completed/question-summary.md`（定稿事实链）、`q{id}/04-formulation/draft.md` + `symbols.json` + `baseline-registry.md`、`q{id}/06-computation/results.json`、`q{id}/08-visualization/figure-manifest.md` + `figures/`、`q{id}/01-literature/literature.md`（引用登记）、`q{id}/03-assumptions/assumption-vNN.md`、`07-sanity/sanity-report.md`、`09-robustness/robustness.md`、`02-data/eda.md` + `data-collection.json`（有外部数据时）
+- 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`q{id}/10-completed/question-summary.md`（定稿事实链）、`q{id}/04-formulation/draft.md` + `symbols.json` + `baseline-registry.md`、`q{id}/06-computation/results.json`、`q{id}/08-visualization/figure-manifest.md` + `figures/`、`q{id}/01-literature/literature.md`（引用登记）、`q{id}/03-assumptions/assumption-vNN.md`、`07-sanity/sanity-report.md`、`09-robustness/robustness.md`、`02-data/eda.md` + `data-collection.json`（有外部数据时）、`02-data/figure-manifest.md`（EDA 图登记，**存在才读**：无 EDA 图时该文件不建，改看 eda.md 的图表清单）、`01-literature/lit-verify.md`（证据级核验表，**存在才读**：工具缺失可跳过，此时按 literature.md 的证据级字段并在报告注明「未机器核验」）
+- outputDir 根 `figures/`：EDA 图（`fig_eda_*`）与写作阶段兜底自绘示意图（`fig_cross_示意图_*`）所在目录（路径口径见 §二-9）
 
 > ⚠️ 全题级：`q{id}` 指各小问实际目录 q1/、q2/、…（本阶段无占位符替换）；产物写 `intermediates/12-writing/` 前缀。
 
@@ -30,7 +25,7 @@
 
 - **keyNumbers**：全部关键数字 {number,label,场景,sourcePath,口径注意}
 - **symbols**：全题符号统一表（跨问合并）
-- **caliberNotes**：口径注意事项（如「名单=预算定容30户」）
+- **caliberNotes**：口径注意事项（如「样本量=清洗后行数」）
 - **datasetFacts**：数据集画像事实
 
 ⚠️ 只提取产物中**真实存在**的数字，不补全不推测；摘要与正文每个数字必须能在本表找到出处（终审逐字溯源）。
@@ -60,17 +55,18 @@
 
 ### 4. 顺序主编撰写
 
-按上表顺序逐章撰写（后写章节强制读前文，杜绝口径分叉；每个 writer 是同一「主编」的延续视角）。开写每章前：① `ls` + `Read` 已写章节（跳过自己的），延续符号/数字/口径/术语/衔接 ② `Read` fact-sheet.md + 相关问 question-summary.md + figure-manifest.md ③ 需要题面原文时 `Read 00-problem.json` 的 problem.description。
+按上表顺序逐章撰写（后写章节强制读前文，杜绝口径分叉；每个 writer 是同一「主编」的延续视角）。开写每章前：① `ls` + `Read` 已写章节（跳过自己的），延续符号/数字/口径/术语/衔接 ② `Read` fact-sheet.md + 相关问 question-summary.md + figure-manifest.md ③ 需要题面原文时 `Read 00-problem.json` 的 problem.description。**工具纪律（减回合，agent 会话耗时主因）**：所有 `Read` **一次并列读入**多文件（如 `Read a.md、b.md、c.md`），禁止逐文件小步往返；一次会话内先读完再写，不反复开关文件。
 
 每章存 `12-writing/paper-sections/section-<id>.md`：首行 `# <章节名>`，后为本章 LaTeX body（含 `\section{...}`）；不含 documentclass/maketitle；引用 `\cite{<登记表编号>}`（编号来自 literature.md 登记表，参考文献由终审统一生成）；无身份/学校/赛区信息。
 
-> ⚠️ **分批落盘防上下文触顶**：每章写完立即落盘 `section-<id>.md` 再写下一章；多小问（3-4 问）全量写作可能触顶——必要时分多次会话继续（重读已写章节 + fact-sheet 延续口径）。
+> ⚠️ **分批落盘防上下文触顶**：每章写完立即落盘 `section-<id>.md` 再写下一章（壳每个阶段只发一次调用，**没有"下次会话"**）。若接近上下文上限：把已完成章节留在盘上、把剩余章节清单与口径写进 `narrative-outline.md`，然后返回 `NEEDS_REVISION` —— 壳会带「改策略」重跑本阶段，下一轮从已落盘章节续写。
 
 **关键约束（逐章检查）**：
-- 数字纪律：每个数值必须来自 fact-sheet.md（可溯 sourcePath）；禁编造/推算/跨章不一致；缺失写[待定]
+- 数字纪律：每个数值必须来自 fact-sheet.md（可溯 sourcePath）；禁编造/推算/跨章不一致；缺失写[待定]。**数字单一真源**：正文/摘要/图表标题与图注都不得另抄来源文件中的数值，一律走 fact-sheet 锚点（见 `_common.md` §4）
+- 引用纪律：`\cite` 支撑的数值锚点必须标明来源性质（同行评审值 / 社区复现值）；证据级 L3 只能作存在性提及、L4 不得进参考文献（以 `q{id}/01-literature/lit-verify.md` 为准）
 - 逐问覆盖：摘要分段；模型/分析/结论章覆盖全部小问（模型→求解→结果）
 - 加粗只加答案（`$\bm{}$`）；禁止「创新点：」等标签（§一-2/3）
-- 图表：读 figure-manifest.md 并 `ls` figures/ 确认真实文件；按「对于问题N」位点分配（`fig_eda_*` 进数据章、`fig_cross_*` 进综合分析）；`\includegraphics{绝对路径}` + 「如图X所示…」解读；**includegraphics 文件必须真实存在，禁止空 figure**；需要示意图而没图 → matplotlib 自绘（§二-6：CJK 字体、dpi=200、bbox_inches='tight'、保存后 ls 确认）`fig_cross_示意图_<内容>.png` 存 `figures/` 根目录；单位 LaTeX math（`cm$^{-1}$`）
+- 图表（**可引用路径只有三处，口径见 §二-9**）：① 各问结果图与示意图 → `q{id}/08-visualization/figures/`（先读 `q{id}/08-visualization/figure-manifest.md` 逐图登记）② EDA 图 → outputDir 根 `figures/fig_eda_*.png`（先读 `q{id}/02-data/figure-manifest.md`）③ 本阶段兜底自绘 → 根 `figures/fig_cross_示意图_*.png`（自绘后追加一行登记）。开写前把两份 manifest + 两个目录列全，**不得靠 `ls` 碰运气**；`\includegraphics{绝对路径}` + 「如图X所示…」解读；**文件必须真实存在，禁止空 figure**；需要示意图而没图 → 优先 vendored diagram-design（`docs/flowchart-drawing.md`），失败回退 matplotlib（§二-6：CJK 字体、dpi=200、bbox_inches='tight'、保存后 ls 确认）；单位 LaTeX math（`cm$^{-1}$`）；图件必须过 §二-8 硬条款，**视觉复核用图像读取工具看**（禁只靠脚本/自述）
 - **AI 味治理检查项（逐条自查）**：
   1. 一段一意：每段先答「这一小步解决什么问题」，一段只讲一件事
   2. 公式三步走：关键公式按「动机→推导→含义」给中间步骤、说明式子含义，**禁止只贴最终式加一句说明**
@@ -79,7 +75,7 @@
   5. 摘要/每节开头给「路标」（「针对问题N，我们建立X模型：先…接着…然后…」）
   6. 禁止标签/目录腔（「创新点：」「本模型具有以下优势：(1)(2)(3)」）
   7. **禁止内部流程术语**：「对抗性审查/模型重设计/adversarialFindings/验证器/重设计历史」不得出现（§一-14）；局限转述成论文语言（「进一步分析表明当X时模型失效」）
-  8. 范文基准：2024 板凳龙国一（A053）——摘要逐问分段、推导一步步来
+  8. 范文基准：历年国一机理论文——摘要逐问分段、推导一步步来、不堆术语
 
 ### 5. 交叉审查 ⇄ 统一修复
 
@@ -92,7 +88,7 @@
 4. 创新呼应：各章呼应（对照 11-cross-review）
 5. 重复/矛盾：不同章节重复或矛盾
 6. 章节数量与排序：全部存在；结论为最后一章（P0）
-7. 图表双向：figures/ 文件都被引用（P1）；includegraphics 文件真实存在、无空 figure（P0）
+7. 图表双向（拆两条）：① **清单→正文**：两份 figure-manifest（`08-visualization/` 与 `02-data/`）每条都有 `\includegraphics` 引用（P1；不引用须写明理由）② **正文→文件**：每个 `\includegraphics` 路径真实存在、属于 §二-9 的三处口径、无空 figure（P0）
 8. 内部流程术语 → P1（改写为论文语言）
 9. 推导链：公式「动机→推导→含义」三步 → P1
 10. 术语堆砌/可读性：一段 >3 未解释术语、冗长啰嗦 → P1

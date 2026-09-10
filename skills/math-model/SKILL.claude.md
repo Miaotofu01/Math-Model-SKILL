@@ -41,7 +41,11 @@ description: 当用户需要完成数学建模竞赛（国赛CUMCM/美赛MCM）�
     "description": "<Step 1 \"=== 题目原文 ===\" 机械提取>",
     "dataProfile": "<Step 1 \"=== 附件清单 ===\" + \"=== 附件数据画像 ===\">",
     "paperRules": "<Step 1 \"=== 论文规则 ===\">",
-    "analysis": "<Step 2 完整 JSON>"
+    "analysis": {
+      "subQuestions": [{"id": "1", "title": "<小问标题>"}, {"id": "2", "title": "..."}],
+      "dataSufficiency": "<Step 2 结论>",
+      "其余字段": "<Step 2 完整 JSON 的其它键>"
+    }
   },
   "attachments": ["<Step 1 附件清单中的绝对路径>"]
 }
@@ -55,7 +59,7 @@ description: 当用户需要完成数学建模竞赛（国赛CUMCM/美赛MCM）�
 
 ```js
 Workflow({
-  scriptPath: '/home/tofu/.claude/workflows/math-model.js',
+  scriptPath: '$HOME/.claude/workflows/math-model.js',   // 安装脚本生成（meta 头 + 仓库薄壳正文）
   args: {
     outputDir: './math-model-output',
     templateDir: '<本 skill 根目录或 templates/ 目录的绝对路径>',
@@ -74,7 +78,7 @@ Workflow({
 - `resume`：`true` 时按 `intermediates/state.json` 的 problemId 匹配续跑（gates 为 PASS/PASS_WITH_WARNING/SKIPPED 的阶段自动跳过；匹配不上则全新开始）；默认 `false`
 - `problem`：壳不再读取（无兜底）——小问列表唯一来源是 Step 5 落盘的 `intermediates/00-problem.json`
 
-> ⚠️ **仓库外脚本同步是合并后部署步骤**：本 skill 的仓库内脚本是 `skills/math-model/workflows/math-model.js`（约 10KB 薄壳，业务逻辑全在 `prompts/` 与 `docs/`），`scriptPath` 指向的 `~/.claude/workflows/math-model.js` 是仓库外副本——**合并后需把新薄壳同步到 `~/.claude/workflows/`**，否则 Claude 版会加载旧脚本。
+> ⚠️ **脚本同步靠重装**：仓库正文 `skills/math-model/workflows/math-model.js` 是 DSH 薄壳，**不含 `export const meta`**（DSH 把 meta 当工具参数传）。Claude 版需要文件自带 meta，因此 `bash install.sh --claude` 会**生成** `~/.claude/workflows/math-model.js = meta 头 + 仓库正文`——改完壳后重跑安装脚本即同步，不要手工维护那份副本。
 
 **运行预期（务必转告用户）：**
 - **耗时 30 分钟 ~ 10 小时不等**，主要看建模评审 loop 与代码求解的时间复杂度，full 模式以小时计
@@ -108,11 +112,15 @@ Workflow 返回 `{ status, statePath, artifactSummary, ledgerTail, blocked? }`�
 
 ```
 outputDir/
+├── pool/                       # 共享池（run 级，随产物走，**不在 intermediates 里**）
+│                               #   文献池 literature-pool.md ｜ 外部数据 external-data/
+│                               #   代码池 primitives.py（通用原语）+ problem/（题专用核心），各带 manifest.json
+├── probes/                     # 探针池：<角色>/<目的>.py + results/（指纹缓存）+ manifest.json
+├── figures/                    # EDA 图（fig_eda_*）；求解/示意图在 q{id}/08-visualization/figures/
 └── intermediates/              # 全部中间产物（壳只路由，不搬运内容）
     ├── 00-problem.json         # Stage 1 落盘：题面/数据画像/论文规则/审题JSON/附件清单（小问列表唯一来源）
     ├── state.json              # 状态契约：current/gates/iterations/artifacts/deps（中断恢复 + 审计）
     ├── ledger.md               # 追加式决策日志（每节点一行）
-    ├── pool/                   # 共享池：literature-pool.md（文献池）、external-data/（外部数据）
     ├── q1/                     # 每小问独立目录（串行天然隔离）——10 个 per-question 阶段产物
     │   ├── 01-literature/literature.md            # 文献调研（含引用登记）
     │   ├── 02-data/eda.md + data-collection.json  # 数据探索（外部数据来源记录）

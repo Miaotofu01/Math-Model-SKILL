@@ -1,7 +1,22 @@
 {
   "schema": "v1",
-  "perQuestionStages": ["literature","data","assumption","formulation","implementation","computation","sanity","visualization","robustness","localComplete"],
-  "runLevelStages": ["crossReview","writing","finalReview"],
+  "perQuestionStages": [
+    "literature",
+    "data",
+    "assumption",
+    "formulation",
+    "implementation",
+    "computation",
+    "sanity",
+    "visualization",
+    "robustness",
+    "localComplete"
+  ],
+  "runLevelStages": [
+    "crossReview",
+    "writing",
+    "finalReview"
+  ],
   "prompts": {
     "literature": "phase-01-literature.md",
     "data": "phase-02-data.md",
@@ -18,29 +33,80 @@
     "finalReview": "phase-13-finalReview.md"
   },
   "deps": {
-    "literature": ["00-problem"],
-    "data": ["00-problem", "{id}/01-literature"],
-    "assumption": ["00-problem", "{id}/01-literature", "{id}/02-data"],
-    "formulation": ["00-problem", "{id}/02-data", "{id}/03-assumptions"],
-    "implementation": ["{id}/04-formulation", "{id}/02-data"],
-    "computation": ["{id}/05-implementation", "{id}/04-formulation"],
-    "sanity": ["{id}/06-computation", "{id}/04-formulation"],
-    "visualization": ["{id}/06-computation", "{id}/07-sanity"],
-    "robustness": ["{id}/06-computation", "{id}/04-formulation", "{id}/07-sanity"],
-    "localComplete": ["{id}/01..09 全部阶段产物"],
-    "crossReview": ["全部小问的 10-completed"],
-    "writing": ["全部产物"],
-    "finalReview": ["12-writing", "全部产物"]
+    "literature": [
+      "00-problem.json"
+    ],
+    "data": [
+      "00-problem.json",
+      "{id}/01-literature/literature.md"
+    ],
+    "assumption": [
+      "00-problem.json",
+      "{id}/01-literature/literature.md",
+      "{id}/02-data/eda.md"
+    ],
+    "formulation": [
+      "00-problem.json",
+      "{id}/02-data/eda.md",
+      "{id}/03-assumptions/assumption-v01.md"
+    ],
+    "implementation": [
+      "{id}/04-formulation/draft.md",
+      "{id}/02-data/eda.md"
+    ],
+    "computation": [
+      "{id}/05-implementation/code/",
+      "{id}/04-formulation/draft.md",
+      "{id}/06-computation/results.json"
+    ],
+    "sanity": [
+      "{id}/06-computation/results.json",
+      "{id}/04-formulation/draft.md"
+    ],
+    "visualization": [
+      "{id}/06-computation/results.json",
+      "{id}/07-sanity/sanity-report.md"
+    ],
+    "robustness": [
+      "{id}/06-computation/results.json",
+      "{id}/04-formulation/draft.md",
+      "{id}/07-sanity/sanity-report.md"
+    ],
+    "localComplete": [
+      "本问 01–09 全部阶段产物"
+    ],
+    "crossReview": [
+      "全部小问的 10-completed"
+    ],
+    "writing": [
+      "全部产物"
+    ],
+    "finalReview": [
+      "12-writing",
+      "全部产物"
+    ]
   },
   "gates": [
-    { "before": "implementation", "boundary": "solve-start", "check": "该问 04-formulation 产物存在且 state.gates[该问.formulation]=PASS" },
-    { "before": "writing", "boundary": "write-start", "check": "所有小问 localComplete 且 crossReview PASS" },
-    { "before": "finalReview", "boundary": "final-start", "check": "writing 产物完整" }
+    {
+      "before": "implementation",
+      "boundary": "solve-start",
+      "check": "该问 04-formulation 产物存在且 state.gates[该问.formulation]=PASS"
+    },
+    {
+      "before": "writing",
+      "boundary": "write-start",
+      "check": "所有小问 localComplete 且 crossReview ∈ {PASS, PASS_WITH_WARNING}"
+    },
+    {
+      "before": "finalReview",
+      "boundary": "final-start",
+      "check": "writing 产物完整"
+    }
   ],
   "outputLayout": {
     "literature": "{id}/01-literature/literature.md",
     "data": "{id}/02-data/eda.md",
-    "assumption": "{id}/03-assumptions/assumption-v01.md",
+    "assumption": "{id}/03-assumptions/",
     "formulation": "{id}/04-formulation/draft.md",
     "implementation": "{id}/05-implementation/code/",
     "computation": "{id}/06-computation/results.json",

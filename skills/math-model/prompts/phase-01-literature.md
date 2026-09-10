@@ -2,17 +2,13 @@
 
 > 你是本小问的文献调研 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、模式（full/quick）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根（`intermediates/` 与 `pool/` 同级）。
 
-## 统一节拍
+> 工具纪律（减回合）：四个角度的检索词一次全部发出（不逐条等待），精读 WebFetch 批量抓取；引用登记一次写完。
 
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（如不可用，按调度壳的模板目录向上找 `docs/`）。本节相关：§一-10 文献引用支撑（参考文献按 GB/T 7714，正文 `\cite` 标注）、§五 创新链条（文献局限分析是 Gap 的合法来源）。引用规范，不复制内容。
+先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§一-10 文献引用支撑（参考文献按 GB/T 7714，正文 `\cite` 标注）、§五 创新链条（文献局限分析是 Gap 的合法来源）。引用规范，不复制内容。
 
 ## 输入
 
@@ -47,7 +43,26 @@
 1. 评估来源质量：primary / secondary / blog / forum / unreliable
 2. 提取 2-5 条与建模相关的 claim，附原文引用（quote）与重要性（central / supporting / tangential）
 3. 提取可复用的数学模型：名称、描述、公式、参数、假设、适用条件、预处理方法
-4. 无法访问 / 付费墙 / 不相关 → claims 留空、来源质量标 unreliable
+4. 无法访问 / 付费墙 / 不相关 → 按 §4b 分级处理：能拿到摘要 → 标 L2 并摘录摘要明确陈述；只有元数据 → 标 L3（仅存在性提及）；确实不可验证 → claims 留空、来源质量标 unreliable（L4，禁止进参考文献）
+
+### 4b. 证据分级与取文回退链（硬规则）
+
+**证据分级**（每条来源登记时必须标级；级别只表示「能读到什么」，与权威性正交）：
+
+| 级别 | 定义 | 允许用途 |
+|---|---|---|
+| L1 | 全文可得（OA 全文 / 预印本 / 官网全文 / 社区复现仓库或博客） | 支撑方法选择、数值锚点、结论对比 |
+| L2 | 摘要级（abstract + 元数据可读） | 可引用摘要明确陈述的内容；数值须标「摘要级」 |
+| L3 | 元数据级（仅标题/DOI/卷期页） | **只能作存在性提及**，不得支撑数值或方法 |
+| L4 | 不可验证 | **禁止进参考文献** |
+
+另用**来源性质**标注权威性：`同行评审` / `预印本` / `社区复现（非同行评审）` / `命题人·教学期刊`。规则是**可引用 + 标注级别**，不是禁止引用付费文献（整体删掉会让参考文献变薄、丢掉权威源）；但**数值锚点必须标注来源性质**（同行评审值 / 社区复现值）。
+
+**取文回退链（按序尝试，命中即停，不硬闯付费墙）**：OA 优先（arXiv / OpenAlex OA（`is_oa` + `best_oa_location.pdf_url`）/ PMC / DOAJ）→ 作者版·预印本（Semantic Scholar `openAccessPdf`、机构仓储）→ 摘要级（OpenAlex `abstract_inverted_index` 重建摘要、期刊官网、SCITEPRESS）→ 元数据级（OpenAlex / Crossref 补 DOI + 卷期页）→ 社区复现（GitHub/blog，明确标非同行评审）→ 仍拿不到 → 按上表降级标注，并在登记表写明卡在哪一步。
+
+**接口要点（已踩坑，勿重复试）**：OpenAlex 必须带 `mailto`；Unpaywall 需真实邮箱（`test@example.com` 会 422）；**中文 DOI 在 Crossref/OpenAlex 均 404** → 走 `doi.org` → chndoi + 期刊官网（官网通常免费给完整摘要/关键词/参考文献表，全文需登录 → 上限 L2）；部分站点可达性不稳（一次超时一次成功）→ 重试 1 次。
+
+**检索式偏好**：OA 优先（`open access` / `site:arxiv.org` / `filetype:pdf` / diamond-gold OA 期刊）；综述优先（一篇可读综述可替代多篇付费原文，引用其观点并标 `[综述]`）；命题人·教学期刊优先（其方法框架往往就是本题标准解法）。
 
 ### 5. 局限分析（创新合法来源，必须有据）
 
@@ -57,15 +72,28 @@
 
 ### 6. 引用登记
 
-在本问报告中登记每条精读来源：编号、标题、来源类型、URL、获取日期、相关小问、关键 claim 摘要——供写作阶段按 GB/T 7714 整理参考文献（§一-10）。
+在本问报告中登记每条精读来源：编号、**完整标题（不得截断，勿照抄检索结果的省略形态）**、作者、年份、来源类型、**DOI**、URL、获取日期、相关小问、**证据级（L1–L4）+ 来源性质**、关键 claim 摘要——供写作阶段按 GB/T 7714 整理参考文献（§一-10）。GB/T 7714 条目需要卷(期):页码，**IEEE/会议条目必须补 DOI 或卷期页**，缺失视为登记不合格。
+
+### 7. 池核验（脚本，0 agent 回合，收尾跑一次）
+
+```
+python <技能根>/scripts/lit_verify.py --pool pool/literature-pool.md \
+  --out intermediates/q{id}/01-literature/lit-verify.md \
+  --json intermediates/q{id}/01-literature/lit-verify.json \
+  --cache <outputDir>/.litcache --mailto <真实邮箱>
+```
+
+（`<技能根>` 见 `_common.md` §6）产出核验表（编号 / 完整标题 / DOI / 元数据命中 / OA 状态 / 证据级建议 / URL 状态）+ **池数据缺陷**（标题截断、缺 DOI、URL 失效）。**按核验结果回填本问产物与池**：补 DOI 与卷期页、修正截断标题、把「付费墙 → unreliable」改成实际可达级别（实测：标着"付费墙"的条目多数仍能从 OpenAlex 拿到摘要 → 真实可达级别常高于粗判，**逐条核验后再定级**）。首问跑全量；后续小问只对本次新增条目补核验。
 
 ## 产物
 
-- `intermediates/q{id}/01-literature/literature.md`（主产物）：检索过程 → 精读结果（来源/claims/可复用模型）→ 局限分析 → 引用登记表
+- `intermediates/q{id}/01-literature/literature.md`（主产物）：检索过程 → 精读结果（来源/claims/可复用模型/证据级）→ 局限分析 → 引用登记表
+- `intermediates/q{id}/01-literature/lit-verify.md` + `lit-verify.json`（池核验表：DOI/OA/证据级/URL 状态 + 池数据缺陷）
 - `pool/literature-pool.md`：共享池。首问创建；后续小问**追加**本次新来源（标题+URL+角度+相关性+精读摘要+局限要点），不覆盖已有条目
 
 ## 完成标准
 
 - 每个小问至少 2-3 条相关来源；确实搜不到（如小众机理题）→ 如实记录，以推断局限交付，不算失败
+- 每条来源有证据级（L1–L4）与来源性质；无 DOI / 核验失败条目为 0（不可得者必须写明卡在哪一步）
 - 全部检索词、来源、局限、引用登记可追溯
 - 文献总量极少（无可用来源）→ 在 literature.md 写明，正常返回 PASS（局限基于题面推断），供后续阶段降级处理

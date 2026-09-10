@@ -6,13 +6,11 @@
 
 **本阶段显式可选**：每类实验先判断适用性，**不适用必须写理由，全部不适用时以 SKIPPED 返回**（robustness.md 仍须写明各项为何不适用）。数据题通常全适用；纯机理/解析题常只有部分适用（如敏感性可解析说明）。不为了凑内容做实验，也不编造数字。
 
-## 统一节拍
+## 规范引用
 
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§一-8 灵敏度与稳健性。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖、实验预算）。引用规范，不复制内容。
+
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 输入
 
@@ -55,6 +53,16 @@ Bootstrap 置信区间（关键估计值 ± 区间）、样本量是否支撑结
 - ablationResults：{component, removedVariant, effect, conclusion}
 
 **铁律：只基于真实实验，禁止编造数字或凭空添加扰动实验；某项无信息写「无」。实验失败/报错必须把原因与影响写进 robustness.md 相应小节（计入 robustnessStatements/weakestPoints），禁止用裸 err.log/日志文件留档（不留空日志文件）。**
+
+### 6. 性能与并行（可选，按 docs/performance.md）
+
+- **Python 环境**：所有 python 执行一律用调度壳注入的环境路径（`intermediates/env-report.json` 为准（文件不存在 → 用系统 python3））；依赖缺失 → 优先 venv 安装、失败降级纯 numpy/scipy，绝不因缺库 FAIL。
+- **复用核心实现（禁止重写）**：实验一律 import 复用已有核心（`pool/` 或前问 `02-data/`、`05-implementation/code/`、`06-computation/`），禁止重写慢副本；**复用前核对常量/维度/场景作用域与本问一致，不一致禁止复用**；并行随机流派生自主种子。
+- **探针池 + 缓存**：每个扰动/消融实验写成 `probes/robustness/<目的>.py`，用 `probe_cache.py --run ... --inputs '{...}'` 跑（结果缓存于 `probes/results/`，同输入重跑命中秒回）；重复实验复用缓存结果，**不要每次重算**（见 `_common.md` §5.2）。
+- 独立重复实验（bootstrap/敏感性/消融/多起点）默认并行：joblib（n_jobs=min(核数,8)），**单任务 <20ms 不并行**（启动开销吃掉收益，直接向量化）；numba 只 @jit 纯循环核，**禁止 prange 内调用 np.linalg.solve/scipy 求解器**；库缺失自动回退纯 numpy，绝不 FAIL。
+- 随机性：并行 worker 用从主种子派生的独立子流，结果与串行统计一致；需逐位一致时用「预生成索引 + 分块」。
+- **实验预算**：bootstrap B=500–1000（标准误收敛即可）；敏感性只打关键参数；消融每组件一个变体。
+- 记录：各实验实际耗时与并行与否写入 robustness.md（供如实披露）。
 
 ## 产物
 

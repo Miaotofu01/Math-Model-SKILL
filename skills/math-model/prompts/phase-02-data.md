@@ -2,17 +2,11 @@
 
 > 你是本小问的数据阶段 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根（`intermediates/`、`pool/`、`figures/` 同级）。
 
-## 统一节拍
-
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（如不可用，按调度壳的模板目录向上找 `docs/`）。本节相关：§一-15 外部数据合规（铁律）、§一 数据分析统计工具箱（检验方法）、§二 图表规范（CJK 字体与命名）。引用规范，不复制内容。
+先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§一-15 外部数据合规（铁律）、§一 数据分析统计工具箱（检验方法）、§二 图表规范（CJK 字体与命名）。引用规范，不复制内容。
 
 ## 输入
 
@@ -24,7 +18,7 @@
 判断本题是否需要**自行收集外部数据**，判定规则：
 
 1. 有附件且数据充分（结论可直接由附件得出）→ 不需要
-2. 无附件但纯机理/几何/物理推导题（参数题目已给，如板凳龙、定日镜场）→ 不需要
+2. 无附件但纯机理/几何/物理推导题（参数与机理题目已给足的纯推导型题）→ 不需要
 3. 无附件且题目需要真实数据（题面含「查找/收集/查阅/获取数据」「根据实际数据」等字样，如流量、经济、天气、地理、人口、行业价格）→ 需要
 4. 附件不足（结论需要附件外的补充数据）→ 需要
 
@@ -35,7 +29,7 @@
 为每条需求收集**真实、可验证**的数据：
 
 1. WebSearch 权威数据源：优先国家统计局/地方统计局、气象局、交通部门、世界银行、WHO、政府开放数据平台、权威行业报告；次选知名公开数据集
-2. python3（requests/pandas/curl）下载，保存到 `pool/external-data/`（mkdir -p）
+2. 用调度壳注入的环境 python（`intermediates/env-report.json` 为准（文件不存在 → 用系统 python3）；缺失依赖优先 venv 安装，失败如实记录）执行 requests/pandas/curl 下载，保存到 `pool/external-data/`（mkdir -p）
 3. 读取确认结构（shape/列名/前几行），轻量清洗（去表头杂质、统一列名、utf-8），最终文件留在 pool/external-data/
 4. 记录到 `intermediates/q{id}/02-data/data-collection.json`：每条 {id, purpose, status: OK|NOT_FOUND, filePath, sourceUrl（精确到页面的真实 URL）, sourceTitle, fetchedAt（今天日期）, fields, notes（口径/单位/范围说明）}
 
@@ -54,7 +48,9 @@
 
 1. **预处理**：读取全部附件与外部数据，检查 shape/缺失/类型/重复；清洗——缺失（删除/插补，记录数量）、异常值（3σ 或业务规则如负销量/量程外，记录剔除数量）、无关数据剔除（记录规则与数量）、单位/口径统一、多表关联与聚合规则；**每步输出处理规则 + 处理前后数量对比**
 2. **探索性统计分析**：针对题目目标——分布规律（量级与占比）、时间规律（时序趋势、ACF 周期性、必要时分解与 ADF 平稳性）、关系规律（Spearman/偏相关/分组对比，适合时关联规则 FP-Growth/卡方/Fisher 精确检验）、组间差异（t 检验/卡方）。**每个结论给检验方法 + 统计量 + p 值 + 样本量**；用 scipy.stats/statsmodels/mlxtend 库函数，禁止手写统计公式（工具箱见写作规范 §一）
-3. **EDA 图表**：保存到 `figures/`，命名 `fig_eda_<内容>.png`；CJK 字体与命名规范按写作规范 §二。每张图回答一个数据问题
+3. **EDA 图表**：保存到 outputDir 根 `figures/`，命名 `fig_eda_<内容>.png`；CJK 字体与命名规范按写作规范 §二（**结果图硬条款 §二-8 逐条自检**）。每张图回答一个数据问题
+   - **出图自检（P0 未清零不写 manifest）**：① 机械自检（EDA 绘图脚本落盘 `intermediates/q{id}/02-data/plot_eda.py`；命令在 outputDir 下执行）：`python <技能根>/scripts/figure_lint.py --py intermediates/q{id}/02-data/plot_eda.py --png figures/fig_eda_*.png`（`<技能根>` 见 `_common.md` §6），P0 清零；② **视觉复核**：用图像读取工具逐张看 PNG，按 §二-8 列缺陷（标签重叠/被裁、图例遮挡图元、尺度不可辨、图-题不符、刻度千分位）；图像读取工具不可用 → 在 manifest 自检行如实记「未执行 + 原因」，不重试不 FAIL；③ 两条结论写入 figure-manifest 的自检行
+   - **逐图登记** `intermediates/q{id}/02-data/figure-manifest.md`（写作阶段据此引用，不得靠 `ls` 碰运气）：字段与 08 对齐 —— 文件名 / 类型 / 一句话作用 / 数据来源 / 绘图方式 / 计划引用位点（数据分析章）
 4. **发现报告**（写入 eda.md）：
    - datasetFacts：各数据集事实（行数、时间范围、缺失/异常/剔除数量）
    - cleaningDecisions：清洗决策列表（step / rule / removedCount / rationale）
@@ -67,8 +63,12 @@
 
 - `intermediates/q{id}/02-data/eda.md`（主产物：评估结论 + 收集记录摘要 + 预处理 + 探索发现）
 - `intermediates/q{id}/02-data/data-collection.json`（来源记录，供写作/评审阶段核对）
+- `intermediates/q{id}/02-data/figure-manifest.md`（EDA 图逐图登记 + 出图自检结论；无 EDA 图则不建并在 eda.md 写明理由）
 - `pool/external-data/`（外部数据文件，未收集则为空）
-- `figures/fig_eda_*.png`（无数据则无）
+- `figures/fig_eda_*.png`（outputDir 根；无数据则无）
+- **核心可复用函数**（EDA 中写出的判据/求解器等会被后问复用的实现）：存 `pool/problem/<题>/`（题专用，须登记 manifest）或本问 `02-data/` 下—— 见 `_common.md` §5——后续小问与实现/计算/稳健性/评审必须 import 复用，**禁止各自重写**（同口径才复用；口径不一致须写明差异）
+- **通用原语**：写数值核心前先 `python <技能根>/scripts/primitives.py --list` 查现有条目（技能根只装「库不提供 + 口径敏感 + 领域中立」的原语，不含任何单题内容）；命中同口径 → `cp <技能根>/scripts/primitives.py pool/primitives.py` + `--manifest pool/manifest.json`（含对拍值与耗时），此后一律 import（**路径口径**：`PYTHONPATH=<outputDir>/pool:<outputDir>` 或 `pc.bootstrap_sys_path()`；撞 ModuleNotFoundError 先修路径，禁止内联抄代码），不重复实现；未命中 → 按 `_common.md` §5.1 判据在本问实现，**单题条目写 `pool/problem/<题>/`，不得写进技能根**
+- **EDA 重扫描**：>1s 的扫描/敏感性评估写成 `probes/<角色>/<目的>.py` + `probe_cache.py` 缓存（`_common.md` §5.2）
 
 ## 完成标准
 

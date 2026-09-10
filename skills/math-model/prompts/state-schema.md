@@ -1,6 +1,6 @@
 # state.json 状态契约（schema v1）
 
-位置：`<outputDir>/intermediates/state.json`。用于**中断恢复**（重启按 `problemId` 匹配后从 `(question, stage)` 续跑）与**审计**（终审溯源）。文件由**阶段 agent 自己**更新，壳只做路由、不写、不单独派 state 更新代理（§4.8 位置跟踪不额外花钱）。
+位置：`<outputDir>/intermediates/state.json`。用于**中断恢复**（重启按 `problemId` 匹配后从 `(question, stage)` 续跑）与**审计**（终审溯源）。文件由**阶段 agent 自己**更新；壳只做路由与门禁判定，仅在三个专职节点写 state：`init`（建文件）、`degrade`（失败降级 → `gates[k]="SKIPPED"`）、`finalize`（公式化收束 → `iterations`/`gates`/`artifacts`/`current`）。
 
 ## 结构
 
@@ -20,11 +20,11 @@
 
 - `schema`：契约版本，固定 `"v1"`。
 - `problemId`：题号（与 `intermediates/00-problem.json` 的 `selectedProblem`/`problem.id` 一致）；恢复时以此匹配，不匹配则全新开始。
-- `current`：当前进度游标 `{question, stage}`；运行中由阶段 agent 在完成后更新，`question`/`stage` 可为 `null`。
+- `current`（**可选**）：进度游标 `{question, stage}`；阶段 agent 顺手更新即可，仅用于人工观察——**恢复只依赖 `gates`/`artifacts`，不依赖本字段**，不要为它额外派回合。
 - `iterations`：键为 `"<question>.<stage>"`，值为该阶段累计执行次数（公式化 = 1 次 formulator + 评审轮数，由收束节点写）。
 - `gates`：门禁/阶段结果，值域 `PASS | NEEDS_REVISION | FAIL | SKIPPED | PASS_WITH_WARNING`。
 - `artifacts`：阶段产物相对路径（`<outputDir>/intermediates/` 下）。
-- `deps`：阶段依赖哈希（`"sha-"` + 首依赖文件 `sha256sum` 截断 12 位），无文件依赖则略过。
+- `deps`（**可选**）：阶段依赖哈希（`"sha-"` + 首依赖文件 `sha256sum` 截断 12 位）；审计用，**不写不算违约**、不要为它额外派回合。
 
 ## 键约定（壳 + 各阶段 agent 必须一致）
 
@@ -45,13 +45,14 @@
 
 壳不单独派 state 更新代理。各路径：
 
-- **常规阶段**（含运行级 3 阶段）：agent 更新 `current`/`iterations`/`gates`/`artifacts`/`deps` 并追加 ledger 一行。
+- **常规阶段**（含运行级 3 阶段）：agent 更新 `iterations`/`gates`/`artifacts` 并追加 ledger 一行（`current`/`deps` 可选）。
 - **公式化子流程**：
   - formulator 节点：写 `draft.md` + `baseline-registry.md`，更新 `current`/`artifacts`、`gates[q.formulation]="NEEDS_REVISION"`、追加 ledger（`iterations` 由收束节点写）；
   - 三维自查节点：只写 `self-check.md`，不更新 state；
-  - 评审节点：写 `review-r<轮次>-<视角>.md`，追加 ledger 一行（自己的判定），不更新 state；
+  - 评审节点（三视角**并行**）：只写 `review-r<轮次>-<视角>.md`，**不追加 ledger、不改 state**（并行写竞态；判定由收束节点统一记入 ledger）；
   - 修订节点：覆盖写 `draft.md`，追加 ledger 一行，不更新 state；
   - **收束节点**：统一写 `gates[q.formulation]`（PASS/NEEDS_REVISION/FAIL）、`iterations`、`artifacts`、`current=null`，追加 ledger 一行。
+  - **失败降级节点**（壳派发，任意阶段连续 2 次失败）：只写 `gates[<question>.<stage>]="SKIPPED"` 并追加 ledger；不写 `iterations`/`artifacts`（该阶段本就没有可用产物）。**例外：`finalReview` 失败不降级**——壳直接返回 blocked（终审是最后一道质量门禁，无下游可拦）。
 
 ## 恢复规则
 

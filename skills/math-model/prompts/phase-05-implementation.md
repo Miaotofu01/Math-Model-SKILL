@@ -2,17 +2,11 @@
 
 > 你是本小问的实现 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、模式（full/quick）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根。
 
-## 统一节拍
-
-1. 读 intermediates/state.json：确认前置门禁（gates 中前置阶段为 PASS），否则返回 {status:"FAIL", ...}
-2. 读依赖文件（本阶段的 deps，路径已由调度壳注入）
-3. 执行本阶段任务，写产物到指定路径
-4. 更新 state.json 对应字段 + 追加 intermediates/ledger.md 一行
-5. 返回 {status:"PASS|DRAFT|NEEDS_REVISION|FAIL|SKIPPED", artifact_path, summary≤200字}
+> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
 
 ## 规范引用
 
-先 Read `skills/math-model/docs/writing-and-format.md`（如不可用，按调度壳的模板目录向上找 `docs/`）。本节相关：§二 图表生成规范（代码内含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。引用规范，不复制内容。
+先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§二 图表生成规范（代码内含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
 
 ## 输入
 
@@ -59,9 +53,25 @@
 
 ### 4. 静态检查（不运行主流程）
 
-1. 全部 .py 过 `python3 -m py_compile` 语法检查
+1. 全部 .py 过语法检查：用阶段指令注入的解释器（`python` 路径见提示词末尾「Python 环境」行）执行 `-m py_compile`
 2. **符号一致性核对**：代码变量与 symbols.json 逐项核对（同名或给出映射表），关键公式与 draft.md 推导逐式核对；不一致必须改代码或写明原因，输出核对表
 3. 确认 dual-path、数值自检清单、可审计性三项就位
+
+### 5. 性能纪律（按 docs/performance.md，可选加速、禁硬依赖）
+
+0. **Python 环境**：所有 python 执行一律用调度壳注入的环境路径（阶段指令首行 `## Python 环境`，以 `intermediates/env-report.json` 为准（文件不存在 → 用系统 python3））；依赖缺失 → 优先 venv 安装、失败降级纯 numpy/scipy，**绝不因缺库 FAIL**。
+1. **复用核心实现（禁止重写）**：若 `pool/` 或前序小问已有**同口径**的核心实现（如判据/求解器等核心算法；查 `pool/manifest.json`、`pool/problem/manifest.json`，以及前序小问的 `02-data/`、`05-implementation/code/`、`06-computation/`），必须 import 复用，**禁止各自重写新副本**（重写会重复踩慢实现且口径漂移）；**复用前必须核对常量/维度/场景作用域与本问一致（如单机核心不得用于多机题），不一致禁止复用**；口径不一致才允许新实现，并在 README 写明差异与原因。
+   - **通用原语**：先 `--list` 查技能根现有条目（几何/区间等「库不提供且口径敏感」的原语）；命中 → 首次 `cp <技能根>/scripts/primitives.py pool/primitives.py`（`--selftest` 应全绿）后一律 import（**路径口径**：`PYTHONPATH=<outputDir>/pool:<outputDir>` 或 `pc.bootstrap_sys_path()`；撞 ModuleNotFoundError 先修路径，禁止内联抄代码）；未命中 → 按 `_common.md` §5.1 判据实现，**单题条目写 `pool/problem/<题>/`（参数外置 `const.json`），不进技能根**
+   - **重计算/敏感性实验** → 走探针池 `probes/<角色>/<目的>.py` + `probe_cache.py`（见 `_common.md` §5.2），禁止 `/tmp` 一次性脚本
+2. **向量化优先**：热路径禁止 Python 级 for 循环（用 numpy 数组运算）；能用闭式/解析解就不用迭代求解器（迭代留作交叉核对）。
+   - **写完当场查重**：跑 `python <技能根>/scripts/reuse_lint.py --scan --root <outputDir>`；本阶段新增文件与 `pool/`、前序小问同形 → 同口径改 import、口径不同写明差异；改不完 → **返回 `NEEDS_REVISION`**（调度壳会带「改策略」重跑本阶段），禁止放着重复实现进 06。
+3. **单次求解预算**：默认 ≤15 分钟；超出先降样本/放宽收敛精度（rtol/atol/max_iter），不无限等待。
+4. **可选加速（探测到才用，缺失自动回退纯 numpy，绝不因依赖缺失 FAIL）**：
+   - 纯循环数值核 → numba @jit；**禁止 prange 内调用 np.linalg.solve/scipy 求解器**（实测反而慢 5 倍）；
+   - 独立重复任务（重采样/网格/多起点）→ joblib 并行（n_jobs=min(核数,8)，单任务 ≥20ms 才并行）；
+   - GPU（cupy/torch）→ 仅大矩阵（≥万级）或大规模 MC 且驱动与库都可用时。
+5. 记录：耗时/加速手段/并行与否写入 README 或结果文件（供计算阶段如实留档）。
+6. **批量工具调用（减回合，agent 会话耗时主因）**：一次 `Read` 并列读入全部所需文件（多路径一次读完）；一次 bash 执行全部静态检查/冒烟测试；**禁止「写一小段→跑→改→再跑」的微循环**——先完整落盘再统一运行验证。实测同类会话 161 次工具调用中大量是微循环往返。
 
 ## 产物
 
