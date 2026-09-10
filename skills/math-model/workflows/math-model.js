@@ -223,7 +223,11 @@ const C = await loadContracts()
 if (!C) return err("契约读取失败（prompts/stage-manifest/response-schema.json）")
 const m = C.manifest, sc = C.responseSchema
 // 批量读启动文件（一个 agent 会话，替代微型会话；解析健壮：围栏/语言行由 parseAny 处理）
-const boot = await rfMany([IM + "/00-problem.json", IM + "/state.json", outDir + "/pool/manifest.json", outDir + "/pool/problem/manifest.json", outDir + "/probes/manifest.json"])
+// 三份 manifest 只在 resume 时随 boot 读：全新 run 里它们必然不存在（pool/problem/manifest.json 更是 run 中途才产生），
+// 读到的只会是 NOT_FOUND。资产发现不依赖这里——每个阶段的提示词都要求并列 Read 这三份清单（以文件为权威）。
+const bootPaths = [IM + "/00-problem.json", IM + "/state.json"]
+if (A.resume) bootPaths.push(outDir + "/pool/manifest.json", outDir + "/pool/problem/manifest.json", outDir + "/probes/manifest.json")
+const boot = await rfMany(bootPaths)
 ASSETS = buildAssets(boot)   // §1.3-4：可复用资产清单注入每个阶段/评审/修订提示词
 const P = parseProblemsText(boot ? boot[IM + "/00-problem.json"] : null)
 if (!P) return err("未找到 " + IM + "/00-problem.json（Stage 1 需先落盘）")

@@ -29,9 +29,11 @@ const files = {
   [`${IM}/state.json`]: MISMATCH && stateRaw ? stateRaw.replace(/"problemId":\s*"[^"]*"/, '"problemId": "ZZZ"') : stateRaw,
 }
 if (FIXTURE_MANIFESTS) {   // 三份清单：原语 2 项 / 题专用核心 2 项 / 探针 1 条
+  // 清单只在 resume 时随 boot 读 → 夹具用 resume + 空 gates（全部阶段照跑），以便覆盖「已登记」分支
   files[`${OUT}/pool/manifest.json`] = JSON.stringify({ primitivesVersion: "1.0.0", selftest: { passed: true }, entries: { point_segment_distance: {}, bisect_boundary: {} } })
   files[`${OUT}/pool/problem/manifest.json`] = JSON.stringify({ entries: { "core.occlusion": {}, "core.greedy": {} } })
   files[`${OUT}/probes/manifest.json`] = JSON.stringify({ probes: { "adversary/perturb": {} } })
+  files[`${IM}/state.json`] = JSON.stringify({ schema: "v1", problemId: "A", current: {}, iterations: {}, gates: {}, artifacts: {}, deps: {} })
 }
 const RESUME_GATES = stateRaw ? Object.entries(JSON.parse(stateRaw).gates || {}).filter(([, v]) => ["PASS", "PASS_WITH_WARNING", "SKIPPED"].includes(v)).map(([k]) => k) : []
 
@@ -98,7 +100,7 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 const run = new AsyncFunction("agent", "parallel", "phase", "log", "args", body)
 
 const result = await run(agent, parallel, phase, log, {
-  outputDir: OUT, templateDir: SKILL, mode: MODE, innovationStrictness: "strict", resume: RESUME,
+  outputDir: OUT, templateDir: SKILL, mode: MODE, innovationStrictness: "strict", resume: RESUME || FIXTURE_MANIFESTS,
 })
 
 // ── 断言 ──
