@@ -44,7 +44,10 @@ async function rfMany(paths, label) {
     if (typeof v === "string") return !!parseAny(v)
     return !!(v && typeof v === "object" && (v.problemId || v.gates))
   })
-  if (usable) return o
+  // 摘要里 00-problem 的 questions 为空 = 强信号（读残/漏字段）→ 走回退拿完整列表（全新 run 没有 gates 可补）
+  const pe = Object.entries(o || {}).find(([k]) => /00-problem\.json$/.test(k))
+  const probEmpty = !!(pe && pe[1] && typeof pe[1] === "object" && !(Array.isArray(pe[1].questions) && pe[1].questions.length))
+  if (usable && !probEmpty) return o
   // a2 回退：摘要失败时只对「关键两件」走全量读；manifest 缺席由 buildAssets 的降级文案兜底（避免再赌一次大文件）
   const fb = {}
   for (const q of paths.filter(x => !/manifest\.json$/.test(x))) { const s = await rf(q); if (s) fb[q] = s }
@@ -300,6 +303,15 @@ if (A.resume) {
 }
 const gs = (state && state.gates) || {}
 if (!state && !(await initState(P.problemId, sc))) return err("initState 写入失败")
+// 防御（boot 摘要可能漏/错小问）：把 state.gates 里出现过的小问补进列表——只增不减，避免静默跳过整问
+{
+  const seen = new Set(questions)
+  for (const k of Object.keys(gs)) {
+    const m = /^(q\d+)\./.exec(k)
+    if (m && !seen.has(m[1])) { seen.add(m[1]); questions.push(m[1]); log("⚠ " + m[1] + " 不在 00-problem.json 的小问列表里，但 state.gates 有它的记录 → 已补入") }
+  }
+  if (questions.length > 1) questions.sort((a, b) => (parseInt(a.slice(1), 10) || 0) - (parseInt(b.slice(1), 10) || 0))
+}
 const done = A.resume ? new Set(Object.keys(gs).filter(k => gs[k] && "PASS,PASS_WITH_WARNING,SKIPPED".includes(gs[k]))) : new Set()
 // 环境初始化：项目 venv（幂等；env-report.json 为权威，无网/失败回退系统 python）
 await ensureEnv(P.problemId)

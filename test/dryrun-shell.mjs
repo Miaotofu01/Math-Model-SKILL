@@ -42,6 +42,7 @@ if (FIXTURE_MANIFESTS) {   // 三份清单：原语 2 项 / 题专用核心 2 �
 const summarize = (w, txt) => {
   if (BOOT_STUB === "full") return txt                       // 旧行为（必须仍然可用）
   if (BOOT_STUB === "broken") return undefined                 // 触发壳的 a2 回退（见下方整包替换为截断 JSON）
+  if (BOOT_STUB === "partial" && /00-problem\.json$/.test(w)) return { problemId: "A", questions: ["1"] }   // 摘要漏报小问
   try {
     const o = JSON.parse(txt)
     if (/00-problem\.json$/.test(w)) {
@@ -288,6 +289,7 @@ const bootPrompt = stubPrompts.find(x => x.includes("一次并列 Read 以下全
 if (!bootPrompt.includes("禁止回吐文件正文")) fails.push("boot 提示词未写明「只取字段、禁止回吐正文」")
 if (!bootPrompt.includes("NOT_FOUND")) fails.push("boot 提示词未给出 NOT_FOUND 语义")
 if (BOOT_STUB === "broken" && !phaseLog.some(x => x.includes("回退全量读"))) fails.push("摘要失败时未走 a2 回退")
+if (BOOT_STUB === "partial" && !phaseLog.some(x => x.includes("已补入"))) fails.push("摘要漏报小问时未从 state.gates 补全")
 const anyStage = stubPrompts.find(x => x.includes("## 阶段 q1.")) || ""
 if (!anyStage.includes("每轮必读")) fails.push("阶段提示词未声明模板每轮必读")
 const ri = calls.indexOf("revise")
