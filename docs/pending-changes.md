@@ -558,6 +558,9 @@ OA 优先（arXiv / OpenAlex OA / PMC / DOAJ）→ 作者版·预印本（S2 `op
 - 手术暴露并修掉三个真问题（均已回归）：① `register` 只存 basename ⇒ lint 误报「未登记+幽灵」；② 56 字符截断把 `script` 路径截断 ⇒ 加前缀 glob 修复；③ 归档条目必须算「已登记」。
 - 术后 `artifact_lint`：`draft.ledger_section` **0**、`boot.payload_limit` **0**、幽灵 **0**；余 **18 条 `probes.unregistered`** 是本跑的真实历史债（脚本存在但从未经 `probe_cache --run` 登记），留给 sanity 阶段补登记。
 
+**术后清理（2026-09-11，审计发现）**：手术脚本「迁移幂等、记账不幂等」→ `ledger.md` 留了 12 条 no-op SURGERY 行、`errata.md` 各 7 段重复留痕、迁移头各 6 个。已清理为：每个小问 1 条真实记录 + 1 条 CLEANUP 说明；每目标文件 1 个迁移头；并给脚本加守卫（**无搬迁则不备份、不记账**、每文件只写一个迁移头）。
+**顺带修掉**：`phase-12-writing.md` §输入 4 处裸路径（`07-sanity/`、`09-robustness/`、`02-data/eda.md`、`01-literature/lit-verify.md`）补 `q{id}/` 前缀，dryrun 增静态断言防回归。
+
 ---
 
 ## 5. 明确不做

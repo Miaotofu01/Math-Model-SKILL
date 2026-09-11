@@ -210,6 +210,10 @@ for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversar
   if (!rt.includes("产物体量与读入范围") || !rt.includes("可机械复核三件套")) fails.push(r + " 未写明评审文件瘦身与读入范围")
   if (!rt.includes("revision-log.md")) fails.push(r + " 未指向 revision-log.md（处置表已移出 draft）")
 }
+const p12 = readFileSync(PD + "/phase-12-writing.md", "utf8")
+for (const s of ["q{id}/07-sanity/", "q{id}/09-robustness/", "q{id}/02-data/eda.md", "q{id}/01-literature/lit-verify.md"]) {
+  if (!p12.includes(s)) fails.push("phase-12 §输入 缺前缀：" + s)
+}
 const manStatic = JSON.parse(readFileSync(PD + "/stage-manifest.json", "utf8"))
 for (const s of ["implementation", "computation", "sanity", "robustness"]) {
   if (!(manStatic.deps[s] || []).some(d => d.includes("handoff.md"))) fails.push("deps." + s + " 未含 handoff.md（台账移出 draft 后须显式依赖）")
