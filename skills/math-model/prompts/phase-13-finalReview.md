@@ -88,7 +88,7 @@ cd <outputDir> && xelatex -output-directory=intermediates/13-final -interaction=
 ```
 错误 → 读 `intermediates/13-final/compile.log` 修正 .tex 后重试（最多 3 次）。常见：`Undefined control sequence`（命令拼错或缺 usepackage）、`Missing $ inserted`（数学符号出数学模式）、`File not found`（includegraphics 路径错）、中文乱码（ctexart+xelatex）、附录代码 `_ ^ % &` 特殊字符（listings `basicstyle=\ttfamily` 规避）。
 
-**第 8 步 页数与输出**：正文（含摘要）≤20 页（§3；超标优先精简约简非核心段落）；PDF 生成 `intermediates/13-final/final-paper.pdf`；残留 warning（Overfull/未定义引用等）逐条记录。
+**第 8 步 页数与输出**：正文（含摘要）**官方上限 30 页**、**内部预算 ≤25 页**（§3；超预算优先精简约简非核心段落，**不得**因页数删掉溯源/口径声明）；PDF 生成 `intermediates/13-final/final-paper.pdf`；残留 warning（Overfull/未定义引用等）逐条记录。
 
 MCM 说明：若题目包论文规则为 MCM/ICM（英文论文），按 §3 的 MCM 格式执行；CUMCM 模板与组装脚本不适用，走**手动兜底路径**——自拼英文 preamble 后两遍 xelatex 编译（cwd 规则同上），正文各章仍用写作产物。
 

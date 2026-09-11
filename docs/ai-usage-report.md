@@ -468,7 +468,7 @@
 2. **假设与题面**：全部假设与 `00-problem.json` 题面条件核对一致；
 3. **图表与数据**：正文引用的每张图真实存在、图中数值与 results.json 一致；
 4. **参考文献**：按 GB/T 7714 核对，AI 工具条目与实际使用模型一致；
-5. **格式合规**：正文 ≤20 页、无身份信息、附录与支撑材料齐全；
+5. **格式合规**：正文 ≤30 页（官方上限）、内部预算 ≤25 页、无身份信息、附录与支撑材料齐全；
 6. **合规标注**：AI 生成内容在正文相应位置标注；本报告随支撑材料以《AI工具使用详情.pdf》提交。
 
 ### 8.4 正文标注方案
@@ -1346,7 +1346,7 @@ Bootstrap 置信区间（关键估计值 ± 区间）、样本量是否支撑结
 
 纯机理/无数据题删 data_analysis 章。语言按题目包论文规则（CUMCM 中文 / MCM 英文）。
 
-**页数预算（含摘要 ≤20 页）**：摘要1｜重述1｜分析1.5｜假设+符号1.5｜数据1（无数据删）｜模型5-7｜结果2-3｜稳健1.5｜评价1｜结论1 ≈17-20。超预算先压缩模型/结果非核心段。
+**页数预算（含摘要：官方上限 30 页，内部预算 ≤25 页）**：摘要1｜重述1｜分析1.5｜假设+符号1.5｜数据1（无数据删）｜模型5-7｜结果2-3｜稳健1.5｜评价1｜结论1 ≈17-20。超预算先压缩模型/结果非核心段。
 
 ### 4. 顺序主编撰写
 
@@ -1499,7 +1499,7 @@ cd <outputDir> && xelatex -output-directory=intermediates/13-final -interaction=
 ```
 错误 → 读 `intermediates/13-final/compile.log` 修正 .tex 后重试（最多 3 次）。常见：`Undefined control sequence`（命令拼错或缺 usepackage）、`Missing $ inserted`（数学符号出数学模式）、`File not found`（includegraphics 路径错）、中文乱码（ctexart+xelatex）、附录代码 `_ ^ % &` 特殊字符（listings `basicstyle=\ttfamily` 规避）。
 
-**第 8 步 页数与输出**：正文（含摘要）≤20 页（§3；超标优先精简约简非核心段落）；PDF 生成 `intermediates/13-final/final-paper.pdf`；残留 warning（Overfull/未定义引用等）逐条记录。
+**第 8 步 页数与输出**：正文（含摘要）≤30 页（官方上限）、内部预算 ≤25 页（§3；超标优先精简约简非核心段落）；PDF 生成 `intermediates/13-final/final-paper.pdf`；残留 warning（Overfull/未定义引用等）逐条记录。
 
 MCM 说明：若题目包论文规则为 MCM/ICM（英文论文），按 §3 的 MCM 格式执行；CUMCM 模板与组装脚本不适用，走**手动兜底路径**——自拼英文 preamble 后两遍 xelatex 编译（cwd 规则同上），正文各章仍用写作产物。
 
