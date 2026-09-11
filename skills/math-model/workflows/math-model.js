@@ -137,10 +137,10 @@ const degradePrompt = k => [
 ].join("\n")
 const finalizePrompt = (k, v, r, dr) => [
   `## 公式化收束 ${k}（专职状态节点）：第 ${r} 轮三视角评审结束，子流程结论 = ${v}。`,
-  `你的唯一职责是**把该结论写进状态文件与账本**：不改产物（draft.md / review-r*.md / self-check.md 只读）、不重跑评审、不补写分析。`,
+  `你的唯一职责是**把该结论写进状态文件与账本**：不改 draft.md / review-r*.md / self-check.md（只读）、不重跑评审、不补写分析。**唯一例外＝「未结转项」结转（A2）**：把本轮评审的**登记级条目 + 未闭环必须改**逐条追加到 ${dr.replace("draft.md", "handoff.md")} 的 \`## 未结转项（收束结转·只增不改）\` 小节（每条：轮次 · 条目 ID · 一句话 · 去向）；无则写一行「无」。`,
   `一次并列 Read ${PD}/state-schema.md（§键约定 + §更新职责·公式化子流程）、${IM}/state.json、${IM}/ledger.md 尾部；然后**就地合并** state.json（schema/problemId/其它 question.stage 记录等既有键一律保留，禁止整体覆盖）。`,
   `写 state.json：iterations["${k}"] = 读到的旧值 + 1 + ${r}（旧值缺失时取 1 + ${r}；含义 = 本次 formulator 1 次 + 本轮评审 ${r} 轮，多次尝试累加，只增不减）；gates["${k}"]="${v}"（**必须原样写入该值**——本键由评审收敛判定，PASS 已含「仅建议级意见」之意，不得改写为 PASS_WITH_WARNING/DRAFT）；artifacts["${k}"]="${dr}"；current={"question":null,"stage":null}。`,
-  `追加 ledger 一行（append，不删改既有行；本阶段已有 formulator/修订行，继续追加即可）：\`${k}.finalize: ${v} ${dr} <≤50字：第${r}轮三视角结论 + 遗留必须改项去向>\``,
+  `追加 ledger 一行（append，不删改既有行；本阶段已有 formulator/修订行，继续追加即可）：\`${k}.finalize: ${v} ${dr} <≤50字：第${r}轮三视角结论 + 结转条数（登记级 n / 未闭环必须改 m）>\``,
   `返回 {status:"${v}", artifact_path:"${dr}", summary:"≤200字：轮数 / 三视角结论 / 遗留项去向"}`,
   PYLINE(),
 ].join("\n")
@@ -176,7 +176,7 @@ async function runFormulation(q, m, sc, a) {
       await ca(finalizePrompt(k, v, r, drRel), sc, "finalize")
       return { accepted: false, status: v, why: raw.filter(Boolean).map(x => x.summary).join(" | ").slice(0, 300) }
     }
-    const okR = await ca(`【修订r${r}】**精准手术**（禁止整篇重写 draft）：一次并列 Read ${PD}/_common.md、${dr} 与 ${d}/review-r${r}-*.md；**只改被点到的段落/公式/表格行**（用 Edit 定点替换；未被点到的章节一字不动，draft 只放方案本体）；**逐条处置表写 ${d}/revision-log.md**（评审意见 → 处置，逐条；draft 内**不得新增或保留**处置表/历史归档章节，只在 ${dr} 留 1 行指针）；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；追加 ledger 一行 \`${k}.revision-r${r}: <status> ${drRel} <≤50字>\`（**不改 state.json**）；${BRIEF}` + PYLINE(), sc, "revise")
+    const okR = await ca(`【修订r${r}】**精准手术**（禁止整篇重写 draft）：一次并列 Read ${PD}/_common.md、${dr} 与 ${d}/review-r${r}-*.md；**只改被点到的段落/公式/表格行**（用 Edit 定点替换；未被点到的章节一字不动，draft 只放方案本体）；**逐条处置表写 ${d}/revision-log.md**（评审意见 → 处置，逐条；draft 内**不得新增或保留**处置表/历史归档章节，只在 ${dr} 留 1 行指针）；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；追加 ledger 一行 \`${k}.revision-r${r}: <status> ${drRel} <≤50字>\`（**不改 state.json**）；**例外（B1）**：若**同一节被连续两轮点名**，或本轮改动**跨 ≥3 节 / ≥3 个符号定义**，则允许**整节或整篇重写**——重写必须在本轮 \`revision-log.md\` 小节给出「重写范围 + 与上版逐节差异摘要」，且既有结论数字与口径不得变；${BRIEF}` + PYLINE(), sc, "revise")
     if (!okR) return null
   }
 }
