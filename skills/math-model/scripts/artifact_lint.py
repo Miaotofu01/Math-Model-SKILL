@@ -9,7 +9,7 @@
 题面给定常量）—— 抄写不仅费 token，更制造「口径分叉」。因此判据必须**先减掉题面给定值，
 再只看下游消费的产物品**，否则会产出大量噪声（首版实现曾一次报出 82 条无效告警）。
 
-判定规则（与 `prompts/_common.md` §4 一致）
+判定规则（与 `prompts/_common.md` §3 一致）
 ------------------------------------------
 - **唯一真源**：`intermediates/q*/06-computation/results.json`（各问数值权威）
   与 `intermediates/12-writing/fact-sheet.md`（全篇唯一数字来源）。
@@ -472,7 +472,7 @@ def main(argv: list[str] | None = None) -> int:
         unsourced: dict[str, list[str]] = defaultdict(list)
         for p in sorted(paper_dir.glob("*.md")):
             for n, lines in numbers_with_lines(read_text(p)).items():
-                # 题面给定常量（givens）是 §4 的显式例外：论文引用它们不算「无源」
+                # 题面给定常量（givens）是 §3 的显式例外：论文引用它们不算「无源」
                 if n not in keys and n not in givens:
                     unsourced[n].append(f"{p.name}:{lines[0]}")
         for n, locs in sorted(unsourced.items(), key=lambda kv: -len(kv[1])):

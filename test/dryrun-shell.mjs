@@ -204,6 +204,7 @@ if (!p04.includes("禁止据旧版建模")) fails.push("phase-04 未写明假设
 const pj = readFileSync(PD + "/formulation-reviewer-judge.md", "utf8")
 if (!pj.includes("本小问全覆盖") || pj.includes("对照 00-problem.json 的小问清单，每个子问题")) fails.push("judge 评审仍要求单问 draft 覆盖全部小问")
 // 读入负担治理：7（draft 篇幅预算 + 台账归属）、1（读入范围）、2（评审文件瘦身）
+// 批 1：_common.md 已重排为 §1..§5（读入/工具/数字/复用/产物），以下期望串与消息串同步新节号，判定强度不变
 for (const f of ["revision-log.md", "verification.md", "handoff.md", "errata.md"]) if (!p04.includes(f)) fails.push("phase-04 产物表缺 " + f)
 if (p04.includes("≤12k 字符")) fails.push("phase-04 仍在用实测不成立的 12k 硬预算")
 if (!p04.includes("台账章节零容差") || !p04.includes("60k")) fails.push("phase-04 未写明台账零容差 + 60k 软阈值")
@@ -215,7 +216,7 @@ for (const s of ["条目ID", "落点", "未处置/留给下游", "机械核验",
 if (!p04.includes("逐条意见原文复述")) fails.push("phase-04 未禁止逐条意见原文复述（L4 瘦身）")
 const pc = readFileSync(PD + "/_common.md", "utf8")
 const prc = readFileSync(PD + "/_review-common.md", "utf8")   // 注入面拆分 3：§9 正文已迁出 _common.md，只注入评审/修订
-if (!pc.includes("必须整体读") || !pc.includes("20KB")) fails.push("_common §3 未写明读入范围（评审对象整体读 / 参考件 >20KB 局部读）")
+if (!pc.includes("必须整体读") || !pc.includes("20KB")) fails.push("_common §1.2 未写明读入范围（评审对象整体读 / 参考件 >20KB 局部读）")
 // L6 去重 + 注入面拆分 3：三视角共用规则单源在 _review-common.md §9（只给评审/修订节点）
 // ⇒ 共用规则断言按「模板 + _common.md + _review-common.md」合并文本判定（规则未删，只是搬家 + 收窄注入面）
 if (!prc.includes("## 9. 评审通用规则")) fails.push("_review-common 缺 §9 评审通用规则（三视角共用单源）")
@@ -237,11 +238,11 @@ for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversar
   if (!rAll.includes("负举证责任") || !rAll.includes("回归") || !rAll.includes("致命项")) fails.push(r + "（含 §9）缺 r≥2 举证责任（回归/致命项）")
   if (!rAll.includes("沿用原条目号")) fails.push(r + "（含 §9）缺 r≥2 逐条闭环沿用原条目号")
 }
-if (!pc.includes("登记级/建议级意见不阻塞")) fails.push("_common §2 未与判定分层对齐")
-if (!pc.includes("长任务后台化") || !pc.includes("禁止 `sleep`")) fails.push("_common §3 缺「长任务后台化/禁空转」纪律")
+if (!pc.includes("登记级/建议级意见不阻塞")) fails.push("_common §2.2 未与判定分层对齐")
+if (!pc.includes("长任务后台化") || !pc.includes("禁止 `sleep`")) fails.push("_common §2.3 缺「长任务后台化/禁空转」纪律")
 { const perf = readFileSync(SKILL + "/docs/performance.md", "utf8"); if (!perf.includes("2.1 长任务后台化") || !perf.includes("先小样后整批")) fails.push("performance.md 缺 §2.1 长任务并行纪律") }
 // 写侧单行纪律（F3）：read 工具按行截断 ⇒ 产出长文本的阶段模板必须写明
-if (!pc.includes("单行 ≤2000 字符")) fails.push("_common §3 缺「单行 ≤2000 字符」写侧纪律")
+if (!pc.includes("单行 ≤2000 字符")) fails.push("_common §2.3 缺「单行 ≤2000 字符」写侧纪律")
 for (const [f, kw] of [["phase-04-formulation.md", "单行长度"], ["phase-06-computation.md", "单行 ≤2000 字符"], ["phase-12-writing.md", "单行 ≤2000 字符"]]) {
   if (!readFileSync(PD + "/" + f, "utf8").includes(kw)) fails.push(f + " 缺单行长度纪律（产长文本阶段）")
 }
@@ -315,7 +316,7 @@ for (const s of ["先估后跑", "costEstimate_s", "checkpoint_put"]) {
 }
 const p07 = readFileSync(PD + "/phase-07-sanity.md", "utf8")
 if (!p07.includes("costEstimate_s") || !p07.includes("8×")) fails.push("phase-07 未把核验成本账列入核查")
-if (!pc.includes("成本纪律（所有探针")) fails.push("_common §5.2 未加探针成本纪律")
+if (!pc.includes("成本纪律（所有探针")) fails.push("_common §2.6 未加探针成本纪律")
 // 路径与环境四律（A 项落地）：present/工具调用绝对路径 + 解释器 + 池导入 + 临时目录
 if (!pc.includes("路径与环境四律")) fails.push("_common 未加「路径与环境四律」")
 for (const s of ["绝对路径", "present", "禁止裸 `python3`", "bootstrap_sys_path", ".mm-tmp", "影子目录"]) {

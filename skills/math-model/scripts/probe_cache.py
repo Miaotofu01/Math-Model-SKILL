@@ -5,7 +5,7 @@
 设计依据（上次 run 实测）：一次 run 产生 **53 个一次性探针脚本 / 231 次写入**（同类脚本换个名字反复重写），
 全部丢在 `/tmp`，无登记、无复用；同一个重计算每次重写重跑约 25 s，评审三角色跨轮反复付这份钱。
 
-约定（与 `prompts/_common.md` §5 一致）
+约定（与 `prompts/_common.md` §4 一致）
 ------------------------------------
 - 探针**固定位置**：`<outputDir>/probes/<角色>/<目的>.py`（角色如 `judge` / `adversary` / `application` / `sanity` / `robustness`）
 - 探针**只输出 JSON** 到 stdout（便于缓存与对拍）

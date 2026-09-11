@@ -1,5 +1,8 @@
 // ═══ math-model 薄壳 V3：无 fs，磁盘全经 agent() 子代理 ═══
 // 契约(manifest/schema/state-schema.md)启动经子代理读取；业务全在 prompts/phase-*.md；壳只做路由/门禁/收敛
+// 提示词排版规范：正文一律用「」包裹标识符；模板串内确需反引号时写成 反斜杠+反引号（转义形式），
+// 禁止在 ${…} 插值表达式内出现未转义反引号；提示词一律拆成具名多行块
+// 【读入】/【改法】/【纪律】/【产物】/【例外】/【返回】（每块 ≤6 行）——单行巨串曾两次触发 SyntaxError
 
 const A = typeof args === "object" && args ? args : {}
 const outDir = (A.outputDir || "math-model-output").replace(/^\.\/|\/+$/g, "")
@@ -90,7 +93,7 @@ function buildAssets(boot) {
   const b = cnt(qm, probes)
     ? `探针池 probes/ 已登记 ${cnt(qm, probes)} 条（结果缓存 probes/results/，命中秒回）`
     : "启动快照未见探针登记（探针写 probes/<角色>/<目的>.py，用 probe_cache 缓存结果）"
-  return `可复用资产（先查再用；已有同口径实现禁止重写）：${a}；${c}；${b}；清单/用法见 _common.md §5–6`
+  return `可复用资产（先查再用；已有同口径实现禁止重写）：${a}；${c}；${b}；清单/用法见 _common.md §4、§2.6`
 }
 
 // 06/09：核验成本纪律（字面注入，防散文漂移；规则全文见 docs/performance.md §6.1）
@@ -110,7 +113,7 @@ function stagePrompt(q, s, m) {
   }).join("，")
   return [
     `## 阶段 ${k}：一次并列 Read ${PD}/_common.md 与 ${PD}/${m.prompts[s]}${POOL_STAGES.includes(s) ? "、" + PD + "/_pool.md（代码池手册）" : ""}（公共纪律 + 本阶段模板；**每轮必读，不得凭记忆或沿用上轮的印象**）、状态 ${IM}/state.json、依赖 ${deps||"无"}、可复用资产清单 ${MANIFESTS.join("、")}`,
-    `执行：按两份模板执行（冲突时以阶段模板 ${m.prompts[s]} 为准）；技能根 ${SD}（规范 ${SD}/docs/、工具 ${SD}/scripts/，用法见 _common.md §6）；产物写 ${IM}/${lay}（mkdir -p）`,
+    `执行：按两份模板执行（冲突时以阶段模板 ${m.prompts[s]} 为准）；技能根 ${SD}（规范 ${SD}/docs/、工具 ${SD}/scripts/，用法见 _common.md §2.6）；产物写 ${IM}/${lay}（mkdir -p）`,
     assetsLine(true),
     ...(COSTLINE(s) ? [COSTLINE(s)] : []),
     `完成后按 ${PD}/state-schema.md 更新 state.json（artifacts 一律用相对 intermediates/ 路径；就地合并，其余键保留），并追加 ledger 一行 \`${k}: <status> <产物相对路径> <≤50字>\``,
@@ -176,7 +179,20 @@ async function runFormulation(q, m, sc, a) {
       await ca(finalizePrompt(k, v, r, drRel), sc, "finalize")
       return { accepted: false, status: v, why: raw.filter(Boolean).map(x => x.summary).join(" | ").slice(0, 300) }
     }
-    const okR = await ca(`【修订r${r}】**精准手术**（禁止整篇重写 draft）：先**整读 ${dr}**（至少被点名节 ±1 节；D：没有全局视野就会改出新矛盾）→ 再一次并列 Read ${PD}/_common.md、${PD}/_review-common.md（评审通用规则）、${d}/review-r${r}-*.md；**只改被点到的段落/公式/表格行**（用 Edit 定点替换；未被点到的章节一字不动，draft 只放方案本体）；**逐条处置表写 ${d}/revision-log.md**（本轮只写一个 \`## rN 处置\` 小节：一张表 \`条目ID|级别|一句话|处置|落点|状态\`，加仅在非空时出现的 \`### 未处置/留给下游\`、\`### 机械核验\`；条目 ID 沿用评审原编号、**只增不改**，必须改/登记级行数须与评审计数一致；格式契约见 ${PD}/phase-04-formulation.md；draft 内**不得新增或保留**处置表/历史归档章节，只在 ${dr} 留 1 行指针）；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；追加 ledger 一行 \`${k}.revision-r${r}: <status> ${drRel} <≤50字>\`（**不改 state.json**）；**例外（B1）**：若**同一节被连续两轮点名**，或本轮改动**跨 ≥3 节 / ≥3 个符号定义**，则允许**整节或整篇重写**——重写必须在本轮 \`revision-log.md\` 小节给出「重写范围 + 与上版逐节差异摘要」，且既有结论数字与口径不得变；**A（影响面清单，必做）**：凡改动**公式/系数/边界项/符号定义**，必须在本轮 \`revision-log.md\` 表格后追加一节 \`### 同步清单\`，逐行给「改动的量/符号 → 全文出现处(行号) → 已同步?」，并在收尾前用一次 \`grep -n\` 核对该量在 draft / baseline-registry / symbols 的**全部**出现处；漏同步＝本轮修订未完成。**例外**：纯措辞/引用键类改动可只写「无派生量」一行；${BRIEF}` + PYLINE(), sc, "revise")
+    const rBlocks = [
+      `【修订r${r}】`,
+      `【读入】先**整读 ${dr}**（至少被点名节 ±1 节；D：没有全局视野就会改出新矛盾）→ 再一次并列 Read ${PD}/_common.md、${PD}/_review-common.md（评审通用规则）、${d}/review-r${r}-*.md；`,
+      `【改法】**精准手术**（禁止整篇重写 draft）：**只改被点到的段落/公式/表格行**（用 Edit 定点替换；未被点到的章节一字不动，draft 只放方案本体）；`,
+      `【纪律】若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；`,
+      `追加 ledger 一行 \`${k}.revision-r${r}: <status> ${drRel} <≤50字>\`（**不改 state.json**）；`,
+      `【产物】**逐条处置表写 ${d}/revision-log.md**（本轮只写一个 \`## rN 处置\` 小节：一张表 \`条目ID|级别|一句话|处置|落点|状态\`，加仅在非空时出现的 \`### 未处置/留给下游\`、\`### 机械核验\`；条目 ID 沿用评审原编号、**只增不改**，必须改/登记级行数须与评审计数一致；格式契约见 ${PD}/phase-04-formulation.md；`,
+      `draft 内**不得新增或保留**处置表/历史归档章节，只在 ${dr} 留 1 行指针）；`,
+      `【例外】**例外（B1）**：若**同一节被连续两轮点名**，或本轮改动**跨 ≥3 节 / ≥3 个符号定义**，则允许**整节或整篇重写**——重写必须在本轮 \`revision-log.md\` 小节给出「重写范围 + 与上版逐节差异摘要」，且既有结论数字与口径不得变；`,
+      `**A（影响面清单，必做）**：凡改动**公式/系数/边界项/符号定义**，必须在本轮 \`revision-log.md\` 表格后追加一节 \`### 同步清单\`，逐行给「改动的量/符号 → 全文出现处(行号) → 已同步?」，并在收尾前用一次 \`grep -n\` 核对该量在 draft / baseline-registry / symbols 的**全部**出现处；`,
+      `漏同步＝本轮修订未完成。**例外**：纯措辞/引用键类改动可只写「无派生量」一行；`,
+      `【返回】${BRIEF}`,
+    ]
+    const okR = await ca(rBlocks.join("\n") + PYLINE(), sc, "revise")
     if (!okR) return null
   }
 }

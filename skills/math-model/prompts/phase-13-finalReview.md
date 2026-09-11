@@ -7,7 +7,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md §6`）。本节相关：§三 CUMCM/MCM 格式（摘要页/≤20页/附录/无身份信息）、§四 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §四-5、`$\bm{}$` §四-6、支撑材料清单 §四-7、组装方式与 @占位符见 §四 末段）、§六 内部 Common Mistakes（摘要数字编造等）。**引用规范，不复制内容**。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.6）。本节相关：§三 CUMCM/MCM 格式（摘要页/≤20页/附录/无身份信息）、§四 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §四-5、`$\bm{}$` §四-6、支撑材料清单 §四-7、组装方式与 @占位符见 §四 末段）、§六 内部 Common Mistakes（摘要数字编造等）。**引用规范，不复制内容**。
 
 ## 输入
 
@@ -40,7 +40,7 @@
 
 - 摘要按子问题分段（「对于问题1…」逐问方法+数值）且逐问覆盖；正文问题分析/模型/分析/结论各章覆盖全部小问
 - 内部流程术语扫描（§一-14：「对抗性审查/模型重设计/adversarialFindings/验证器/重设计历史」）→ 出现即 P1 改写
-- 图表反向检查：每个 `\includegraphics` 文件真实存在且属于 §二-9 的三处口径（`q{id}/08-visualization/figures/`、根 `figures/fig_eda_*`、根 `figures/fig_cross_示意图_*`）；无空 figure 环境；CJK 字体无 Glyph 缺失警告（§二-1/5）；对最终图件跑 `python <技能根>/scripts/figure_lint.py --png ... --svg ...`（见 `_common.md` §6），P0 清零
+- 图表反向检查：每个 `\includegraphics` 文件真实存在且属于 §二-9 的三处口径（`q{id}/08-visualization/figures/`、根 `figures/fig_eda_*`、根 `figures/fig_cross_示意图_*`）；无空 figure 环境；CJK 字体无 Glyph 缺失警告（§二-1/5）；对最终图件跑 `python <技能根>/scripts/figure_lint.py --png ... --svg ...`（见 `_common.md` §2.6），P0 清零
 - 数字口径：跑 `python <技能根>/scripts/artifact_lint.py --root <outputDir>` 核对关键数字散落 ≥3 处（口径分叉），有则定位并收敛到各问 results.json；正文/摘要数字逐字可溯 fact-sheet
 - 加粗只加答案（§一-2）；无「创新点：」等标签（§一-3）；无调试笔记/文件路径/对账清单残留（§一-12）
 

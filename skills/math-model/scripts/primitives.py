@@ -9,7 +9,7 @@
 
 - **可进本文件**：库不提供 + 口径敏感 + 领域中立（纯数学定义，不含题目建模选择），
   且已有 ≥2 个不同题的复用证据。
-- **单题条目**：写 `<outputDir>/pool/problem/<题>/*.py`，并按 `_common.md` §5.1 登记
+- **单题条目**：写 `<outputDir>/pool/problem/<题>/*.py`，并按 `_common.md` §4.2 登记
   `pool/problem/manifest.json`。
 
 用法
@@ -23,7 +23,7 @@
 此后一律 `import` 复用，**禁止再写慢副本**。改动本文件后必须 `--selftest` 全绿并递增 VERSION
 （VERSION 参与探针缓存指纹）。
 
-**新增一条的流程**：① 过 `_common.md` §5.1 的五条进池判据；② 加 `@primitive(...)` 元数据；
+**新增一条的流程**：① 过 `_common.md` §4.2 的五条进池判据；② 加 `@primitive(...)` 元数据；
 ③ 在 `_selftest()` 加**独立暴力实现/解析解对拍**（只做自洽检查不算）；④ 在 `_manifest()` 的
 timing_cases 加一条实测；⑤ `--selftest` 全绿 + VERSION 递增。
 """
@@ -374,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
         for n, m in PRIMITIVES.items():
             print(f"{n}\n    {m['signature']}\n    单位：{m['units']}\n    返回：{m['returns']}")
         print(f"\n共 {len(PRIMITIVES)} 条通用原语（版本 {VERSION}）。本文件不含单题内容；"
-              f"题专用条目写 <outputDir>/pool/problem/<题>/ 并登记 pool/problem/manifest.json（_common.md §5.1）。")
+              f"题专用条目写 <outputDir>/pool/problem/<题>/ 并登记 pool/problem/manifest.json（_common.md §4.2）。")
         return 0
     if args.selftest:
         bad = _selftest()
