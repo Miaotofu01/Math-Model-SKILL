@@ -217,6 +217,8 @@ for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversar
   if (!rt.includes("沿用原条目号")) fails.push(r + " 缺 r≥2 逐条闭环沿用原条目号")
 }
 if (!pc.includes("登记级/建议级意见不阻塞")) fails.push("_common §2 未与判定分层对齐")
+if (!pc.includes("长任务后台化") || !pc.includes("禁止 `sleep`")) fails.push("_common §3 缺「长任务后台化/禁空转」纪律")
+{ const perf = readFileSync(SKILL + "/docs/performance.md", "utf8"); if (!perf.includes("2.1 长任务后台化") || !perf.includes("先小样后整批")) fails.push("performance.md 缺 §2.1 长任务并行纪律") }
 { const p05r = readFileSync(PD + "/phase-05-implementation.md", "utf8"); if (!p05r.includes("§登记级")) fails.push("phase-05 未接管最后一轮评审的登记级清单") }
 {
   const implP = (stubPrompts[calls.indexOf("run:q1.implementation")] || "")
