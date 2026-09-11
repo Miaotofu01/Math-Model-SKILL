@@ -59,14 +59,34 @@
 
 > 验证纪律（性能与卫生，覆盖修订/自查时的数值核验）：探针一律用调度壳注入的环境 python（`intermediates/env-report.json` 为准（文件不存在 → 用系统 python3））；复用已有数值（`02-data/eda.md`、`06-computation/results.json`、池中已登记实现），只做增量针对性核验；单探针 ≤2 分钟、整轮 ≤10 分钟；向量化优先（纯循环核可用 numba @jit，若已安装；禁 prange 内 linalg）；探针写成 `probes/<角色>/<目的>.py` 并用 `probe_cache.py` 缓存（`_common.md` §5.2）——**禁止** `/tmp` 一次性脚本，不留在 `04-formulation/` 产物目录。详见 `docs/performance.md`。
 
-## 产物（全部写入 intermediates/q{id}/04-formulation/）
+## 产物与篇幅预算（全部写入 intermediates/q{id}/04-formulation/）
 
-- `draft.md`（主产物：本小问思路路线 + 逐步推导 + 求解策略 + 跨问接口）
-- `baseline-registry.md`（预注册，先于 draft 完成）
-- `symbols.json`（符号登记）
+| 文件 | 放什么 | 预算 |
+|---|---|---|
+| `draft.md` | **只放方案本体**：Gap、思路路线、公式逐步推导、定解条件、离散与求解策略、必要性测试结论、跨问接口 | 正文 ≤12k 字符（交付前 `wc -m draft.md`） |
+| `baseline-registry.md` | baseline 预注册（先于 draft 完成） | ≤6k 字符 |
+| `symbols.json` | 符号登记（逐条，机械可查） | 不限 |
+| `revision-log.md` | 每轮「评审意见 → 处置」逐条记录 | 不限（按轮追加） |
+| `verification.md` | 已完成的先期验证与证据键表（探针键 → 一行结论） | 不限 |
+| `handoff.md` | 交 05/06/07/09 的检验项、代码级必改项（P0） | 不限 |
+| `errata.md` | 口径勘误与未决项 | 不限 |
+
+**台账一律不进 draft**——draft 里只留一行指针（形如「→ 意见与处置见 `revision-log.md`」）：
+
+| 内容 | 归属 |
+|---|---|
+| 原「修订记录」节（每轮意见与处置） | `revision-log.md` |
+| 证据键表、已通过项、格式决策、复算过程叙述 | `verification.md`（键本身由 `probes/manifest.json` 自动登记） |
+| 交下游检验项、P0 代码级必改项 | `handoff.md` |
+| 口径勘误、未决项 | `errata.md` |
+| 符号表 | `symbols.json` |
+| 「完成标准自检」节 | **不写**——完成标准由下一轮评审逐条核对，不需要在本产物里自证 |
+
+> 为什么这么定：`draft.md` 是每个评审/修订会话必读的单件。实测一次跑满的小问，draft 达 10 万字符，其中**约 85% 是台账与自证**（修订记录 33%、证据与勘误 26%、交接与判据细节 19%），方案本体只有约 16k——既把方案淹没，又把每次读入推高一个数量级。方案本体只写方案；台账各自归位、按需读取。
 
 ## 完成标准
 
 - baseline-registry.md 先于 draft.md 完成，且预注册内容齐全（baseline 是什么 / 用什么指标比 / 无 baseline 写理由）
 - 本小问有完整思路路线与公式推导链；符号全部登记、无未定义符号；跨问接口写明可复用的口径与交接物
+- `draft.md` 正文 ≤12k 字符（`wc -m`）；4 个台账文件（`revision-log` / `verification` / `handoff` / `errata`）存在，且被 draft 的行内指针指向
 - 创新点全部可追溯到 Gap/局限，且必要性测试有明确结论

@@ -52,16 +52,19 @@
     ],
     "implementation": [
       "{id}/04-formulation/draft.md",
+      "{id}/04-formulation/handoff.md",
       "{id}/02-data/eda.md"
     ],
     "computation": [
       "{id}/05-implementation/code/",
       "{id}/04-formulation/draft.md",
+      "{id}/04-formulation/handoff.md",
       "{id}/06-computation/results.json"
     ],
     "sanity": [
       "{id}/06-computation/results.json",
-      "{id}/04-formulation/draft.md"
+      "{id}/04-formulation/draft.md",
+      "{id}/04-formulation/handoff.md"
     ],
     "visualization": [
       "{id}/06-computation/results.json",
@@ -70,6 +73,7 @@
     "robustness": [
       "{id}/06-computation/results.json",
       "{id}/04-formulation/draft.md",
+      "{id}/04-formulation/handoff.md",
       "{id}/07-sanity/sanity-report.md"
     ],
     "localComplete": [

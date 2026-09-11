@@ -170,6 +170,19 @@ if (!p04.includes("只做本小问")) fails.push("phase-04 未声明「只做本
 if (!p04.includes("禁止据旧版建模")) fails.push("phase-04 未写明假设只认最新版")
 const pj = readFileSync(PD + "/formulation-reviewer-judge.md", "utf8")
 if (!pj.includes("本小问全覆盖") || pj.includes("对照 00-problem.json 的小问清单，每个子问题")) fails.push("judge 评审仍要求单问 draft 覆盖全部小问")
+// 读入负担治理：7（draft 篇幅预算 + 台账归属）、1（读入范围）、2（评审文件瘦身）
+for (const f of ["revision-log.md", "verification.md", "handoff.md", "errata.md"]) if (!p04.includes(f)) fails.push("phase-04 产物表缺 " + f)
+if (!p04.includes("≤12k 字符") || !p04.includes("wc -m")) fails.push("phase-04 未写明 draft 篇幅预算")
+const pc = readFileSync(PD + "/_common.md", "utf8")
+if (!pc.includes("必须整体读") || !pc.includes("20KB")) fails.push("_common §3 未写明读入范围（评审对象整体读 / 参考件 >20KB 局部读）")
+for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversary.md", "formulation-reviewer-application.md"]) {
+  const rt = readFileSync(PD + "/" + r, "utf8")
+  if (!rt.includes("产物体量与读入范围") || !rt.includes("可机械复核三件套")) fails.push(r + " 未写明评审文件瘦身与读入范围")
+}
+const manStatic = JSON.parse(readFileSync(PD + "/stage-manifest.json", "utf8"))
+for (const s of ["implementation", "computation", "sanity", "robustness"]) {
+  if (!(manStatic.deps[s] || []).some(d => d.includes("handoff.md"))) fails.push("deps." + s + " 未含 handoff.md（台账移出 draft 后须显式依赖）")
+}
 for (const fs0 of FAIL_STAGES) {
   const k = fs0.replace(/^run:/, ""), di = calls.indexOf("degrade:" + k)
   if (di < 0) { fails.push("降级节点未被调度：" + k); continue }
