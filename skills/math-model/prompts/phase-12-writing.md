@@ -68,6 +68,8 @@
 - 引用纪律：`\cite` 支撑的数值锚点必须标明来源性质（同行评审值 / 社区复现值）；证据级 L3 只能作存在性提及、L4 不得进参考文献（以 `q{id}/01-literature/lit-verify.md` 为准）
 - 逐问覆盖：摘要分段；模型/分析/结论章覆盖全部小问（模型→求解→结果）
 - 加粗只加答案（`$\bm{}$`）；禁止「创新点：」等标签（§1-2/3）
+- 加粗口径按 `writing-and-format.md` §4-6：四类必粗（最终答案量/摘要关键数字/决定结论的口径值/可信度声明数字）与三类禁粗（中间过程量/单位换算与引用编号/整句整段），同一数字只需「摘要 + 正文首次出现处」两处
+- 摘要须含至少一句「独立验证强度」（数字挂 fact-sheet 键或产物路径）；其余优势按题目自定，禁句数/段序骨架化（§1-17）
 - 图表（**可引用路径只有三处，口径见 `writing-and-format.md` §2-9**）：① 各问结果图与示意图 → `q{id}/08-visualization/figures/`（先读 `q{id}/08-visualization/figure-manifest.md` 逐图登记）② EDA 图 → outputDir 根 `figures/fig_eda_*.png`（先读 `q{id}/02-data/figure-manifest.md`）③ 本阶段兜底自绘 → 根 `figures/fig_cross_示意图_*.png`（自绘后追加一行登记）。开写前把两份 manifest + 两个目录列全，**不得靠 `ls` 碰运气**；`\includegraphics{绝对路径}` + 「如图X所示…」解读；**文件必须真实存在，禁止空 figure**；需要示意图而没图 → 优先 vendored diagram-design（`<技能根>/docs/flowchart-drawing.md`），失败回退 matplotlib（`writing-and-format.md` §2-6：CJK 字体、dpi=200、bbox_inches='tight'、保存后 ls 确认）；单位 LaTeX math（`cm$^{-1}$`）；图件必须过 `writing-and-format.md` §2-8 硬条款，**视觉复核用图像读取工具看**（禁只靠脚本/自述）
 - **AI 味治理**：逐条自查 `<技能根>/docs/writing-and-format.md` §1-13/14（清单不在此复制）。
 - 题面表格（如表 1–6）：网格/行列单位一律以 `00-problem.json#problem.tables` 为准（**禁按 pdftotext 逐格提取的行列顺序解读**）；末行为实际值（如「烘干结束时间」）时不强制落在网格上
