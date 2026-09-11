@@ -14,6 +14,7 @@ const RESUME = argv.includes("--resume") || argv.includes("--resume-mismatch")
 const MISMATCH = argv.includes("--resume-mismatch")   // state.json problemId 失配 → 必须拒绝覆盖
 const MODE = argv.includes("--mode") ? argv[argv.indexOf("--mode") + 1] : "full"
 const FIXTURE_MANIFESTS = !!process.env.FIXTURE_MANIFESTS   // 注入三份 manifest 夹具 → 验证「已登记」分支（F1）
+const BOOT_STUB = process.env.BOOT_STUB || "summary"        // summary=新契约（只取字段）｜full=旧全量回吐｜broken=摘要失败→走 a2 回退
 const FAIL_STAGES = (process.env.FAIL_STAGES || "").split(",").filter(Boolean)   // 例：FAIL_STAGES=run:q1.robustness → 触发降级路径断言
 const REVIEW_STATUS = process.env.REVIEW_STATUS || "PASS"   // REVIEW_STATUS=NEEDS_REVISION → 走「修订→轮次用尽收束→二次尝试→blocked」路径
 const FULL_STAGES = 23   // 夹具 2 小问：10×2 + 3 个 run 级（formulation 计入 formulator）
@@ -37,6 +38,30 @@ if (FIXTURE_MANIFESTS) {   // 三份清单：原语 2 项 / 题专用核心 2 �
   files[`${OUT}/probes/manifest.json`] = JSON.stringify({ probes: { "adversary/perturb": {} } })
   files[`${IM}/state.json`] = JSON.stringify({ schema: "v1", problemId: "A", current: {}, iterations: {}, gates: {}, artifacts: {}, deps: {} })
 }
+// boot 摘要桩：模拟新契约（只取字段、不回吐正文）
+const summarize = (w, txt) => {
+  if (BOOT_STUB === "full") return txt                       // 旧行为（必须仍然可用）
+  if (BOOT_STUB === "broken") return undefined                 // 触发壳的 a2 回退（见下方整包替换为截断 JSON）
+  try {
+    const o = JSON.parse(txt)
+    if (/00-problem\.json$/.test(w)) {
+      const a = (o.problem && o.problem.analysis) || o.analysis || {}
+      const sq = Array.isArray(a.subQuestions) ? a.subQuestions : []
+      const qs = Array.isArray(o.questions) && o.questions.length
+        ? o.questions.map(String)
+        : sq.map(x => String(x && (x.id ?? x.questionId ?? x.number)))
+      return { problemId: String(o.problemId || o.selectedProblem || (o.problem && o.problem.id) || "unknown"), questions: qs }
+    }
+    if (/state\.json$/.test(w)) return { problemId: o.problemId, gates: o.gates || {}, iterations: o.iterations || {} }
+    if (/manifest\.json$/.test(w)) {
+      const ks = o.entries && typeof o.entries === "object" ? Object.keys(o.entries)
+        : (o.probes && typeof o.probes === "object" ? Object.keys(o.probes) : [])
+      return { keys: ks.slice(0, 12), count: ks.length, primitivesVersion: o.primitivesVersion ?? null,
+               selftestPassed: o.selftest && typeof o.selftest.passed === "boolean" ? o.selftest.passed : null }
+    }
+  } catch (e) { /* 落到 NOT_FOUND */ }
+  return "NOT_FOUND"
+}
 const RESUME_GATES = stateRaw ? Object.entries(JSON.parse(stateRaw).gates || {}).filter(([, v]) => ["PASS", "PASS_WITH_WARNING", "SKIPPED"].includes(v)).map(([k]) => k) : []
 
 // 桩：按 label 返回契约要求的形状；同时校验壳注入的提示词是否含公共纪律与技能根
@@ -46,9 +71,12 @@ const AGENTS = {
     responseSchema: readFileSync(PD + "/response-schema.json", "utf8"),
   }),
   "read-many": (p) => {
-    const want = [...p.matchAll(/- (.+)/g)].map(m => m[1].trim())
+    // 路径清单在「以下全部文件…:」与「输出 JSON 对象…」之间（BOOT_SPEC 里也有 "- " 开头的说明行，不能直接扫全文）
+    const seg = p.split("一次并列 Read 以下全部文件（不遗漏、不逐个读）:")[1] || ""
+    const want = [...(seg.split("输出 JSON 对象")[0]).matchAll(/- (.+)/g)].map(m => m[1].trim())
+    if (BOOT_STUB === "broken") return '{"math-model-output/intermediates/00-problem.json": "{\"selectedProblem\": \"A\", \"prob'  // 截断（read 工具硬限的真实签名）
     const o = {}
-    for (const w of want) o[w] = files[w] ?? "NOT_FOUND"
+    for (const w of want) o[w] = files[w] === undefined ? "NOT_FOUND" : summarize(w, files[w])
     return JSON.stringify(o)
   },
 }
@@ -172,12 +200,15 @@ const pj = readFileSync(PD + "/formulation-reviewer-judge.md", "utf8")
 if (!pj.includes("本小问全覆盖") || pj.includes("对照 00-problem.json 的小问清单，每个子问题")) fails.push("judge 评审仍要求单问 draft 覆盖全部小问")
 // 读入负担治理：7（draft 篇幅预算 + 台账归属）、1（读入范围）、2（评审文件瘦身）
 for (const f of ["revision-log.md", "verification.md", "handoff.md", "errata.md"]) if (!p04.includes(f)) fails.push("phase-04 产物表缺 " + f)
-if (!p04.includes("≤12k 字符") || !p04.includes("wc -m")) fails.push("phase-04 未写明 draft 篇幅预算")
+if (p04.includes("≤12k 字符")) fails.push("phase-04 仍在用实测不成立的 12k 硬预算")
+if (!p04.includes("台账章节零容差") || !p04.includes("60k")) fails.push("phase-04 未写明台账零容差 + 60k 软阈值")
+if (!p04.includes("draft.ledger_section")) fails.push("phase-04 未把机械检查项写进完成标准")
 const pc = readFileSync(PD + "/_common.md", "utf8")
 if (!pc.includes("必须整体读") || !pc.includes("20KB")) fails.push("_common §3 未写明读入范围（评审对象整体读 / 参考件 >20KB 局部读）")
 for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversary.md", "formulation-reviewer-application.md"]) {
   const rt = readFileSync(PD + "/" + r, "utf8")
   if (!rt.includes("产物体量与读入范围") || !rt.includes("可机械复核三件套")) fails.push(r + " 未写明评审文件瘦身与读入范围")
+  if (!rt.includes("revision-log.md")) fails.push(r + " 未指向 revision-log.md（处置表已移出 draft）")
 }
 const manStatic = JSON.parse(readFileSync(PD + "/stage-manifest.json", "utf8"))
 for (const s of ["implementation", "computation", "sanity", "robustness"]) {
@@ -208,6 +239,19 @@ const wf = readFileSync(SKILL + "/workflows/math-model.js", "utf8")
 if (!wf.includes("COSTLINE") || !wf.includes("--budget")) fails.push("壳未字面注入核验成本纪律")
 const pcsrc = readFileSync(SKILL + "/scripts/probe_cache.py", "utf8")
 if (!pcsrc.includes("BudgetExceeded") || !pcsrc.includes("def checkpoint_put")) fails.push("probe_cache 缺预算预检/分档落盘")
+const bootPrompt = stubPrompts.find(x => x.includes("一次并列 Read 以下全部文件")) || ""
+if (!bootPrompt.includes("禁止回吐文件正文")) fails.push("boot 提示词未写明「只取字段、禁止回吐正文」")
+if (!bootPrompt.includes("NOT_FOUND")) fails.push("boot 提示词未给出 NOT_FOUND 语义")
+if (BOOT_STUB === "broken" && !phaseLog.some(x => x.includes("回退全量读"))) fails.push("摘要失败时未走 a2 回退")
+const anyStage = stubPrompts.find(x => x.includes("## 阶段 q1.")) || ""
+if (!anyStage.includes("每轮必读")) fails.push("阶段提示词未声明模板每轮必读")
+const ri = calls.indexOf("revise")
+if (ri >= 0) {
+  const rp = stubPrompts[ri]
+  if (!rp.includes("精准手术")) fails.push("修订提示词未要求精准手术（禁整篇重写）")
+  if (!rp.includes("revision-log.md")) fails.push("修订提示词未把处置表落到 revision-log.md")
+}
+if (!wf.includes("精准手术")) fails.push("壳未注入精准手术约束")
 const ci = calls.indexOf("run:q1.computation")   // REVIEW_STATUS=NEEDS_REVISION 模式在 solve-start 前就 blocked，故仅调度到时断言
 if (ci >= 0 && (!stubPrompts[ci].includes("核验成本纪律") || !stubPrompts[ci].includes("--budget"))) {
   fails.push("06 阶段提示词未字面注入核验成本纪律（防散文漂移）")

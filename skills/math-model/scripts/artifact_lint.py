@@ -17,10 +17,17 @@
 - 同一关键数字在**其它产物**中出现 ≥3 处 → P0（口径分叉，必须收敛到 results.json，改锚点引用）。
 - 降级模式（找不到任何 results.json）：对所有产物做同样的散落统计，剔除题面给定常量（`00-problem.json` 内出现过的数字）。
 
-额外检查（尽力而为，P1）
-----------------------
-- `paper.unsourced`：论文正文（`12-writing/paper-sections/*.md`）里的关键数字不在任何 results.json 的
+额外检查
+--------
+- `paper.unsourced`（P1）：论文正文（`12-writing/paper-sections/*.md`）里的关键数字不在任何 results.json 的
   `keyValues` 中 → 可能无源，需要补登记或删改。
+- `draft.ledger_section`（**P0**，零容差）：`q*/04-formulation/draft.md` 的标题里出现台账类章节
+  （修订记录/处置表/证据键表/已通过项/符号登记/口径勘误/验证计划）→ 违反 phase-04「产物与篇幅预算」：
+  台账归 `revision-log/verification/handoff/errata/symbols`，draft 只留 1 行指针。
+  实测依据：q1 台账占 46.9%（51,434/109,599 字符）、q2 占 39.6%；方案本体两问均 ≈57–58k 字符。
+- `boot.payload_limit`（P1）：调度壳启动一次并列读的 5 件（`intermediates/00-problem.json`、`state.json`、
+  三份 `manifest.json`）单文件须 <50 KiB 且单行 ≤1500 字符 —— read 工具在此硬截断，超限会让整个 boot
+  「全有或全无」（本项目曾因此启动失败 6 次）。
 
 用法
 ----
@@ -271,6 +278,65 @@ def check_pool_registration(root: Path) -> tuple[list[dict], dict]:
     return out, stats
 
 
+# ── draft 台账零容差（phase-04「产物与篇幅预算」）──
+DRAFT_LEDGER_KEYS = ("修订记录", "修订处置", "处置表", "逐条处置", "证据键表", "已通过项",
+                     "符号登记", "口径勘误", "验证计划", "台账")
+DRAFT_LEDGER_SKIP = ("指针",)          # 「台账与机械核验指针」这类纯指针节不算台账
+
+
+def check_draft_ledger(root: Path) -> list[dict]:
+    """draft.md 标题里出现台账类章节 ⇒ P0（台账另存，draft 只留 1 行指针）。"""
+    out: list[dict] = []
+    base = root / "intermediates"
+    if not base.is_dir():
+        return out
+    for draft in sorted(base.glob("q*/04-formulation/draft.md")):
+        hits: list[str] = []
+        for i, line in enumerate(read_text(draft).split("\n"), 1):
+            if not line.startswith("#"):
+                continue
+            title = line.lstrip("#").strip()
+            if any(s in title for s in DRAFT_LEDGER_SKIP):
+                continue
+            if any(k in title for k in DRAFT_LEDGER_KEYS):
+                hits.append(f"{draft.relative_to(root)}:{i}  {title[:70]}")
+        if hits:
+            out.append({"level": "P0", "check": "draft.ledger_section", "locations": hits[:12],
+                        "detail": (f"{draft.relative_to(root)} 含 {len(hits)} 个台账类章节标题（台账归 "
+                                   "revision-log/verification/handoff/errata/symbols，draft 只留 1 行指针）")})
+    return out
+
+
+# ── boot 载荷上限（壳启动一次并列读的 5 件）──
+BOOT_FILES = ("intermediates/00-problem.json", "intermediates/state.json", "pool/manifest.json",
+              "pool/problem/manifest.json", "probes/manifest.json")
+BOOT_MAX_BYTES = 50 * 1024
+BOOT_MAX_LINE_CHARS = 1500
+
+
+def check_boot_payload(root: Path) -> tuple[list[dict], dict]:
+    """boot 读的 5 件：单文件 <50 KiB 且单行 ≤1500 字符（read 工具硬限 ⇒ 超限则续跑启动失败）。"""
+    out: list[dict] = []
+    stats: dict = {"checked": 0, "files": []}
+    for rel in BOOT_FILES:
+        fp = root / rel
+        if not fp.is_file():
+            continue
+        size = fp.stat().st_size
+        max_line = max((len(x) for x in read_text(fp).split("\n")), default=0)
+        stats["checked"] += 1
+        stats["files"].append({"path": rel, "bytes": size, "maxLineChars": max_line})
+        bad = []
+        if size >= BOOT_MAX_BYTES:
+            bad.append(f"{size} B ≥ 50 KiB")
+        if max_line > BOOT_MAX_LINE_CHARS:
+            bad.append(f"最长行 {max_line} 字符 > {BOOT_MAX_LINE_CHARS}")
+        if bad:
+            out.append({"level": "P1", "check": "boot.payload_limit", "locations": [rel],
+                        "detail": f"{rel} 超限（{'; '.join(bad)}）⇒ 壳启动批量读会被截断，续跑可能直接报「未找到 00-problem.json」"})
+    return out, stats
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="math-model 数字单一真源检查")
     ap.add_argument("--root", required=True, help="outputDir（含 intermediates/）")
@@ -343,6 +409,9 @@ def main(argv: list[str] | None = None) -> int:
 
     pool_findings, pool_stats = check_pool_registration(root)
     findings.extend(pool_findings)
+    findings.extend(check_draft_ledger(root))
+    boot_findings, boot_stats = check_boot_payload(root)
+    findings.extend(boot_findings)
 
     p0 = [f for f in findings if f["level"] == "P0"]
     p1 = [f for f in findings if f["level"] == "P1"]
@@ -355,6 +424,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"- 池登记：pool/ 下 {pool_stats['pool_py']} 个 .py（条目 {pool_stats['pool_entries']}）、"
               f"probes/ 下 {pool_stats['probe_py']} 个 .py（条目 {pool_stats['probe_entries']}）；"
               f"未登记/幽灵 {len(pool_findings)} 项")
+        print(f"- boot 载荷：检查 {boot_stats['checked']} 件（阈值 <50 KiB 且单行 ≤1500 字符）")
         if not findings:
             print("- 未发现数字散落问题")
         for f in (p0 + p1)[:MAX_SHOWN]:

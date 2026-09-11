@@ -158,6 +158,41 @@ out=$( cd "$D5" && PROBE_SC="$SC" $PY "$SC/probe_cache.py" --run probes/slow.py 
 k=$(find "$D5/probes/partial" -name 'n1.json' 2>/dev/null | wc -l)
 if [ $rc -eq 1 ] && [ "$k" -ge 1 ] && echo "$out" | grep -q "已完成档保留"; then ok "超时保留分档并提示（rc=1）"; else bad "超时不保留分档（rc=$rc, k=$k）：$out"; fi
 
+echo "== 19. probe_cache：manifest 条目紧凑化（长 purpose 截断 + inputs 摘要） =="
+D7="$W/pc3"; mkdir -p "$D7/probes"
+cat > "$D7/probes/t.py" <<'EOF'
+import json, os, sys
+sys.path.insert(0, os.environ["PROBE_SC"])
+import probe_cache as pc
+pc.main_with_cache(lambda inputs: {"ok": 1}, purpose="用途" * 60,
+                   inputs={"blob": ["y" * 50] * 40}, role="impl")
+EOF
+( cd "$D7" && PROBE_SC="$SC" $PY "$SC/probe_cache.py" --run probes/t.py --inputs '{"blob":1}' >/dev/null 2>&1 )
+out=$(/usr/bin/python3 -c "
+import json,sys
+m=json.load(open('$D7/probes/manifest.json'))
+e=list(m['probes'].values())[0]
+print('purpose_len',len(e['purpose']),'ellipsis',e['purpose'].endswith('…'),'digest',bool(e['inputs'].get('_digest')))
+")
+if echo "$out" | grep -q "purpose_len 80 ellipsis True digest True"; then ok "purpose 截断到 80 字符（含省略号）、inputs 存摘要"; else bad "manifest 未紧凑化：$out"; fi
+
+echo "== 20. artifact_lint：draft 台账章节（P0）+ boot 载荷超限（P1） =="
+D8="$W/lint"; mkdir -p "$D8/intermediates/q1/04-formulation" "$D8/probes"
+cat > "$D8/intermediates/q1/04-formulation/draft.md" <<'EOF'
+# q1 方案
+## 3. 主方案
+正文
+## 0.1 r3 轮评审逐条处置（历史归档）
+…
+## 9. 台账与机械核验指针
+EOF
+/usr/bin/python3 -c "print('x'*2000)" > "$D8/probes/manifest.json"
+out=$($PY "$SC/artifact_lint.py" --root "$D8" 2>&1); rc=$?
+hit=$(echo "$out" | grep -c "draft.ledger_section")
+boot=$(echo "$out" | grep -c "boot.payload_limit")
+if [ "$rc" -eq 1 ] && [ "$hit" -ge 1 ] && [ "$boot" -ge 1 ]; then ok "检出台账章节 P0 + boot 超长行 P1（rc=1）"; else bad "新检查未生效（rc=$rc hit=$hit boot=$boot）"; fi
+if echo "$out" | grep -q "台账与机械核验指针"; then bad "纯指针节被误判为台账章节"; else ok "「…指针」节未被误判"; fi
+
 echo
 echo "结果：通过 $PASS ／ 失败 $FAIL"
 [ $FAIL -eq 0 ] || exit 1

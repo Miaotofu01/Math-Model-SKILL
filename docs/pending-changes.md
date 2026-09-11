@@ -481,7 +481,12 @@ OA 优先（arXiv / OpenAlex OA / PMC / DOAJ）→ 作者版·预印本（S2 `op
 | 3 | 全仓无任何篇幅上限（只有 `summary≤200字`、ledger `≤50字`）；模板要求 9 个必填节 + 每条公式「动机→推导→含义」 | draft 篇幅预算：主方案 ≤8k 字符、全文 ≤12k 字符（一轮过时实测 6.8k 可达），超预算须在 summary 写明理由 | phase-04（阈值待用户定） |
 | 4 | §5「先期验证 + 证据键表」15.3k 字符挤进 draft，与 `probes/manifest.json`、`results.json` 重复 | draft 里压成 3–5 行「已核验项 → 探针键」，明细留池；`_common.md §4` 补一句「证据清单同样只写锚点」 | phase-04 + `_common.md §4` |
 
-**落地状态（2026-09-11）**：**模板侧已落** —— 第 3 条（draft ≤12k 字符）与第 4 条（证据键表 → `verification.md`）随 `phase-04-formulation.md` 新增的「产物与篇幅预算」节完成（台账归属表 + `wc -m` 自检进完成标准）。**壳侧待落**：第 1 条（修订改精准手术）与第 2 条的写入方（修订节点把「意见→处置」写进 `revision-log.md`）—— 因此本跑里 q2–q4 的 formulator 会按新结构产出，但修订节点仍按旧壳提示词把记录写回 draft，预算可能被撑破；评审侧的「字数核对」项也留到壳一起落（避免当前跑因"超预算"反复判必须改而空转）。
+**落地状态（2026-09-11 收尾：四条全部处置完毕）**
+
+- **第 1、2 条（壳）已落**：修订节点改为「**精准手术**（禁止整篇重写；只改被点到的段落/公式/表格行，未点到的章节一字不动）+ 逐条处置表写 `04-formulation/revision-log.md`，draft 内**不得新增或保留**处置表/历史归档章节，只留 1 行指针」。同时给**每次尝试（含第 2 次）加「动手前先重读阶段模板」**——实测上一跑的第 2 次尝试没读模板就重写（该会话「阶段模板 04」命中 0 次，attempt-1 命中 2 次）。
+- **第 3 条的阈值被实测推翻**：原定「≤12k 字符」不成立 —— q1 台账占 **46.9%**（51,434/109,599 字符）、q2 占 **39.6%**（37,574/94,971），而**方案本体两问都稳定在 ≈57–58k 字符**（q1 58,165 / q2 57,397）。改为「**台账章节零容差**（`artifact_lint` 的 `draft.ledger_section`，P0）+ 正文 >60k 字符须在 `handoff.md` 写明理由（warning）」。真正的下一步压降要拆文件（模型本体 / 实现细节另存 `implementation-spec.md`），属第二批、需一次对照跑。
+- **第 4 条**（证据键表 → `verification.md`）已随模板落地。
+- **评审侧「字数核对」决定不落**：字数由机械检查 + sanity 的 `perf` 段覆盖；让评审按字数判「必须改」会在已超预算的历史产物上反复空转。
 
 ### 4.2 读入负担治理（纯提示词；2026-09-11 已落 7、1、2）
 
@@ -522,6 +527,24 @@ OA 优先（arXiv / OpenAlex OA / PMC / DOAJ）→ 作者版·预印本（S2 `op
 
 **待第二批（改评审口径，需一次对照跑）**：sanity 判据由 warning 升级为门禁项；`8×` 这个倍数定档（要数据判 5 还是 8）；把散落的 `2 min / 15 min / 900 s` 三个魔数收敛成相对值。
 **不落**：把「降精度」提到「缩窗」之前（会改判据含义）；再散新的绝对数字。
+
+### 4.4 boot 载荷纪律（2026-09-11 已落 a/a2/b + 两项机械检查）
+
+**触发证据**：2026 国赛项目的 workflow 启动失败 **6 次**（09-10 18:12、09-11 00:26 / 00:32 / 00:41 / 00:50 / 13:16），签名一致：`status:"error"` + `"未找到 …/00-problem.json（Stage 1 需先落盘）"`，每次只跑 2 个 agent 就结束。
+
+机制：壳的 `rfMany` 让**一个 agent 把 5 个文件正文原样回吐成 JSON**，而 read 工具硬截断（单文件 50 KiB、单行 1500 字符）⇒ 任一文件越限 ⇒ 回吐非法 JSON ⇒ **全有或全无**。全新跑时这 5 件都还不存在（都很小），**resume 时它们都在**，且 `probes/manifest.json` 随探针单调增长（实测 148,165 B → 手工压到 11 KB → 5 h 后又长到 116,699 B）。
+历史绕过手段的代价：每次续跑前手工跑 `compact_boot.py` 压缩 manifest，把条目字段清空 —— **221 条里 215 条变成空 `{}`**，复用引导（purpose/inputs/deps）全丢。
+
+| # | 改法 | 落点 | 生效 |
+|---|---|---|---|
+| a | **boot 只取字段、不回吐正文**：`{problemId, questions[], gates{}, manifest{keys,count,primitivesVersion,selftestPassed}}`；`buildAssets` 同时认摘要（`keys/count`）与全量（`entries/probes`）两形态 | 壳 `rfMany` / `BOOT_SPEC` / `buildAssets` | 下次 run/resume |
+| a2 | 摘要失败时**回退**：只对「关键两件」（`00-problem.json` / `state.json`）走全量读，manifest 缺席由降级文案兜底；并加**形状校验**（没有可用摘要对象就回退），覆盖「JSON 合法但值是垃圾」的情形 | 壳 `rfMany` | 同上 |
+| b | 硬约束文案：只输出指定字段、禁止回吐正文、>8 KB 一律摘要 | 壳 `BOOT_SPEC` | 同上 |
+| — | `probe_cache.register` 条目紧凑化：`purpose` ≤80 字符、`inputs` 超 120 字符存摘要（`_digest/_bytes/_keys`）、条目 >200 时最旧移入 `manifest.archive.json` | `scripts/probe_cache.py` | 立即 |
+| — | `artifact_lint` 增两项：`boot.payload_limit`（P1：5 件 <50 KiB 且单行 ≤1500 字符）、`draft.ledger_section`（P0：draft 台账章节零容差；标题含「指针」的纯指针节不算） | `scripts/artifact_lint.py` | 立即 |
+
+**验收**：dryrun **10 模式**全绿（含 `BOOT_STUB=full` 旧全量兼容、`BOOT_STUB=broken` 走 a2 回退）+ smoke **23 用例**全绿。
+**待办（项目侧手术）**：被清空的 215 条 manifest 条目需从 `.backup/probes_manifest.json.orig` 恢复并按紧凑格式重生成。
 
 ---
 

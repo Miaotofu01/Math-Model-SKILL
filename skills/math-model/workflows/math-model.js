@@ -25,10 +25,31 @@ const parseAny = x => {
 }
 async function ca(p, s, l) { try { return await agent(p, s ? { schema: s, label: l || "mm" } : { label: l || "mm" }) } catch (e) { log("⚠ agent 异常[" + (l || "mm") + "]: " + (e && e.message ? e.message : e)); return null } }
 async function rf(path) { const r = await ca(`Read ${path}; 存在输出内容，否则 "NOT_FOUND"。`, null); if (!r) return null; const t = typeof r === "string" ? r.trim() : JSON.stringify(r); return t === "NOT_FOUND" ? null : t }
-async function rfMany(paths) {
-  const r = await ca(`一次并列 Read 以下全部文件（不遗漏、不逐个读）:\n${paths.map(p => "- " + p).join("\n")}\n输出 JSON 对象：{"<完整路径>": "<文件内容原文 或 NOT_FOUND>"}；仅 JSON，不要代码围栏。`, null, "read-many")
+// boot 批量读的**摘要契约**：只取字段、不回吐文件正文。
+// 原因（实测）：read 工具单文件 50 KiB、单行 1500 字符硬截断，全量回吐 ⇒ 非 JSON ⇒ 整个 boot「全有或全无」；
+// 该文件集随探针累积单调增长（probes/manifest.json 曾达 148 KB / 116 KB），本项目因此启动失败 6 次（见 docs/pending-changes §4.4）。
+const BOOT_SPEC = `输出 JSON 对象（**只取字段，禁止回吐文件正文**；任何字段都不得内联文件原文，超 8 KB 的内容一律摘要）：
+{"<完整路径>": <摘要>}
+- 00-problem.json → {"problemId":"<id>","questions":["1","2"]}（questions 取 analysis.subQuestions[].id，缺则取顶层 questions[]；字符串数组，保持原顺序）
+- state.json → {"problemId":"<id>","gates":{…},"iterations":{…}}（gates/iterations 原样透传，它们是短标量映射）
+- *manifest.json → {"keys":["<键名，最多 12 个>"],"count":<条目总数>,"primitivesVersion":"<有则填>","selftestPassed":<true|false|null>}
+- 文件不存在 → "NOT_FOUND"
+不确定的字段直接省略；仅 JSON，不要代码围栏。`
+async function rfMany(paths, label) {
+  const r = await ca(`一次并列 Read 以下全部文件（不遗漏、不逐个读）:\n${paths.map(p => "- " + p).join("\n")}\n${BOOT_SPEC}`, null, label || "read-many")
   const o = parseAny(r)
-  return o && typeof o === "object" ? o : null
+  // 形状校验：至少一件非 manifest 文件给出「可用的摘要对象」或「旧的全文 JSON 字符串」；否则视为失败走 a2 回退
+  const usable = o && typeof o === "object" && Object.entries(o).some(([k, v]) => {
+    if (/manifest\.json$/.test(k) || v === "NOT_FOUND") return false
+    if (typeof v === "string") return !!parseAny(v)
+    return !!(v && typeof v === "object" && (v.problemId || v.gates))
+  })
+  if (usable) return o
+  // a2 回退：摘要失败时只对「关键两件」走全量读；manifest 缺席由 buildAssets 的降级文案兜底（避免再赌一次大文件）
+  const fb = {}
+  for (const q of paths.filter(x => !/manifest\.json$/.test(x))) { const s = await rf(q); if (s) fb[q] = s }
+  if (Object.keys(fb).length) log("⚠ boot 摘要读取失败 → 已回退全量读 " + Object.keys(fb).length + " 件关键文件")
+  return Object.keys(fb).length ? fb : null
 }
 
 // 可复用资产清单（§1.3-4/5）：启动时随 boot 批量读入 manifest → 注入每个阶段/评审/修订提示词
@@ -45,17 +66,25 @@ function buildAssets(boot) {
   const pm = rd(outDir + "/pool/manifest.json")
   const om = rd(outDir + "/pool/problem/manifest.json")
   const qm = rd(outDir + "/probes/manifest.json")
-  const keys = o => (o && o.entries && typeof o.entries === "object" ? Object.keys(o.entries) : [])
-  const names = keys(pm), cores = keys(om)
-  const probes = qm && qm.probes && typeof qm.probes === "object" ? Object.keys(qm.probes) : []
-  const a = names.length
-    ? `原语池 pool/primitives.py 已登记 ${names.length} 项（${names.slice(0, 6).join("、")}${names.length > 6 ? "…" : ""}，v${(pm && pm.primitivesVersion) || "?"}${pm && pm.selftest && pm.selftest.passed ? "，selftest 通过" : ""}）`
+  // boot 摘要形态（只取字段：{keys:[…],count,primitivesVersion,selftestPassed}）与全量形态（{entries:{…}} / {probes:{…}}）都认
+  const keys = o => !o || typeof o !== "object" ? []
+    : (o.entries && typeof o.entries === "object" ? Object.keys(o.entries)
+      : (Array.isArray(o.keys) ? o.keys.map(String) : []))
+  const pkeys = o => !o || typeof o !== "object" ? []
+    : (o.probes && typeof o.probes === "object" ? Object.keys(o.probes)
+      : (Array.isArray(o.keys) ? o.keys.map(String) : []))
+  const cnt = (o, ks) => (o && typeof o.count === "number" ? o.count : ks.length)
+  const names = keys(pm), cores = keys(om), probes = pkeys(qm)
+  const pv = (pm && pm.primitivesVersion) || "?"
+  const selOk = !!(pm && (typeof pm.selftestPassed === "boolean" ? pm.selftestPassed : (pm.selftest && pm.selftest.passed)))
+  const a = cnt(pm, names)
+    ? `原语池 pool/primitives.py 已登记 ${cnt(pm, names)} 项（${names.slice(0, 6).join("、")}${cnt(pm, names) > 6 ? "…" : ""}，v${pv}${selOk ? "，selftest 通过" : ""}）`
     : "启动快照未见原语登记（pool/primitives.py 若已存在就直接 import，禁止再 cp 覆盖；确未建立才 cp 技能根副本并 --manifest）"
-  const c = cores.length
-    ? `题专用核心池 pool/problem/ 已登记 ${cores.length} 项（${cores.slice(0, 6).join("、")}${cores.length > 6 ? "…" : ""}）`
+  const c = cnt(om, cores)
+    ? `题专用核心池 pool/problem/ 已登记 ${cnt(om, cores)} 项（${cores.slice(0, 6).join("、")}${cnt(om, cores) > 6 ? "…" : ""}）`
     : "启动快照未见题专用核心登记（会被多问复用的判据/求解/目标函数写 pool/problem/<题>/*.py，并登记 pool/problem/manifest.json）"
-  const b = probes.length
-    ? `探针池 probes/ 已登记 ${probes.length} 条（结果缓存 probes/results/，命中秒回）`
+  const b = cnt(qm, probes)
+    ? `探针池 probes/ 已登记 ${cnt(qm, probes)} 条（结果缓存 probes/results/，命中秒回）`
     : "启动快照未见探针登记（探针写 probes/<角色>/<目的>.py，用 probe_cache 缓存结果）"
   return `可复用资产（先查再用；已有同口径实现禁止重写）：${a}；${c}；${b}；清单/用法见 _common.md §5–6`
 }
@@ -75,7 +104,7 @@ function stagePrompt(q, s, m) {
     return IM + "/" + p                                                       // 路径型依赖补 intermediates/ 前缀
   }).join("，")
   return [
-    `## 阶段 ${k}：一次并列 Read ${PD}/_common.md 与 ${PD}/${m.prompts[s]}（公共纪律 + 本阶段模板）、状态 ${IM}/state.json、依赖 ${deps||"无"}、可复用资产清单 ${MANIFESTS.join("、")}`,
+    `## 阶段 ${k}：一次并列 Read ${PD}/_common.md 与 ${PD}/${m.prompts[s]}（公共纪律 + 本阶段模板；**每轮必读，不得凭记忆或沿用上轮的印象**）、状态 ${IM}/state.json、依赖 ${deps||"无"}、可复用资产清单 ${MANIFESTS.join("、")}`,
     `执行：按两份模板执行（冲突时以阶段模板 ${m.prompts[s]} 为准）；技能根 ${SD}（规范 ${SD}/docs/、工具 ${SD}/scripts/，用法见 _common.md §6）；产物写 ${IM}/${lay}（mkdir -p）`,
     assetsLine(true),
     ...(COSTLINE(s) ? [COSTLINE(s)] : []),
@@ -118,7 +147,7 @@ async function runFormulation(q, m, sc, a) {
   const dr = d + "/draft.md"
   const drRel = q + "/04-formulation/draft.md"  // 记录用相对路径（artifacts 契约），写入仍用 dr 绝对路径
   const sf = d + "/self-check.md"
-  const ok1 = await ca(stagePrompt(q, "formulation", m) + (a > 1 ? "\n【第2次】改策略：重写主线或调假设，解决上轮必须改" : "") + `\n【节点1 · formulator】按阶段模板产本小问方案：${dr}（主产物）+ ${d}/baseline-registry.md（预注册，**先于 draft 完成**）+ ${d}/symbols.json；写完追加 ledger 一行 \`${k}: DRAFT ${drRel} <≤50字>\`，并在 state.json 里**就地合并** gates["${k}"]="NEEDS_REVISION"、artifacts["${k}"]="${drRel}"、current（其余既有键保留，禁止整体覆盖）`, sc, "formulator")
+  const ok1 = await ca(stagePrompt(q, "formulation", m) + (a > 1 ? `\n【第2次】**动手前先重读 ${PD}/${m.prompts["formulation"]}**（模板可能已更新；实测上一跑的第 2 次尝试没读模板就重写）；改策略：重写主线或调假设，解决上轮必须改` : "") + `\n【节点1 · formulator】按阶段模板产本小问方案：${dr}（主产物）+ ${d}/baseline-registry.md（预注册，**先于 draft 完成**）+ ${d}/symbols.json；写完追加 ledger 一行 \`${k}: DRAFT ${drRel} <≤50字>\`，并在 state.json 里**就地合并** gates["${k}"]="NEEDS_REVISION"、artifacts["${k}"]="${drRel}"、current（其余既有键保留，禁止整体覆盖）`, sc, "formulator")
   if (!ok1) return null
   const ok2 = await ca(`【节点2 · 三维自查】读 ${dr}，按数学正确 / 可实现 / 创新真实三方面自查（关键处独立重算，不采信草案自述）；结论与需改进项写入 ${sf}；**不改 ${dr}、不改 state.json/ledger.md**（改进由后续修订节点落到 draft）；${BRIEF}`, sc, "selfcheck")
   if (!ok2) return null
@@ -142,7 +171,7 @@ async function runFormulation(q, m, sc, a) {
       await ca(finalizePrompt(k, v, r, drRel), sc, "finalize")
       return { accepted: false, status: v, why: raw.filter(Boolean).map(x => x.summary).join(" | ").slice(0, 300) }
     }
-    const okR = await ca(`【修订r${r}】一次并列 Read ${PD}/_common.md、${dr} 与 ${d}/review-r${r}-*.md；逐条回应（改或说明），覆盖写回 ${dr}；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；追加 ledger 一行 \`${k}.revision-r${r}: <status> ${drRel} <≤50字>\`（**不改 state.json**）；${BRIEF}` + PYLINE(), sc, "revise")
+    const okR = await ca(`【修订r${r}】**精准手术**（禁止整篇重写 draft）：一次并列 Read ${PD}/_common.md、${dr} 与 ${d}/review-r${r}-*.md；**只改被点到的段落/公式/表格行**（用 Edit 定点替换；未被点到的章节一字不动，draft 只放方案本体）；**逐条处置表写 ${d}/revision-log.md**（评审意见 → 处置，逐条；draft 内**不得新增或保留**处置表/历史归档章节，只在 ${dr} 留 1 行指针）；若修订影响基准协议/符号定义，同步更新 ${d}/baseline-registry.md、${d}/symbols.json（版本号递增）并核对一致；数字以 ${IM}/${q}/06-computation/results.json 为唯一真源，产物内只写锚点引用不复抄数值；探针一律走 probes/<角色>/<目的>.py + 结果缓存（禁止再写 /tmp 一次性脚本）；追加 ledger 一行 \`${k}.revision-r${r}: <status> ${drRel} <≤50字>\`（**不改 state.json**）；${BRIEF}` + PYLINE(), sc, "revise")
     if (!okR) return null
   }
 }
@@ -183,7 +212,7 @@ async function runStage(q, s, m, sc, gs, done) {
 }
 async function runSimple(q, s, m, sc, a) {
   const k = q ? q + "." + s : s
-  const r = await ca(stagePrompt(q, s, m) + (a > 1 ? "\n【重试】改策略：缩小范围、先产最小版、写明障碍" : ""), sc, "run:" + k)
+  const r = await ca(stagePrompt(q, s, m) + (a > 1 ? `\n【重试】**动手前先重读 ${PD}/${m.prompts[s]}**（模板可能已更新）；改策略：缩小范围、先产最小版、写明障碍` : ""), sc, "run:" + k)
   if (!r || r.status === "FAIL" || r.status === "NEEDS_REVISION") return null
   return { accepted: true, status: r.status, artifact_path: r.artifact_path || "" }
 }

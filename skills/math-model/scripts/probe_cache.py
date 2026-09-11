@@ -72,6 +72,10 @@ from typing import Any, Callable
 CACHE_DIR_ENV = "PROBE_CACHE_DIR"
 MANIFEST_ENV = "PROBE_MANIFEST"
 CHECKPOINT_DIR_ENV = "PROBE_CHECKPOINT_DIR"
+# manifest 体积纪律（实测：条目平均 592 B、最大 2 KB ⇒ 189 条 = 148 KB，会撑爆调度壳启动批量读）
+ENTRY_TEXT_MAX = 80          # purpose / deps / contract 单字段上限
+ENTRY_INPUTS_MAX = 120       # inputs 内联上限，超出改存摘要
+MANIFEST_MAX_ENTRIES = 200   # 活清单条目上限，最旧的移入 manifest.archive.json
 
 
 def cache_dir() -> Path:
@@ -141,10 +145,48 @@ def save(key: str, result: Any, meta: dict | None = None, elapsed_s: float | Non
     return f
 
 
+def _snip(s: Any, n: int = ENTRY_TEXT_MAX) -> str:
+    s = "" if s is None else str(s)
+    return s if len(s) <= n else s[: n - 1] + "…"
+
+
+def _compact_inputs(inputs: Any) -> Any:
+    """inputs 超过 ENTRY_INPUTS_MAX ⇒ 存摘要（指纹已能唯一取回结果，manifest 不需要全文）。"""
+    try:
+        raw = json.dumps(inputs, ensure_ascii=False, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        raw = str(inputs)
+    if len(raw) <= ENTRY_INPUTS_MAX:
+        return inputs
+    out: dict = {"_digest": hashlib.sha256(raw.encode()).hexdigest()[:12], "_bytes": len(raw)}
+    if isinstance(inputs, dict):
+        out["_keys"] = sorted(str(x) for x in inputs)[:8]
+    return out
+
+
+def _archive_overflow(man: dict) -> int:
+    """活清单超过 MANIFEST_MAX_ENTRIES ⇒ 按 updatedAt 最旧的移入 manifest.archive.json。"""
+    ps = man.get("probes", {})
+    if not isinstance(ps, dict) or len(ps) <= MANIFEST_MAX_ENTRIES:
+        return 0
+    ordered = sorted(ps.items(), key=lambda kv: str((kv[1] or {}).get("updatedAt") or ""))
+    move = dict(ordered[: len(ps) - MANIFEST_MAX_ENTRIES])
+    af = manifest_path().with_name("manifest.archive.json")
+    try:
+        arch = json.loads(af.read_text(encoding="utf-8")) if af.is_file() else {"schema": "v1", "probes": {}}
+    except (OSError, json.JSONDecodeError):
+        arch = {"schema": "v1", "probes": {}}
+    arch.setdefault("probes", {}).update(move)
+    af.write_text(json.dumps(arch, ensure_ascii=False, indent=2), encoding="utf-8")
+    for k in move:
+        ps.pop(k, None)
+    return len(move)
+
+
 def register(purpose: str, role: str = "other", inputs: Any = None, contract: str = "",
              key: str | None = None, elapsed_s: float | None = None, deps: str = "",
              script: str = "") -> None:
-    """向 probes/manifest.json 追加/更新一条登记（按 key 去重）。"""
+    """向 probes/manifest.json 追加/更新一条登记（按 key 去重；字段紧凑化，超限归档）。"""
     mf = manifest_path()
     mf.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -153,10 +195,15 @@ def register(purpose: str, role: str = "other", inputs: Any = None, contract: st
         man = {"schema": "v1", "probes": {}}
     man.setdefault("probes", {})
     k = key or f"{role}/{purpose}"
-    man["probes"][k] = {"purpose": purpose, "role": role, "inputs": inputs, "outputContract": contract,
-                        "elapsed_s": elapsed_s, "deps": deps, "cacheKey": key, "script": script,
+    man["probes"][k] = {"purpose": _snip(purpose), "role": role, "inputs": _compact_inputs(inputs),
+                        "outputContract": _snip(contract), "elapsed_s": elapsed_s, "deps": _snip(deps),
+                        "cacheKey": key, "script": _snip(Path(str(script)).name if script else ""),
                         "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+    moved = _archive_overflow(man)
     mf.write_text(json.dumps(man, ensure_ascii=False, indent=2), encoding="utf-8")
+    if moved:
+        print(f"[probe_cache] manifest 超 {MANIFEST_MAX_ENTRIES} 条 → 最旧 {moved} 条移入 "
+              f"{mf.with_name('manifest.archive.json').name}", file=sys.stderr)
 
 
 class BudgetExceeded(RuntimeError):
