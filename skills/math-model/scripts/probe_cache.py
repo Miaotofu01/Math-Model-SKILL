@@ -73,9 +73,10 @@ CACHE_DIR_ENV = "PROBE_CACHE_DIR"
 MANIFEST_ENV = "PROBE_MANIFEST"
 CHECKPOINT_DIR_ENV = "PROBE_CHECKPOINT_DIR"
 # manifest 体积纪律（实测：条目平均 592 B、最大 2 KB ⇒ 189 条 = 148 KB，会撑爆调度壳启动批量读）
-ENTRY_TEXT_MAX = 80          # purpose / deps / contract 单字段上限
-ENTRY_INPUTS_MAX = 120       # inputs 内联上限，超出改存摘要
+ENTRY_TEXT_MAX = 56          # purpose / deps / contract 单字段上限（中文 3 B/字符，实测条目均值 ~390 B）
+ENTRY_INPUTS_MAX = 60        # inputs 内联上限，超出改存摘要
 MANIFEST_MAX_ENTRIES = 200   # 活清单条目上限，最旧的移入 manifest.archive.json
+MANIFEST_MAX_BYTES = 48 * 1024   # 硬上限：read 工具单文件 50 KiB 截断（超了读到的 JSON 就是残的）
 
 
 def cache_dir() -> Path:
@@ -164,22 +165,46 @@ def _compact_inputs(inputs: Any) -> Any:
     return out
 
 
+def dump_manifest(man: dict) -> str:
+    """一行一条目：比 indent=2 省 ~40% 体积，且保证单行 ≤1500 字符（read 工具逐行硬限）。"""
+    ps = man.get("probes", {}) or {}
+    items = list(ps.items())
+    lines = ["{", f'  "schema": {json.dumps(man.get("schema", "v1"))},', '  "probes": {']
+    for i, (k, v) in enumerate(items):
+        lines.append(f"    {json.dumps(k, ensure_ascii=False)}: "
+                     + json.dumps(v, ensure_ascii=False, sort_keys=True) + ("," if i < len(items) - 1 else ""))
+    lines += ["  }", "}"]
+    return "\n".join(lines) + "\n"
+
+
+def _manifest_bytes(man: dict) -> int:
+    return len(dump_manifest(man).encode("utf-8"))
+
+
 def _archive_overflow(man: dict) -> int:
-    """活清单超过 MANIFEST_MAX_ENTRIES ⇒ 按 updatedAt 最旧的移入 manifest.archive.json。"""
+    """活清单超条目数或超字节上限 ⇒ 按 updatedAt 最旧的移入 manifest.archive.json。
+
+    字节上限来自 read 工具硬截断（单文件 50 KiB）：实测 316 条富条目 = 117 KB（indent=2），
+    既读不全也撑爆调度壳启动批量读。
+    """
     ps = man.get("probes", {})
-    if not isinstance(ps, dict) or len(ps) <= MANIFEST_MAX_ENTRIES:
+    if not isinstance(ps, dict) or not ps:
         return 0
     ordered = sorted(ps.items(), key=lambda kv: str((kv[1] or {}).get("updatedAt") or ""))
-    move = dict(ordered[: len(ps) - MANIFEST_MAX_ENTRIES])
+    move: dict = {}
+    while ordered and len(ps) > 10 and (len(ps) > MANIFEST_MAX_ENTRIES or _manifest_bytes(man) > MANIFEST_MAX_BYTES):
+        k, v = ordered.pop(0)
+        if k in ps:
+            move[k] = ps.pop(k)
+    if not move:
+        return 0
     af = manifest_path().with_name("manifest.archive.json")
     try:
         arch = json.loads(af.read_text(encoding="utf-8")) if af.is_file() else {"schema": "v1", "probes": {}}
     except (OSError, json.JSONDecodeError):
         arch = {"schema": "v1", "probes": {}}
     arch.setdefault("probes", {}).update(move)
-    af.write_text(json.dumps(arch, ensure_ascii=False, indent=2), encoding="utf-8")
-    for k in move:
-        ps.pop(k, None)
+    af.write_text(dump_manifest(arch), encoding="utf-8")
     return len(move)
 
 
@@ -197,10 +222,10 @@ def register(purpose: str, role: str = "other", inputs: Any = None, contract: st
     k = key or f"{role}/{purpose}"
     man["probes"][k] = {"purpose": _snip(purpose), "role": role, "inputs": _compact_inputs(inputs),
                         "outputContract": _snip(contract), "elapsed_s": elapsed_s, "deps": _snip(deps),
-                        "cacheKey": key, "script": _snip(Path(str(script)).name if script else ""),
+                        "cacheKey": key, "script": _snip(script, 160),   # 保留完整路径（登记匹配靠它；截断会误报未登记+幽灵）
                         "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     moved = _archive_overflow(man)
-    mf.write_text(json.dumps(man, ensure_ascii=False, indent=2), encoding="utf-8")
+    mf.write_text(dump_manifest(man), encoding="utf-8")
     if moved:
         print(f"[probe_cache] manifest 超 {MANIFEST_MAX_ENTRIES} 条 → 最旧 {moved} 条移入 "
               f"{mf.with_name('manifest.archive.json').name}", file=sys.stderr)

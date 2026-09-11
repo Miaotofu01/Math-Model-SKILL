@@ -132,7 +132,9 @@ def registry(root: Path) -> dict:
     pm = load_json(root / "pool" / "manifest.json") or {}
     om = load_json(root / "pool" / "problem" / "manifest.json") or {}
     qm = load_json(root / "probes" / "manifest.json") or {}
-    probes = {str((v or {}).get("script", "")).lstrip("./") for v in (qm.get("probes") or {}).values()}
+    qa = load_json(root / "probes" / "manifest.archive.json") or {}      # 归档条目也算已登记
+    probes = {str((v or {}).get("script", "")).lstrip("./")
+              for src in (qm, qa) for v in (src.get("probes") or {}).values()}
     return {"prim": set((pm.get("entries") or {})), "problem": set((om.get("entries") or {})),
             "probes": {p for p in probes if p}}
 

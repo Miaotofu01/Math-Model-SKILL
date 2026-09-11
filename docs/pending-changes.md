@@ -540,11 +540,23 @@ OA 优先（arXiv / OpenAlex OA / PMC / DOAJ）→ 作者版·预印本（S2 `op
 | a | **boot 只取字段、不回吐正文**：`{problemId, questions[], gates{}, manifest{keys,count,primitivesVersion,selftestPassed}}`；`buildAssets` 同时认摘要（`keys/count`）与全量（`entries/probes`）两形态 | 壳 `rfMany` / `BOOT_SPEC` / `buildAssets` | 下次 run/resume |
 | a2 | 摘要失败时**回退**：只对「关键两件」（`00-problem.json` / `state.json`）走全量读，manifest 缺席由降级文案兜底；并加**形状校验**（没有可用摘要对象就回退），覆盖「JSON 合法但值是垃圾」的情形 | 壳 `rfMany` | 同上 |
 | b | 硬约束文案：只输出指定字段、禁止回吐正文、>8 KB 一律摘要 | 壳 `BOOT_SPEC` | 同上 |
-| — | `probe_cache.register` 条目紧凑化：`purpose` ≤80 字符、`inputs` 超 120 字符存摘要（`_digest/_bytes/_keys`）、条目 >200 时最旧移入 `manifest.archive.json` | `scripts/probe_cache.py` | 立即 |
-| — | `artifact_lint` 增两项：`boot.payload_limit`（P1：5 件 <50 KiB 且单行 ≤1500 字符）、`draft.ledger_section`（P0：draft 台账章节零容差；标题含「指针」的纯指针节不算） | `scripts/artifact_lint.py` | 立即 |
+| — | `probe_cache.register` 条目紧凑化（`purpose`/`deps`/`contract` ≤56 字符、`inputs` 超 60 字符存摘要）+ **一行一条目**写法（比 `indent=2` 省 ~40% 且保证单行 ≤1500）+ **硬上限 48 KiB / 200 条**，超出按 `updatedAt` 最旧移入 `manifest.archive.json`；`script` 保留完整路径（截断会误报未登记+幽灵） | `scripts/probe_cache.py` | 立即 |
+| — | `artifact_lint` 增两项：`boot.payload_limit`（P1：5 件 <50 KiB 且单行 ≤1500 字符）、`draft.ledger_section`（P0：draft 台账章节零容差；标题含「指针」的纯指针节不算）；`artifact_lint` 与 `reuse_lint` 读 `manifest.json` + `manifest.archive.json` 两份（归档条目算已登记） | `scripts/artifact_lint.py`、`scripts/reuse_lint.py` | 立即 |
 
-**验收**：dryrun **10 模式**全绿（含 `BOOT_STUB=full` 旧全量兼容、`BOOT_STUB=broken` 走 a2 回退）+ smoke **23 用例**全绿。
-**待办（项目侧手术）**：被清空的 215 条 manifest 条目需从 `.backup/probes_manifest.json.orig` 恢复并按紧凑格式重生成。
+**验收**：dryrun **10 模式**全绿（含 `BOOT_STUB=full` 旧全量兼容、`BOOT_STUB=broken` 走 a2 回退）+ smoke **25 用例**全绿（新增 19 紧凑化 / 20 台账+boot 门 / 21 归档条目算已登记）。
+
+**项目侧手术（2026-09-11 已执行；脚本 `.mm-scratch/migrate_ledgers.py`，幂等可重跑）**
+
+| 对象 | 术前 | 术后 |
+|---|---|---|
+| `q1/04-formulation/draft.md` | 109,599 字符（台账 51,434 = **46.9%**） | **35,709**（14 节 / 75,963 字符迁出 → revision-log 40,861、verification 19,684、handoff 7,218、errata 5,113、symbols.json 快照） |
+| `q2/04-formulation/draft.md` | 94,971 字符（台账 37,574 = **39.6%**） | **58,689**（9 节 / 37,565 字符迁出 → revision-log 44,952、handoff 14,535、errata 15,851、symbols.json 快照） |
+
+- 手术方式：按标题分类搬迁 + 原位留 1 行指针（`> 【台账外移】…`），**原文不改写**；备份 `draft.md.pre-surgery.bak`；ledger 与 errata 各记一行（含新 sha256）。
+- q1 §5 标题「验证计划…」改名「验证与交接（台账外移后的指针）」——否则父标题本身仍含台账关键词，`draft.ledger_section` 会亮。
+- `probes/manifest.json`：从 `.backup/probes_manifest.json.orig` 恢复 189 条 + **结果缓存回填 121 条**（缓存里存着 `meta{purpose,role,inputs}`，正是被 compact 清空的字段）→ 302 条；终态 **48,911 B / 116 条**（最长行 480），其余 186 条入 `manifest.archive.json`。
+- 手术暴露并修掉三个真问题（均已回归）：① `register` 只存 basename ⇒ lint 误报「未登记+幽灵」；② 56 字符截断把 `script` 路径截断 ⇒ 加前缀 glob 修复；③ 归档条目必须算「已登记」。
+- 术后 `artifact_lint`：`draft.ledger_section` **0**、`boot.payload_limit` **0**、幽灵 **0**；余 **18 条 `probes.unregistered`** 是本跑的真实历史债（脚本存在但从未经 `probe_cache --run` 登记），留给 sanity 阶段补登记。
 
 ---
 

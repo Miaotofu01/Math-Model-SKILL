@@ -229,13 +229,15 @@ def check_pool_registration(root: Path) -> tuple[list[dict], dict]:
 
     pdir = root / "probes"
     qman = _load_json(pdir / "manifest.json")
+    qarch = _load_json(pdir / "manifest.archive.json")   # 超限归档的条目同样算「已登记」，否则误报幽灵/未登记
     reg: set[str] = set()
-    if isinstance(qman, dict):
-        for v in (qman.get("probes") or {}).values():
-            stats["probe_entries"] += 1
-            s = (v or {}).get("script") or ""
-            if s:
-                reg.add(_norm_rel(root, s))
+    for src in (qman, qarch):
+        if isinstance(src, dict):
+            for v in (src.get("probes") or {}).values():
+                stats["probe_entries"] += 1
+                s = (v or {}).get("script") or ""
+                if s:
+                    reg.add(_norm_rel(root, s))
     files = []
     if pdir.is_dir():
         for p in sorted(pdir.rglob("*.py")):

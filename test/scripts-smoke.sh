@@ -174,7 +174,7 @@ m=json.load(open('$D7/probes/manifest.json'))
 e=list(m['probes'].values())[0]
 print('purpose_len',len(e['purpose']),'ellipsis',e['purpose'].endswith('…'),'digest',bool(e['inputs'].get('_digest')))
 ")
-if echo "$out" | grep -q "purpose_len 80 ellipsis True digest True"; then ok "purpose 截断到 80 字符（含省略号）、inputs 存摘要"; else bad "manifest 未紧凑化：$out"; fi
+if echo "$out" | grep -q "purpose_len 56 ellipsis True digest True"; then ok "purpose 截断到 56 字符（含省略号）、inputs 存摘要"; else bad "manifest 未紧凑化：$out"; fi
 
 echo "== 20. artifact_lint：draft 台账章节（P0）+ boot 载荷超限（P1） =="
 D8="$W/lint"; mkdir -p "$D8/intermediates/q1/04-formulation" "$D8/probes"
@@ -192,6 +192,25 @@ hit=$(echo "$out" | grep -c "draft.ledger_section")
 boot=$(echo "$out" | grep -c "boot.payload_limit")
 if [ "$rc" -eq 1 ] && [ "$hit" -ge 1 ] && [ "$boot" -ge 1 ]; then ok "检出台账章节 P0 + boot 超长行 P1（rc=1）"; else bad "新检查未生效（rc=$rc hit=$hit boot=$boot）"; fi
 if echo "$out" | grep -q "台账与机械核验指针"; then bad "纯指针节被误判为台账章节"; else ok "「…指针」节未被误判"; fi
+
+echo "== 21. 归档条目算已登记 + manifest 一行一条目 =="
+D9="$W/arch"; mkdir -p "$D9/probes/adversary"
+printf 'print(1)\n' > "$D9/probes/adversary/old.py"
+/usr/bin/python3 -c "
+import json
+json.dump({'schema':'v1','probes':{'k1':{'purpose':'old','script':'probes/adversary/old.py'}}}, open('$D9/probes/manifest.archive.json','w'))
+json.dump({'schema':'v1','probes':{}}, open('$D9/probes/manifest.json','w'))
+"
+out=$($PY "$SC/artifact_lint.py" --root "$D9" 2>&1)
+if echo "$out" | grep -q "probes.unregistered\|probes.ghost"; then bad "归档条目被误判为未登记/幽灵"; else ok "归档条目算已登记（无未登记/幽灵告警）"; fi
+shape=$(/usr/bin/python3 -c "
+import sys; sys.path.insert(0, '$SC')
+import probe_cache as pc
+man = {'schema':'v1','probes':{'k%03d' % i: {'purpose':'用途'*30,'inputs':{'a':i},'cacheKey':'k%03d' % i} for i in range(50)}}
+s = pc.dump_manifest(man)
+print('maxline', max(len(x) for x in s.split(chr(10))), 'lines', len(s.split(chr(10))))
+")
+if echo "$shape" | grep -qE "maxline [0-9]{1,4} " && [ "$(echo "$shape" | sed 's/maxline \([0-9]*\).*/\1/')" -lt 1500 ]; then ok "manifest 一行一条目（$shape）"; else bad "manifest 行长超限：$shape"; fi
 
 echo
 echo "结果：通过 $PASS ／ 失败 $FAIL"
