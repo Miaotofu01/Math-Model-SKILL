@@ -42,7 +42,7 @@
 
 - 摘要按子问题分段（「对于问题1…」逐问方法+数值）且逐问覆盖；正文问题分析/模型/分析/结论各章覆盖全部小问
 - 内部流程术语扫描（§1-14：「对抗性审查/模型重设计/adversarialFindings/验证器/重设计历史」）→ 出现即 P1 改写
-- 图表反向检查：每个 `\includegraphics` 文件真实存在且属于 §2-9 的三处口径（`q{id}/08-visualization/figures/`、根 `figures/fig_eda_*`、根 `figures/fig_cross_示意图_*`）；无空 figure 环境；CJK 字体无 Glyph 缺失警告（§2-1/5）；对最终图件跑 `python <技能根>/scripts/figure_lint.py --png ... --svg ...`（见 `_common.md` §2.7），P0 清零
+- 图表反向检查：每个 `\includegraphics` 文件真实存在且属于 `writing-and-format.md` §2-9 的三处口径（`q{id}/08-visualization/figures/`、根 `figures/fig_eda_*`、根 `figures/fig_cross_示意图_*`）；无空 figure 环境；CJK 字体无 Glyph 缺失警告（`writing-and-format.md` §2-1/5）；对最终图件跑 `python <技能根>/scripts/figure_lint.py --png ... --svg ...`（见 `_common.md` §2.7），P0 清零
 - 交付自检（**`00-problem.json#externalPriors._delivery_check` 存在才做**）：按其中 validator/command 对 `results/result*.xlsx` 逐个跑 `--results <编号>`，**必须 FAIL=0**、报告留档；论文表格网格与「烘干结束时间」行按 `00-problem.json#problem.tables` 逐格核对（规格缺失则注明「无交付规格」）
 - 数字口径：跑 `python <技能根>/scripts/artifact_lint.py --root <outputDir>` 核对关键数字散落 ≥3 处（口径分叉），有则定位并收敛到各问 results.json；正文/摘要数字逐字可溯 fact-sheet
 - 加粗只加答案（§1-2）；无「创新点：」等标签（§1-3）；无调试笔记/文件路径/对账清单残留（§1-12）

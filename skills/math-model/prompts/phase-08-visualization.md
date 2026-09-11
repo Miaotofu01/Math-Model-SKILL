@@ -32,7 +32,7 @@
 ### 3. 自绘示意图
 
 
-需要而现有图没有的示意图 → **优先用 vendored diagram-design 画**（HTML→PNG，完整配方 Read `<技能根>/docs/flowchart-drawing.md`；**只用** `<技能根>/tools/diagram-design/`，不得用全局 skill）；skill 缺失或渲染失败（重试 1 次后）→ **回退 python3 + matplotlib**（§2-6，dpi=200、bbox_inches='tight'）。两种路径都**禁止留空**：命名 `fig_{q{id}}_示意图_{内容}.png`，保存后 `ls` 确认真实存在；diagram-design 路径**另存同名 `.html` 源文件**，figure-manifest 示意图行加「绘图方式」（diagram-design|matplotlib）。
+需要而现有图没有的示意图 → **优先用 vendored diagram-design 画**（HTML→PNG，完整配方 Read `<技能根>/docs/flowchart-drawing.md`；**只用** `<技能根>/tools/diagram-design/`，不得用全局 skill）；skill 缺失或渲染失败（重试 1 次后）→ **回退 python3 + matplotlib**（`writing-and-format.md` §2-6，dpi=200、bbox_inches='tight'）。两种路径都**禁止留空**：命名 `fig_{q{id}}_示意图_{内容}.png`，保存后 `ls` 确认真实存在；diagram-design 路径**另存同名 `.html` 源文件**，figure-manifest 示意图行加「绘图方式」（diagram-design|matplotlib）。
 
 ### 4. 出图自检（两道机械 + 一道视觉，P0 未清零不写 manifest）
 
