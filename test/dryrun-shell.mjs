@@ -194,7 +194,7 @@ else {
   if (!fp.includes("q1.formulation.finalize")) fails.push("收束提示词未给出固定 ledger 键")
 }
 // 阶段/评审模板的边界口径（静态）：draft 只覆盖本小问、假设只认最新版、评审不要求跨问展开
-const p04xs = readFileSync(PD + "/phase-04-formulation.md", "utf8")
+const p04 = readFileSync(PD + "/phase-04-formulation.md", "utf8")
 if (!p04.includes("只做本小问")) fails.push("phase-04 未声明「只做本小问」边界")
 if (!p04.includes("禁止据旧版建模")) fails.push("phase-04 未写明假设只认最新版")
 const pj = readFileSync(PD + "/formulation-reviewer-judge.md", "utf8")
@@ -295,7 +295,6 @@ for (const s of ["先估后跑", "costEstimate_s", "checkpoint_put"]) {
 const p07 = readFileSync(PD + "/phase-07-sanity.md", "utf8")
 if (!p07.includes("costEstimate_s") || !p07.includes("8×")) fails.push("phase-07 未把核验成本账列入核查")
 if (!pc.includes("成本纪律（所有探针")) fails.push("_common §5.2 未加探针成本纪律")
-
 // 路径与环境四律（A 项落地）：present/工具调用绝对路径 + 解释器 + 池导入 + 临时目录
 if (!pc.includes("路径与环境四律")) fails.push("_common 未加「路径与环境四律」")
 for (const s of ["绝对路径", "present", "禁止裸 `python3`", "bootstrap_sys_path", ".mm-tmp", "影子目录"]) {
