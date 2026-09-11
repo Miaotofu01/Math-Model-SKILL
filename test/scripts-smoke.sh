@@ -212,6 +212,41 @@ print('maxline', max(len(x) for x in s.split(chr(10))), 'lines', len(s.split(chr
 ")
 if echo "$shape" | grep -qE "maxline [0-9]{1,4} " && [ "$(echo "$shape" | sed 's/maxline \([0-9]*\).*/\1/')" -lt 1500 ]; then ok "manifest 一行一条目（$shape）"; else bad "manifest 行长超限：$shape"; fi
 
+echo "== 22. reuse_lint 第二判据：跨问同名同签名（默认只报不阻塞，--strict-samesig 才升级） =="
+D10="$W/samesig"; mkdir -p "$D10/intermediates/q1/05-implementation/code" "$D10/intermediates/q2/05-implementation/code"
+cat > "$D10/intermediates/q1/05-implementation/code/a.py" <<'EOF'
+def shared_metric(x, y):
+    a = x + 1
+    b = a * 2
+    return b
+def main(z):
+    a = z + 1
+    b = a * 2
+    return b
+EOF
+cat > "$D10/intermediates/q2/05-implementation/code/b.py" <<'EOF'
+def shared_metric(x, y):
+    a = x + 1
+    b = a * 2
+    if b > 0:
+        b = b - 0
+    return b
+def main(z):
+    a = z + 1
+    b = a * 2
+    if b > 0:
+        b = b - 0
+    return b
+EOF
+out=$($PY "$SC/reuse_lint.py" --scan --root "$D10" 2>&1); rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -q "跨问同名同签名候选 1 组"; then ok "默认报出 1 组跨问候选且 rc=0"; else bad "默认行为不符（rc=$rc）：$(echo "$out" | head -3)"; fi
+if echo "$out" | grep -qE "\[S1\].*shared_metric"; then ok "候选区列出 shared_metric"; else bad "候选区未列出 shared_metric"; fi
+if echo "$out" | grep -qE "^\[S[0-9]+\].*main"; then bad "通用名 main 被误报"; else ok "通用名 main 未误报"; fi
+$PY "$SC/reuse_lint.py" --scan --root "$D10" --strict >/dev/null 2>&1; rc1=$?
+$PY "$SC/reuse_lint.py" --scan --root "$D10" --strict-samesig >/dev/null 2>&1; rc2=$?
+if [ $rc1 -eq 0 ] && [ $rc2 -eq 1 ]; then ok "--strict 不受新判据影响（rc=0）、--strict-samesig 升级为 1"; else bad "门语义不符（strict=$rc1 samesig=$rc2）"; fi
+if $PY "$SC/reuse_lint.py" --selftest >/dev/null 2>&1; then ok "内置 --selftest 反例自检全绿"; else bad "--selftest 未通过"; fi
+
 echo
 echo "结果：通过 $PASS ／ 失败 $FAIL"
 [ $FAIL -eq 0 ] || exit 1

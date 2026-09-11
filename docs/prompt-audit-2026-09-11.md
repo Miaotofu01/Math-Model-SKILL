@@ -345,3 +345,33 @@ EOF
 **验证**：dryrun 10 模式 + smoke 25 用例全绿；新增静态断言 2 条（`_common §3` 关键词、`performance.md §2.1` 关键词）。
 
 **未做（明示）**：没有机械 linter 能验证"agent 是否在 sleep"——纪律靠提示词约束。**符合性验证方法**：下一跑用本次的会话日志核对脚本统计"前台 sleep 次数/合计秒数 + 后台启动次数"，与 11 次 / 785 s / 11 次 的基线对比。
+
+---
+
+## 14. `reuse_lint` 第二判据：跨问同名同签名（2026-09-11 已落，技能级工具）
+
+**触发（某真实 run 的实测缺口）**：`reuse_lint` 原判据只聚类**骨架逐字同形**的函数，于是"**职责相同但骨架不同**"的重写全部漏网。该 run 实测：
+
+| 现象 | 实测 |
+|---|---|
+| 骨架重复组 / 跨小问 | 5 组 / **0** ⇒ 原 `--strict` 门判"通过" |
+| 但 q1↔q2 交付 driver 同名同职责函数 | **15 个**（`load_data`/`make_ambient`/`conservation_metrics`/`physics_assertions`/`metrics_vs_reference`/`analytic_reference_audit`/`condition_number_audit`/`symbol_consistency_table`/`_json_safe`/…） |
+| 手写样板扩散 | `_find_skill_scripts` 14 份（q1/q2/q3）、`_ramp_t_out` 19 个文件（同形组只认出 6） |
+
+**代价不是洁癖**：q1 把「表面列时间收敛 / 参照须在渐近区 / 与参照差 < 半末位为唯一硬判据」写进了 baseline 的 M3 + §4 规则 6/7，q3 的 `handoff` 也引用了它；但**阶梯代码没进池**（19 份手写）⇒ q3 起草时把加密窗口写成 600 s，直到 r3 才用自己的探针纠正到 9.13 h，代价是 1 条未闭环必须改 + 封顶 `NEEDS_REVISION`。**文字结论继承成功、代码/机械继承失败**。
+
+**落地**（`skills/math-model/scripts/reuse_lint.py`）：
+
+| 项 | 内容 |
+|---|---|
+| 判据 | 函数**名相同 + 参数个数相同** + 实现 ≥2 份；小问归属取 `intermediates/q*` 的 zone，探针按文件名 `q1_…` 推定（`_qtag`） |
+| 档位 | 参数名亦一致 → `high`；仅参数个数一致 → `medium`（后者成员数很大时通常是命名惯例，报告里明写该读法） |
+| 白名单 | `GENERIC_NAMES`（`main`/`run`/`parse_args`/…）——每个模块结构性必有的名字不算"同职责重写" |
+| **默认不阻塞** | `--strict` 的退出码**不受**新判据影响（关键：不得事后改变既有 run 的 11 阶段门）；新增 `--strict-samesig` 才把"跨问 + high"升为退出码 1 |
+| 输出 | stdout 新增一节（只看跨问、最多 12 组）＋ `stats.same_sig{,_cross,_high_cross}` ＋ JSON `same_sig_groups` |
+| 自检 | `--selftest` 造临时 run 树跑 9 条反例断言：①应报(high) ②同名不同参数个数→放过 ③通用名→放过 ④同小问内→不计跨问 ⑤探针按名推小问(medium) ⑥单份→放过 ＋ stats 一致性与推定制 |
+
+**在该 run 上的实测**（只读扫描）：`same_sig=53`（跨问 17 / 同小问 36；high 跨问 12），首位 `_find_skill_scripts` 14 份跨 q1/q2/q3；`--strict` rc=**0**（与改动前一致）、`--strict-samesig` rc=**1**。顺带修掉解析被检源时的 `SyntaxWarning` 刷屏（`warnings.catch_warnings` 包裹 `ast.parse`）。
+
+**未做（明示）**：① 没有把新判据接进 11 阶段的提示词（那会改变既有 run 的门；要不要升级由后续 run 的模板决定）；② `_find_skill_scripts`/`_ramp_t_out` **未**收进 `primitives.py`（需过 §5.1 五条进池判据 + 自检 + VERSION 递增），本 run 内不动已定稿 q1/q2 代码。
+
