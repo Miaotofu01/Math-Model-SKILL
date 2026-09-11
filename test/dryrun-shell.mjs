@@ -215,6 +215,29 @@ for (const s of ["q{id}/07-sanity/", "q{id}/09-robustness/", "q{id}/02-data/eda.
   if (!p12.includes(s)) fails.push("phase-12 §输入 缺前缀：" + s)
 }
 const manStatic = JSON.parse(readFileSync(PD + "/stage-manifest.json", "utf8"))
+// A 批（信息流 + 真缺陷）：deps 补齐 / 自依赖删除 / 评审与自查读入 / 模板纠错
+if (!(manStatic.deps.literature || []).some(d => d.includes("literature-pool.md"))) fails.push("deps.literature 缺 pool/literature-pool.md")
+for (const [s, want] of [["implementation", ["00-problem.json", "baseline-registry.md", "symbols.json", "handoff.md"]],
+                         ["computation", ["baseline-registry.md", "symbols.json", "errata.md"]],
+                         ["sanity", ["00-problem.json", "symbols.json", "verification.md", "errata.md"]],
+                         ["visualization", ["00-problem.json", "symbols.json"]],
+                         ["robustness", ["00-problem.json"]]]) {
+  for (const d of want) if (!(manStatic.deps[s] || []).some(x => x.includes(d))) fails.push("deps." + s + " 缺 " + d)
+}
+if ((manStatic.deps.computation || []).some(x => x.includes("06-computation/results.json"))) fails.push("deps.computation 仍含自身产物 results.json")
+if (!body.includes("baseline-registry.md、${d}/symbols.json")) fails.push("评审并列读未补 baseline-registry/symbols")
+if (!body.includes("一次并列 Read ${PD}/_common.md 与 ${dr}（公共纪律")) fails.push("自查节点未注入 _common.md")
+const p03 = readFileSync(PD + "/phase-03-assumption.md", "utf8")
+if (!p03.includes('artifacts["q{id}.assumption"]')) fails.push("phase-03 未规定 artifacts 键")
+const p13 = readFileSync(PD + "/phase-13-finalReview.md", "utf8")
+if (p13.includes("/tmp/refs.tex") || !p13.includes("intermediates/13-final/refs.tex")) fails.push("phase-13 组装仍读 /tmp/refs.tex")
+const p10 = readFileSync(PD + "/phase-10-localComplete.md", "utf8")
+if (!p10.includes("revision-log.md") || !p10.includes("handoff.md")) fails.push("phase-10 门禁未核 revision-log/handoff")
+const p05 = readFileSync(PD + "/phase-05-implementation.md", "utf8")
+if (/阶段指令首行 `## Python 环境`/.test(p05)) fails.push("phase-05 仍写「首行」Python 环境行")
+for (const f of ["phase-11-crossReview.md", "phase-12-writing.md", "phase-13-finalReview.md"]) {
+  if (!readFileSync(PD + "/" + f, "utf8").includes("errata.md")) fails.push(f + " §输入 未接 errata（孤儿台账）")
+}
 for (const s of ["implementation", "computation", "sanity", "robustness"]) {
   if (!(manStatic.deps[s] || []).some(d => d.includes("handoff.md"))) fails.push("deps." + s + " 未含 handoff.md（台账移出 draft 后须显式依赖）")
 }

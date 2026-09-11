@@ -40,6 +40,7 @@
 ## 产物
 
 - `intermediates/q{id}/03-assumptions/assumption-vNN.md`（最新版本）
+- **并在 `intermediates/state.json` 就地合并 `artifacts["q{id}.assumption"] = "q{id}/03-assumptions/assumption-vNN.md"`**（formulator 与评审按此键取「最新版」；写目录名或旧版文件名会让下游按被拒版本建模）
 
 ## 完成标准
 

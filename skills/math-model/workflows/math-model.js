@@ -100,6 +100,7 @@ function stagePrompt(q, s, m) {
   const lay = (m.outputLayout[s] || "").replace(/\{id\}/g, q || "")
   const deps = (m.deps[s] || []).map(d => {
     if (/[\u4e00-\u9fff]/.test(d)) return d                                  // 说明型依赖（如「全部产物」）原样注入
+    if (/^(pool|probes)\//.test(d)) return outDir + "/" + d                  // 池/探针池在 outputDir 根，不在 intermediates/ 下
     const p = q ? d.replace(/\{id\}/g, q) : d.replace(/\{id\}\//g, "")
     return IM + "/" + p                                                       // 路径型依赖补 intermediates/ 前缀
   }).join("，")
@@ -149,13 +150,13 @@ async function runFormulation(q, m, sc, a) {
   const sf = d + "/self-check.md"
   const ok1 = await ca(stagePrompt(q, "formulation", m) + (a > 1 ? `\n【第2次】**动手前先重读 ${PD}/${m.prompts["formulation"]}**（模板可能已更新；实测上一跑的第 2 次尝试没读模板就重写）；改策略：重写主线或调假设，解决上轮必须改` : "") + `\n【节点1 · formulator】按阶段模板产本小问方案：${dr}（主产物）+ ${d}/baseline-registry.md（预注册，**先于 draft 完成**）+ ${d}/symbols.json；写完追加 ledger 一行 \`${k}: DRAFT ${drRel} <≤50字>\`，并在 state.json 里**就地合并** gates["${k}"]="NEEDS_REVISION"、artifacts["${k}"]="${drRel}"、current（其余既有键保留，禁止整体覆盖）`, sc, "formulator")
   if (!ok1) return null
-  const ok2 = await ca(`【节点2 · 三维自查】读 ${dr}，按数学正确 / 可实现 / 创新真实三方面自查（关键处独立重算，不采信草案自述）；结论与需改进项写入 ${sf}；**不改 ${dr}、不改 state.json/ledger.md**（改进由后续修订节点落到 draft）；${BRIEF}`, sc, "selfcheck")
+  const ok2 = await ca(`【节点2 · 三维自查】一次并列 Read ${PD}/_common.md 与 ${dr}（公共纪律：数字单一真源/工具纪律/读入范围），按数学正确 / 可实现 / 创新真实三方面自查（关键处独立重算，不采信草案自述）；结论与需改进项写入 ${sf}；**不改 ${dr}、不改 state.json/ledger.md**（改进由后续修订节点落到 draft）；${BRIEF}`, sc, "selfcheck")
   if (!ok2) return null
   let r = 0
   for (;;) {
     r++
     const raw = await parallel(PERS.map(p => () => ca(
-      `【评审r${r}-${p}】一次并列 Read ${PD}/_common.md、${PD}/formulation-reviewer-${p}.md、${dr}、${sf}${r > 1 ? "、" + d + "/review-r" + (r - 1) + "-" + p + ".md" : ""}；写 ${d}/review-r${r}-${p}.md；不更新 state/ledger（收束节点统一写）；${assetsLine()}；返回{status:"PASS"|"NEEDS_REVISION",artifact_path,summary}（PASS=无必须改）` + PYLINE(),
+      `【评审r${r}-${p}】一次并列 Read ${PD}/_common.md、${PD}/formulation-reviewer-${p}.md、${dr}、${sf}、${d}/baseline-registry.md、${d}/symbols.json、${IM}/${q}/01-literature/literature.md${r > 1 ? "、" + d + "/review-r" + (r - 1) + "-" + p + ".md" : ""}；写 ${d}/review-r${r}-${p}.md；不更新 state/ledger（收束节点统一写）；${assetsLine()}；返回{status:"PASS"|"NEEDS_REVISION",artifact_path,summary}（PASS=无必须改）` + PYLINE(),
       sc, "review:" + p)))
     const vs = raw.map(x => x && x.status)
     if (vs.length && vs.every(v => v === "PASS")) {

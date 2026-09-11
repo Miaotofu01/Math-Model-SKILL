@@ -34,7 +34,8 @@
   },
   "deps": {
     "literature": [
-      "00-problem.json"
+      "00-problem.json",
+      "pool/literature-pool.md"
     ],
     "data": [
       "00-problem.json",
@@ -51,26 +52,38 @@
       "{id}/03-assumptions/"
     ],
     "implementation": [
+      "00-problem.json",
       "{id}/04-formulation/draft.md",
+      "{id}/04-formulation/baseline-registry.md",
+      "{id}/04-formulation/symbols.json",
       "{id}/04-formulation/handoff.md",
       "{id}/02-data/eda.md"
     ],
     "computation": [
       "{id}/05-implementation/code/",
       "{id}/04-formulation/draft.md",
+      "{id}/04-formulation/baseline-registry.md",
+      "{id}/04-formulation/symbols.json",
       "{id}/04-formulation/handoff.md",
-      "{id}/06-computation/results.json"
+      "{id}/04-formulation/errata.md"
     ],
     "sanity": [
+      "00-problem.json",
       "{id}/06-computation/results.json",
       "{id}/04-formulation/draft.md",
-      "{id}/04-formulation/handoff.md"
+      "{id}/04-formulation/symbols.json",
+      "{id}/04-formulation/handoff.md",
+      "{id}/04-formulation/verification.md",
+      "{id}/04-formulation/errata.md"
     ],
     "visualization": [
+      "00-problem.json",
       "{id}/06-computation/results.json",
+      "{id}/04-formulation/symbols.json",
       "{id}/07-sanity/sanity-report.md"
     ],
     "robustness": [
+      "00-problem.json",
       "{id}/06-computation/results.json",
       "{id}/04-formulation/draft.md",
       "{id}/04-formulation/handoff.md",

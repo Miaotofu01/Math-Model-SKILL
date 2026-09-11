@@ -19,7 +19,7 @@
 | 01 | `intermediates/q{id}/01-literature/literature.md` | 文件 |
 | 02 | `intermediates/q{id}/02-data/eda.md` | 文件 |
 | 03 | `intermediates/q{id}/03-assumptions/assumption-vNN.md` | 最新版本文件 |
-| 04 | `intermediates/q{id}/04-formulation/draft.md`、`baseline-registry.md`、`symbols.json` | 3 个文件 |
+| 04 | `intermediates/q{id}/04-formulation/draft.md`、`baseline-registry.md`、`symbols.json`、`revision-log.md`、`handoff.md` | 5 个文件（与阶段 04 完成标准的「4 台账」对齐） |
 | 05 | `intermediates/q{id}/05-implementation/code/` | 目录含 .py |
 | 06 | `intermediates/q{id}/06-computation/results.json` | 文件且含 results/solver/seeds |
 | 07 | `intermediates/q{id}/07-sanity/sanity-report.md` | 文件 |

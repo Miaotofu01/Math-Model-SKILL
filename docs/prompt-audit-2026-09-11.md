@@ -240,3 +240,22 @@ EOF
 | 缺章→FAIL / 数字无法溯源→FAIL | `P13:15/28`、`P13:37/99` | 15 / 37 |
 
 **三路合计可省 ≈12.2k 字符（占语料 15%）**：跨文件样板 ≈4.9k（§2）+ 公共件/评审件 ≈4.5k（§8.1）+ 阶段模板 ≈7.7k（§8.4），去重后 ≈12.2k。
+
+
+## 9. A 批落地记录（2026-09-11 已落）
+
+| # | 改动 | 落点 |
+|---|---|---|
+| 1 | 补 12 处 deps：`literature` +`pool/literature-pool.md`；`implementation` +`00-problem.json`/`baseline-registry.md`/`symbols.json`；`computation` +`baseline-registry.md`/`symbols.json`/`errata.md`；`sanity` +`00-problem.json`/`symbols.json`/`verification.md`/`errata.md`；`visualization` +`00-problem.json`/`symbols.json`；`robustness` +`00-problem.json` | `prompts/stage-manifest.json` |
+| 2 | 删 `computation` 自依赖（`{id}/06-computation/results.json`） | 同上 |
+| 3 | 评审并列读补 `baseline-registry.md`、`symbols.json`、`01-literature/literature.md`（否则"承诺一致性/对照文献"两项核验被架空） | `workflows/math-model.js` `【评审r…】` |
+| 4 | 三维自查节点注入 `_common.md`（此前拿不到数字单一真源/工具纪律/读入范围） | 同上 `【节点2 · 三维自查】` |
+| 5 | 孤儿台账接上下游：`P11`/`P12`/`P13` §输入 增 `errata.md`（P12 另加 `verification.md`：已核验项可直接引用） | `phase-11/12/13-*.md` |
+| 6 | `P13` 组装 `--references "$(cat /tmp/refs.tex)"` → `intermediates/13-final/refs.tex`（与 `P13:59` 自相矛盾的漏改残留） | `phase-13-finalReview.md` |
+| 7 | `P10` 门禁 04 行由 3 文件 → 5 文件（`revision-log.md`/`handoff.md`，与阶段 04「4 台账」完成标准对齐） | `phase-10-localComplete.md` |
+| 8 | `P05` 「阶段指令**首行** `## Python 环境`」→「提示词**末尾**」（壳实际追加在末尾） | `phase-05-implementation.md` |
+| 9 | `P03` 补 `artifacts["q{id}.assumption"]` 写入要求（`P04`/judge 按此键取"最新版"） | `phase-03-assumption.md` |
+
+**落地时新发现并修掉的壳 bug**：deps 渲染对 `pool/`、`probes/` 前缀补了 `intermediates/` 前缀 → `pool/literature-pool.md` 被渲染成 `intermediates/pool/literature-pool.md`（不存在）。已改为「`pool/`\|`probes/` 开头的 dep 按 outputDir 根渲染」。
+
+**验证**：dryrun **8 模式**全绿（含新增 9 组断言：deps 补齐/自依赖删除/评审补读/自查注入/三处模板纠错/孤儿台账），smoke **25 用例**全绿；渲染抽查确认 `literature` 依赖 = `intermediates/00-problem.json` + `pool/literature-pool.md`。

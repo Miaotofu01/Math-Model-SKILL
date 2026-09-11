@@ -59,7 +59,7 @@
 
 ### 5. 性能纪律（按 docs/performance.md，可选加速、禁硬依赖）
 
-0. **Python 环境**：所有 python 执行一律用调度壳注入的环境路径（阶段指令首行 `## Python 环境`，以 `intermediates/env-report.json` 为准（文件不存在 → 用系统 python3））；依赖缺失 → 优先 venv 安装、失败降级纯 numpy/scipy，**绝不因缺库 FAIL**。
+0. **Python 环境**：所有 python 执行一律用调度壳注入的环境路径（见提示词**末尾**的 `## Python 环境` 行，以 `intermediates/env-report.json` 为准（文件不存在 → 用系统 python3））；依赖缺失 → 优先 venv 安装、失败降级纯 numpy/scipy，**绝不因缺库 FAIL**。
 1. **复用核心实现（禁止重写）**：若 `pool/` 或前序小问已有**同口径**的核心实现（如判据/求解器等核心算法；查 `pool/manifest.json`、`pool/problem/manifest.json`，以及前序小问的 `02-data/`、`05-implementation/code/`、`06-computation/`），必须 import 复用，**禁止各自重写新副本**（重写会重复踩慢实现且口径漂移）；**复用前必须核对常量/维度/场景作用域与本问一致（如单机核心不得用于多机题），不一致禁止复用**；口径不一致才允许新实现，并在 README 写明差异与原因。
    - **通用原语**：先 `--list` 查技能根现有条目（几何/区间等「库不提供且口径敏感」的原语）；命中 → 首次 `cp <技能根>/scripts/primitives.py pool/primitives.py`（`--selftest` 应全绿）后一律 import（**路径口径**：`PYTHONPATH=<outputDir>/pool:<outputDir>` 或 `pc.bootstrap_sys_path()`；撞 ModuleNotFoundError 先修路径，禁止内联抄代码）；未命中 → 按 `_common.md` §5.1 判据实现，**单题条目写 `pool/problem/<题>/`（参数外置 `const.json`），不进技能根**
    - **重计算/敏感性实验** → 走探针池 `probes/<角色>/<目的>.py` + `probe_cache.py`（见 `_common.md` §5.2），禁止 `/tmp` 一次性脚本

@@ -17,6 +17,7 @@
   - `intermediates/q{id}/03-assumptions/assumption-vNN.md`：最新版本假设
   - `intermediates/q{id}/06-computation/results.json`：关键参数与结论数值
   - `intermediates/q{id}/09-robustness/robustness.md`：稳健性边界（如有）
+  - `intermediates/q{id}/04-formulation/errata.md`：**作废口径与未决项**（核验别问是否引用了已作废口径；文件缺失则该核对项注明"无勘误登记"）
 - `intermediates/state.json`：确认所有小问 `q*.localComplete` 已 PASS（未全过 → 返回 FAIL）
 
 > ⚠️ 全题级约定：本 prompt 中 `q{id}` 指各小问实际目录 q1/、q2/、…，**本阶段不使用占位符替换**；小问清单以 `intermediates/00-problem.json` 的 `problem.analysis.subQuestions[].id` 为准（阶段指令只注入 `ctx q=全题`，不含清单）。

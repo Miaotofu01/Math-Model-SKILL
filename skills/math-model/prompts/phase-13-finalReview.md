@@ -16,6 +16,7 @@
 - `intermediates/12-writing/fact-sheet.md`：事实源表（溯源基准）
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`10-completed/question-summary.md`、`06-computation/results.json`、`09-robustness/robustness.md`、`04-formulation/baseline-registry.md`、`08-visualization/figure-manifest.md` + `figures/`、`01-literature/literature.md`（引用登记）、`05-implementation/code/`
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS）
+- 各小问 `intermediates/q{id}/04-formulation/errata.md`：作废口径与未决项（**定稿前逐条确认正文未引用已作废结论**；缺失则该核对项注明"无勘误登记"）
 - `intermediates/00-problem.json`：题面、论文规则、题号、附件清单
 - 模板目录 = **技能根下的 `templates/`**（`<技能根>/templates/`，内含 `cumcm-paper.tex` + `assemble_from_template.py`；技能根由阶段指令给出；若 `templates/` 为空则按技能根向上/向下探测）
 
@@ -67,7 +68,7 @@
      --title "全国大学生数学建模竞赛<题号>题" \
      --paper-title "<从题目原文提取的论文题目>" \
      --subtitle "<一句话方法名副标题>" \
-     --references "$(cat /tmp/refs.tex)" \
+     --references "$(cat intermediates/13-final/refs.tex)" \
      --code-entries "问题N-<文件名>|intermediates/qN/05-implementation/code/<文件>" \
      --materials "\item 求解程序（完整可运行，位于支撑材料 code/ 目录）" \
      --materials "\item 结果数据（results.json 等，位于 data/ 目录）" \
