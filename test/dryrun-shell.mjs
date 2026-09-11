@@ -219,6 +219,11 @@ for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversar
 if (!pc.includes("登记级/建议级意见不阻塞")) fails.push("_common §2 未与判定分层对齐")
 if (!pc.includes("长任务后台化") || !pc.includes("禁止 `sleep`")) fails.push("_common §3 缺「长任务后台化/禁空转」纪律")
 { const perf = readFileSync(SKILL + "/docs/performance.md", "utf8"); if (!perf.includes("2.1 长任务后台化") || !perf.includes("先小样后整批")) fails.push("performance.md 缺 §2.1 长任务并行纪律") }
+// 写侧单行纪律（F3）：read 工具按行截断 ⇒ 产出长文本的阶段模板必须写明
+if (!pc.includes("单行 ≤2000 字符")) fails.push("_common §3 缺「单行 ≤2000 字符」写侧纪律")
+for (const [f, kw] of [["phase-04-formulation.md", "单行长度"], ["phase-06-computation.md", "单行 ≤2000 字符"], ["phase-12-writing.md", "单行 ≤2000 字符"]]) {
+  if (!readFileSync(PD + "/" + f, "utf8").includes(kw)) fails.push(f + " 缺单行长度纪律（产长文本阶段）")
+}
 { const p05r = readFileSync(PD + "/phase-05-implementation.md", "utf8"); if (!p05r.includes("§登记级")) fails.push("phase-05 未接管最后一轮评审的登记级清单") }
 {
   const implP = (stubPrompts[calls.indexOf("run:q1.implementation")] || "")

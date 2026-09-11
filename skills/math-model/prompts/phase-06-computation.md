@@ -51,6 +51,7 @@
 ## 产物
 
 - `intermediates/q{id}/06-computation/results.json`（主产物）；可能含 `figures/`
+- **单行 ≤2000 字符**：长条目逐项换行（`keyValues` 一行一条）、长表/长文本外置 `.md` 并留指针——否则评审与下游读到的该行会被**静默截断**（read 工具硬限）。
 
 ## 完成标准
 

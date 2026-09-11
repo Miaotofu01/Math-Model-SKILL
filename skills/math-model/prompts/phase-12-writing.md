@@ -96,6 +96,7 @@
 
 - `intermediates/12-writing/paper-sections/section-*.md`（主产物）
 - `intermediates/12-writing/fact-sheet.md`、`narrative-outline.md`、`cross-review-r*.md`（工作文档）
+- **单行 ≤2000 字符**：正文段落与表格行不要写成超长单行（read 工具按行硬截断）；长表格逐行写、长公式单独成行。
 
 ## 完成标准
 
