@@ -42,7 +42,7 @@
 
 ## 5. 复用纪律（禁止重写同口径核心）
 
-**可复用资产清单**：壳把 `pool/manifest.json`、`pool/problem/manifest.json`、`probes/manifest.json` 列进每个阶段的并列 Read，并给评审/修订注入启动快照。**以清单文件为唯一权威**（快照可能已过期，尤其本 run 前段新建的资产）；文件已存在 → 直接 import 复用，**禁止再 `cp` 覆盖**（会丢掉 run 内改动、版本号与探针缓存指纹脱钩）；确未建立时才按下面就地建立。
+**可复用资产清单**：壳把 `pool/manifest.json`、`pool/problem/manifest.json`、`probes/manifest.json` 列进每个阶段的并列 Read，并给评审/修订注入启动快照。**以清单文件为唯一权威**（快照可能已过期，尤其本 run 前段新建的资产）。**但绝不整体读**：`probes/manifest.json`（≤48 KiB）与 `pool/problem/manifest.json` 只按需 `grep -n '<键|函数名>'` 取条目（实测三份清单合计 78 KiB，整体读＝白烧三分之一上下文，而单个节点通常只需 1–3 条）；确认某条是否已登记用 `grep -c`，不要 `Read` 全文件；文件已存在 → 直接 import 复用，**禁止再 `cp` 覆盖**（会丢掉 run 内改动、版本号与探针缓存指纹脱钩）；确未建立时才按下面就地建立。
 **共享区布局（勿混）**：`<outputDir>/pool/` 是 run 级共享池——顶层 `literature-pool.md`（文献池）、`external-data/`（外部数据）、`primitives.py` + `problem/`（**代码池**，各带 manifest）；`<outputDir>/probes/` 是探针池（`<角色>/<目的>.py` + `results/` 指纹缓存 + `manifest.json`）。两者都在 **outputDir 根**下，不在 `intermediates/` 里。
 
 ### 5.1 原语池（题无关，可跨题带走）
