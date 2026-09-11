@@ -392,6 +392,28 @@ def check_boot_payload(root: Path) -> tuple[list[dict], dict]:
     return out, stats
 
 
+def check_review_format(scan_root: Path):
+    """L1-B：评审文件结构上限（P1，只报不阻塞；未来 run 可升 P0）。"""
+    out = []
+    for p in sorted(scan_root.glob("q*/04-formulation/review-r*.md")):
+        t = read_text(p)
+        if not t:
+            continue
+        rel = str(p.relative_to(scan_root))
+        n_m = len(re.findall(r"【\**必须改", t)); n_g = len(re.findall(r"【\**登记级", t))
+        cmd = len([l for l in t.splitlines() if re.match(r"\s*(\$|python3?\s|PYTHONPATH=)", l)])
+        kb = len(t.encode()) / 1024.0
+        first = (t.splitlines() or [""])[0]
+        bad = []
+        if n_m > 5: bad.append(f"必须改 {n_m} 条 >5")
+        if n_g > 5: bad.append(f"登记级 {n_g} 条 >5")
+        if cmd: bad.append(f"含命令行 {cmd} 行")
+        if kb > 15 and "超限原因" not in first: bad.append(f"{kb:.1f} KB >15 且首行无「超限原因」")
+        if bad:
+            out.append({"level": "P1", "check": "review.format", "locations": [rel], "detail": "；".join(bad)})
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="math-model 数字单一真源检查")
     ap.add_argument("--root", required=True, help="outputDir（含 intermediates/）")
@@ -470,6 +492,7 @@ def main(argv: list[str] | None = None) -> int:
     boot_findings, boot_stats = check_boot_payload(root)
     findings.extend(boot_findings)
 
+    findings.extend(check_review_format(scan_root))
     p0 = [f for f in findings if f["level"] == "P0"]
     p1 = [f for f in findings if f["level"] == "P1"]
 

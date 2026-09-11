@@ -108,7 +108,7 @@ D4="$W/pr"; mkdir -p "$D4"; cp "$SC/primitives.py" "$D4/primitives.py"
 printf '\n# 偷偷改\n' >> "$D4/primitives.py"
 ( cd "$D4" && $PY primitives.py --manifest m.json >/dev/null 2>&1 ); e1=$?
 ( cd "$D4" && $PY primitives.py --manifest m.json >/dev/null 2>&1 ); e2=$?
-sed -i 's/^VERSION = "2.0.0"/VERSION = "2.0.9"/' "$D4/primitives.py"
+sed -i -E 's/^VERSION = "[^"]*"/VERSION = "9.9.9"/' "$D4/primitives.py"   # 不绑死当前版本号（池 VERSION 每次进池都要递增）
 ( cd "$D4" && $PY primitives.py --manifest m.json >/dev/null 2>&1 ); e3=$?
 if [ $e1 -eq 1 ] && [ $e2 -eq 1 ] && [ $e3 -eq 0 ]; then ok "持续报警（1/1/0）"; else bad "版本守卫语义错（$e1/$e2/$e3）"; fi
 

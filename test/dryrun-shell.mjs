@@ -204,17 +204,28 @@ for (const f of ["revision-log.md", "verification.md", "handoff.md", "errata.md"
 if (p04.includes("≤12k 字符")) fails.push("phase-04 仍在用实测不成立的 12k 硬预算")
 if (!p04.includes("台账章节零容差") || !p04.includes("60k")) fails.push("phase-04 未写明台账零容差 + 60k 软阈值")
 if (!p04.includes("draft.ledger_section")) fails.push("phase-04 未把机械检查项写进完成标准")
+// L4：revision-log 最小格式（每轮一张表 + 两个条件节 + 计数自洽 + 条目ID 只增不改）
+for (const s of ["条目ID", "落点", "未处置/留给下游", "机械核验", "计数自洽", "只增不改"]) {
+  if (!p04.includes(s)) fails.push("phase-04 缺 revision-log 新格式要素：" + s)
+}
+if (!p04.includes("逐条意见原文复述")) fails.push("phase-04 未禁止逐条意见原文复述（L4 瘦身）")
 const pc = readFileSync(PD + "/_common.md", "utf8")
 if (!pc.includes("必须整体读") || !pc.includes("20KB")) fails.push("_common §3 未写明读入范围（评审对象整体读 / 参考件 >20KB 局部读）")
+// L6 去重：三视角共用规则单源在 _common §9 ⇒ 共用规则断言按「模板 + §9」合并文本判定（规则未删，只是搬家）
+if (!pc.includes("## 9. 评审通用规则")) fails.push("_common 缺 §9 评审通用规则（三视角共用单源）")
 for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversary.md", "formulation-reviewer-application.md"]) {
   const rt = readFileSync(PD + "/" + r, "utf8")
-  if (!rt.includes("产物体量与读入范围") || !rt.includes("可机械复核三件套")) fails.push(r + " 未写明评审文件瘦身与读入范围")
+  const rAll = rt + "\n" + pc
+  if (!rt.includes("_common.md` §9")) fails.push(r + " 未指向 _common.md §9（共用规则单源）")
+  if (!rt.includes("本视角")) fails.push(r + " 未标明本视角特有判据")
+  if (!rAll.includes("产物体量与读入范围") || !rAll.includes("可机械复核三件套")) fails.push(r + "（含 §9）未写明评审文件瘦身与读入范围")
   if (!rt.includes("revision-log.md")) fails.push(r + " 未指向 revision-log.md（处置表已移出 draft）")
+  if (!rt.includes("## rN 处置")) fails.push(r + " 未引用 revision-log 新格式（每轮 `## rN 处置` 一张表）")
   // 判定分层（F1）：登记级不阻塞；0 条必须改即 PASS
   if (!rt.includes("登记级（不阻塞）") || !rt.includes("0 条 → 返回 PASS")) fails.push(r + " 未落地判定分层（登记级不阻塞 / 0 条必须改即 PASS）")
-  // 反棘轮（F3）：r≥2 举证责任 + 沿用原条目号
-  if (!rt.includes("负举证责任") || !rt.includes("回归") || !rt.includes("致命项")) fails.push(r + " 缺 r≥2 举证责任（回归/致命项）")
-  if (!rt.includes("沿用原条目号")) fails.push(r + " 缺 r≥2 逐条闭环沿用原条目号")
+  // 反棘轮（F3）：r≥2 举证责任 + 沿用原条目号（细则在 §9）
+  if (!rAll.includes("负举证责任") || !rAll.includes("回归") || !rAll.includes("致命项")) fails.push(r + "（含 §9）缺 r≥2 举证责任（回归/致命项）")
+  if (!rAll.includes("沿用原条目号")) fails.push(r + "（含 §9）缺 r≥2 逐条闭环沿用原条目号")
 }
 if (!pc.includes("登记级/建议级意见不阻塞")) fails.push("_common §2 未与判定分层对齐")
 if (!pc.includes("长任务后台化") || !pc.includes("禁止 `sleep`")) fails.push("_common §3 缺「长任务后台化/禁空转」纪律")

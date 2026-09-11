@@ -65,7 +65,7 @@
    - **写完当场查重**：跑 `python <技能根>/scripts/reuse_lint.py --scan --root <outputDir>`；本阶段新增文件与 `pool/`、前序小问同形 → 同口径改 import、口径不同写明差异；改不完 → **返回 `NEEDS_REVISION`**（调度壳会带「改策略」重跑本阶段），禁止放着重复实现进 06。
 2. **单次求解预算与成本纪律**：见 `<技能根>/docs/performance.md` §2 与 §6.1（≤15 分钟**且** ≤8× 本问生产主体墙钟；先估后跑、缩窗→减档→降精度）。
 3. **可选加速（探测到才用，缺失自动回退纯 numpy，绝不因依赖缺失 FAIL）**：
-   - 纯循环数值核 → numba @jit；**禁止 prange 内调用 np.linalg.solve/scipy 求解器**（实测反而慢 5 倍）；
+   - 纯循环数值核 → numba @jit；**禁止 prange 内调用 np.linalg.solve/scipy 求解器**（并行域内 linalg 串行化）；
    - 独立重复任务（重采样/网格/多起点）→ joblib 并行（n_jobs=min(核数,8)，单任务 ≥20ms 才并行）；
    - GPU（cupy/torch）→ 仅大矩阵（≥万级）或大规模 MC 且驱动与库都可用时。
 4. 记录：耗时/加速手段/并行与否写入 README 或结果文件（供计算阶段如实留档）。

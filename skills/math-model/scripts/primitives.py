@@ -31,16 +31,20 @@ timing_cases 加一条实测；⑤ `--selftest` 全绿 + VERSION 递增。
 from __future__ import annotations
 
 import argparse
+import glob
 import hashlib
 import json
+import os
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Iterable, Sequence
 
 import numpy as np
 
-VERSION = "2.0.0"   # 2.0.0：清出单题条目；数值类（二分/bootstrap/DE）交回 scipy 或按判据进 pool/problem/
+# 2.1.0：把探针里被手写 14+19 份的两支样板（技能根定位 / 起步窗加密 t_out 阶梯）收进池
+VERSION = "2.1.0"
 PRIMITIVES: dict[str, dict] = {}
 
 
@@ -104,6 +108,109 @@ def interval_total(intervals: Iterable[Sequence[float]]) -> float:
     return float(sum(b - a for a, b in interval_union(intervals)))
 
 
+# ─────────────────────── 环境/时间轴样板（纯机制，不含题目内容） ───────────────────────
+
+_SKILL_SCRIPTS_ENV = "MATH_MODEL_SKILL_SCRIPTS"
+_SKILL_SCRIPTS_MARKERS = ("probe_cache.py",)      # 判据：该目录确实是技能根 scripts/
+_SKILL_SCRIPTS_GLOBS = ("~/.dsh/skills/*/scripts", "~/.claude/skills/*/scripts")
+_MODULE_DIR = Path(__file__).resolve().parent     # 导入期定死 → 此后与 cwd 无关
+_GRID_TOL = 1e-9
+
+
+@primitive("find_skill_scripts",
+           'find_skill_scripts(env_var="MATH_MODEL_SKILL_SCRIPTS", markers=("probe_cache.py",), '
+           'install_globs=("~/.dsh/skills/*/scripts", "~/.claude/skills/*/scripts")) -> Path',
+           "路径（pathlib.Path，绝对）；无单位",
+           "技能根 scripts/ 目录：在「环境变量 → 本文件所在目录 → install_globs 展开（排序）」候选中，"
+           "取第一个**确实含 markers 全部文件**者；都不符则 ModuleNotFoundError")
+def find_skill_scripts(env_var: str = _SKILL_SCRIPTS_ENV,
+                       markers: Sequence[str] = _SKILL_SCRIPTS_MARKERS,
+                       install_globs: Sequence[str] = _SKILL_SCRIPTS_GLOBS) -> Path:
+    """定位技能根 `scripts/`（内含 `probe_cache.py`/`primitives.py`）——**不要再手写候选列表**。
+
+    机制与判据：候选目录**必须含 markers 全部文件**才算命中（只按路径猜会把 run 级 `pool/`
+    副本误认成技能根）；优先级 = ① `env_var` 环境变量 → ② 本文件所在目录（技能根副本自身命中；
+    `pool/` 副本不含探针缓存，自动下探）→ ③ 已知安装位 glob（排序保证同机确定）。
+    纯函数：不改 `sys.path`、不改环境变量；调用方自行 `sys.path.insert(0, str(find_skill_scripts()))`。
+
+    注意引导顺序：本函数自身也要先 import 到——走 `probe_cache.py --run` 时已注入
+    `<outputDir>/pool`，纯 `python probes/x.py` 直跑请设 `PYTHONPATH=<outputDir>/pool`，
+    或由调度壳设好 `env_var`（唯一无「鸡生蛋」的引导方式）。
+    """
+    cands: list[Path] = []
+    from_env = os.environ.get(env_var, "").strip()
+    if from_env:
+        cands.append(Path(from_env).expanduser())
+    cands.append(_MODULE_DIR)
+    for pattern in install_globs:
+        cands.extend(sorted(Path(p) for p in glob.glob(os.path.expanduser(str(pattern)))))
+    seen: set[Path] = set()
+    for cand in cands:
+        try:
+            resolved = cand.resolve()
+        except OSError:                            # 坏链接/无权限候选 → 当作不成立，继续下探
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if all((resolved / m).is_file() for m in markers):
+            return resolved
+    raise ModuleNotFoundError(
+        f"找不到技能根 scripts/（判据：目录内含 {'、'.join(markers)}）。"
+        f"请设 {env_var}=<技能根>/scripts 后重跑；**禁止把池中实现内联抄一份**")
+
+
+def _timed_find_skill_scripts() -> bool:
+    """`--manifest` 计时用包装：技能根不可达时返回 False 而不抛（清单恒能产出）。"""
+    try:
+        find_skill_scripts()
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
+@primitive("ramp_t_out",
+           "ramp_t_out(t_end, t_fine_end, dt_fine, dt_coarse, dt_out=60.0) -> ndarray",
+           "秒（s）：t_end/t_fine_end 为时间上界，dt_* 为步长；返回一维 t_out",
+           "起步窗 [0,t_fine_end] 按 dt_fine 逐点加密、窗后只保留 dt_out 整数倍（交付行）的"
+           "严格递增时间轴，含 t=0")
+def ramp_t_out(t_end: float, t_fine_end: float, dt_fine: float,
+               dt_coarse: float, dt_out: float = 60.0) -> np.ndarray:
+    """起步窗加密的 `t_out` 阶梯（阶梯本身，不含任何题目的窗口数值）。
+
+    机制（两道口径，缺一不可）：
+      ① **内部步**：起步窗 `(0, t_fine_end]` 用 `dt_fine` 逐点加密；窗后改用 `dt_coarse`
+         生成内部步格点（`dt_coarse` 的整数倍，**绝对格点**——避免从窗末点续推导致与交付格错位）。
+      ② **交付子集**：起步窗内的点**全部保留**（加密不被抹掉）；窗后只保留 `dt_out` 整数倍的
+         交付行。故 `dt_coarse < dt_out` 时返回的是「密内部步被抽稀成 60 s 行」的阶梯，
+         `dt_coarse == dt_out` 时即「细窗逐行 + 窗后一行 60 s」。
+
+    边界（判据外置、行为确定）：`t_fine_end` 钳到 `[0, t_end]`；`t_fine_end` 不是 `dt_fine`
+    整数倍时窗内取 `floor(t_fine_end/dt_fine)` 个步（不越过窗端）；`t_fine_end=0` ⇒ 无起步窗；
+    `t_end < t_fine_end` ⇒ 只留 `0..t_end` 的加密段。步长非正 ⇒ `ValueError`。
+    """
+    t_end = float(t_end)
+    dt_fine, dt_coarse, dt_out = float(dt_fine), float(dt_coarse), float(dt_out)
+    for name, val in (("t_end", t_end), ("dt_fine", dt_fine),
+                      ("dt_coarse", dt_coarse), ("dt_out", dt_out)):
+        if not val > 0.0:
+            raise ValueError(f"ramp_t_out：{name}={val} 必须为正（时间上界/步长口径）")
+    t_fine = min(max(float(t_fine_end), 0.0), t_end)
+
+    n_fine = int(np.floor(t_fine / dt_fine + _GRID_TOL))
+    fine = np.arange(1, n_fine + 1, dtype=float) * dt_fine          # 窗内：dt_fine 逐点（不含 0）
+    n_coarse = int(np.floor(t_end / dt_coarse + _GRID_TOL))
+    coarse = np.arange(1, n_coarse + 1, dtype=float) * dt_coarse    # 窗后内部步：dt_coarse 绝对格点
+    coarse = coarse[coarse > t_fine + _GRID_TOL]                    # 窗内已由 dt_fine 覆盖
+    k = np.round(coarse / dt_out)
+    coarse = coarse[np.abs(coarse - k * dt_out) <= _GRID_TOL]       # 只留交付行（dt_out 整数倍）
+
+    t = np.round(np.concatenate(([0.0], fine, coarse)), 10)
+    if t.size and np.any(np.diff(t) <= 0.0):
+        raise ValueError("ramp_t_out：t_out 非严格递增（t_fine_end/dt_fine/dt_coarse 组合有误）")
+    return t
+
+
 # ─────────────────────────── 自检（含暴力对拍） ───────────────────────────
 
 def _selftest() -> list[str]:
@@ -137,6 +244,96 @@ def _selftest() -> list[str]:
         bad.append("interval_union 未合并相接区间")
     if interval_total([]) != 0.0 or interval_union([(1, 1)]) != []:
         bad.append("interval_union 未丢弃零测/空区间")
+
+    # 3) find_skill_scripts vs 独立判据：返回目录**文件真在** + 与 cwd 无关（不是自洽检查）
+    try:
+        found: Path | None = find_skill_scripts()
+    except ModuleNotFoundError as exc:
+        found = None
+        if (_MODULE_DIR / "probe_cache.py").is_file():     # 技能根副本上必须找得到
+            bad.append(f"find_skill_scripts 在技能根副本上仍失败：{exc}")
+    if found is not None:
+        for marker in ("probe_cache.py", "primitives.py"):
+            if not (found / marker).is_file():
+                bad.append(f"find_skill_scripts 返回 {found}，但其下不存在 {marker}")
+        cwd0 = Path.cwd()
+        try:
+            for probe_cwd in (Path(tempfile.gettempdir()).resolve(), Path("/")):
+                os.chdir(probe_cwd)
+                try:
+                    again: Path | None = find_skill_scripts()
+                except ModuleNotFoundError:
+                    again = None
+                if again != found:
+                    bad.append(f"find_skill_scripts 依赖 cwd：{probe_cwd} 下得 {again} ≠ {found}")
+        finally:
+            os.chdir(cwd0)
+        with tempfile.TemporaryDirectory() as empty:       # 判据负例：空目录不得被当成技能根
+            prev = os.environ.get(_SKILL_SCRIPTS_ENV)
+            os.environ[_SKILL_SCRIPTS_ENV] = empty
+            try:
+                neg = find_skill_scripts()
+            except ModuleNotFoundError:
+                neg = None
+            finally:
+                if prev is None:
+                    os.environ.pop(_SKILL_SCRIPTS_ENV, None)
+                else:
+                    os.environ[_SKILL_SCRIPTS_ENV] = prev
+            if neg is not None and neg == Path(empty).resolve():
+                bad.append("find_skill_scripts 未校验 markers：空目录（无 probe_cache.py）被当成技能根")
+
+    # 4) ramp_t_out vs 独立逐点暴力实现（含非整除/无窗/窗越界边界）
+    def _brute_ramp(t_end, t_fine_end, dt_fine, dt_coarse, dt_out):
+        """独立暴力实现：从 0 起逐点推进（不做格点向量化），再按判据筛 60 s 子集。"""
+        tf = min(max(float(t_fine_end), 0.0), float(t_end))
+        pts = [0.0]
+        t = 0.0
+        while t + dt_fine <= tf + 1e-9:                    # 起步窗：逐点 +dt_fine
+            t += dt_fine
+            pts.append(t)
+        u = 0.0
+        while u + dt_coarse <= float(t_end) + 1e-9:        # 窗后：逐点 +dt_coarse
+            u += dt_coarse
+            if u > tf + 1e-9 and abs(u - round(u / dt_out) * dt_out) <= 1e-9:
+                pts.append(u)                              # 只留 dt_out 整数倍＝交付行
+        return np.array(pts, dtype=float)
+
+    ramp_cases = [
+        (86400.0, 600.0, 0.5, 60.0, 60.0),    # 基准：窗端同为 dt_fine/dt_coarse 整数倍
+        (3600.0, 100.3, 0.7, 10.0, 60.0),     # 边界：t_fine_end 非 dt_fine 整数倍；dt_coarse≠dt_out
+        (600.0, 0.0, 0.5, 60.0, 60.0),        # 边界：t_fine_end=0（无起步窗）
+        (90.0, 600.0, 0.5, 60.0, 60.0),       # 边界：t_end < t_fine_end（窗端钳到 t_end）
+    ]
+    for te, tf, df, dc, do in ramp_cases:
+        tag = f"ramp_t_out({te},{tf},{df},{dc},{do})"
+        try:
+            got = ramp_t_out(te, tf, df, dc, do)
+        except Exception as exc:                           # noqa: BLE001 —— 自检要报错不崩栈
+            bad.append(f"{tag} 抛异常 {exc!r}")
+            continue
+        brute = _brute_ramp(te, tf, df, dc, do)
+        if got.size != brute.size or not np.allclose(got, brute, rtol=0.0, atol=1e-9):
+            bad.append(f"{tag} 与逐点暴力实现不符：n={got.size} vs {brute.size}")
+        if got[0] != 0.0:
+            bad.append(f"{tag} 首行不是 t=0")
+        if np.any(np.diff(got) <= 0.0):
+            bad.append(f"{tag} 时间轴非严格递增")
+        tf_clamped = min(max(float(tf), 0.0), float(te))
+        tail = got[got > tf_clamped + 1e-9]
+        if tail.size and np.any(np.abs(tail - np.round(tail / do) * do) > 1e-9):
+            bad.append(f"{tag} 窗后混入非 dt_out 交付行")
+    if ramp_t_out(86400.0, 600.0, 0.5, 60.0).size != 1200 + 1430 + 1:
+        bad.append("ramp_t_out 基准行数 ≠ 1200 细窗行 + 1430 交付行 + 1（解析公式）")
+    if not np.array_equal(ramp_t_out(600.0, 0.0, 0.5, 60.0), np.arange(0.0, 601.0, 60.0)):
+        bad.append("ramp_t_out 在 t_fine_end=0 时 ≠ 纯 60 s 交付格")
+    if ramp_t_out(90.0, 600.0, 0.5, 60.0).size != 181:
+        bad.append("ramp_t_out 在 t_end < t_fine_end 时未钳到 [0,t_end] 的加密段")
+    try:
+        ramp_t_out(600.0, 120.0, 0.0, 60.0)
+        bad.append("ramp_t_out 未拒绝 dt_fine=0")
+    except ValueError:
+        pass
     return bad
 
 
@@ -150,6 +347,9 @@ def _manifest() -> dict:
         "point_segment_distance": lambda: point_segment_distance(np.random.default_rng(0).normal(size=(200_000, 3)),
                                                                   [0, 0, 0], [1, 1, 1]),
         "interval_total": lambda: interval_total([(0, 2), (1.5, 3), (5, 6)]),
+        # 定位失败（技能根未安装且未设 MATH_MODEL_SKILL_SCRIPTS）不拖垮 --manifest：计时里吞掉
+        "find_skill_scripts": _timed_find_skill_scripts,
+        "ramp_t_out": lambda: ramp_t_out(86400.0, 600.0, 0.5, 60.0, 60.0),
     }
     for name, meta in PRIMITIVES.items():
         e = dict(meta)
