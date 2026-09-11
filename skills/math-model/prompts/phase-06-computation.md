@@ -69,8 +69,9 @@
 - **重计算走探针池**：单次 >1s 的评估/扫描/敏感性实验写成 `probes/<角色>/<目的>.py` 并用 `probe_cache.py` 缓存（指纹含原语版本+输入+配置，命中秒回），结果登记 `probes/manifest.json`；**禁止每轮重写重算**（上次 run 同类脚本重写 53 份 / 231 次写入，单次重算白付约 25s）。
 - 运行前探测可用加速（numba/joblib/cupy/torch，**可选**；缺失自动回退纯 numpy/scipy，绝不因依赖缺失 FAIL）。
 - 重计算选型：向量化 → numba jit（纯循环核，禁 prange 内 linalg）→ joblib 并行（单任务 ≥20ms 的独立任务，n_jobs=min(核数,8)）→ GPU（大矩阵且驱动/库可用）。
-- 长耗时任务：先降样本/放宽收敛精度控制单次 ≤15 分钟；确实超时 → 如实记录（不伪造、不无限等待）。
-- **耗时留档**：results.json 增加 `perf: {wallTime_s, method, parallel, notes}`（真实测量值），供 sanity 核验与论文如实披露。
+- **单次求解/核验预算**：≤15 分钟**且** ≤8× 本问生产主体墙钟（取小）；**先估后跑**（估算式 + ≤30 s 标定片段见 `<技能根>/docs/performance.md` §6.1），预估超预算 → 按 **缩窗 → 减档 → 降精度** 固定顺序缩，禁止「先跑再看」；确实超时 → 如实记录（不伪造、不无限等待）。
+- **阶梯/扫参/对拍类核验**：**逐档落盘**（`probe_cache.py` 的 `pc.checkpoint_put/get`，重跑自动跳过已完成档 ⇒ kill 不作废）+ 档间并行；窗长/档数变更回写 draft / `baseline-registry.md` 的预注册条目。
+- **耗时留档**：results.json 增加 `perf: {wallTime_s, method, parallel, costEstimate_s, budget_s, tiers, shrink, notes}`（真实测量值），供 sanity 核验与论文如实披露。
 
 ## 产物
 

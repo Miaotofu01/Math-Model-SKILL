@@ -65,6 +65,7 @@
 - 脚本内用：`import probe_cache as pc` → `pc.main_with_cache(compute, purpose=..., inputs=..., primitives_version=P.VERSION)`（`compute` 是纯函数，返回可 JSON 序列化的 dict）
 - **路径口径（重要）**：探针脚本与缓存都在 **outputDir 根**下（`<outputDir>/probes/…`），而你的 shell cwd 未必是 outputDir → 命令前先 `cd <outputDir>`，或显式设 `PROBE_CACHE_DIR=<outputDir>/probes/results`、`PROBE_MANIFEST=<outputDir>/probes/manifest.json`；`--run` 已自动注入 `PYTHONPATH=<outputDir>:<outputDir>/pool`（探针可直接 `import primitives`），直接 `python probes/…` 时需自行加前缀或调 `pc.bootstrap_sys_path()`
 - 探针 **stdout 只输出 JSON**；每跑一次自动登记 `probes/manifest.json`（用途/输入/输出契约/耗时/依赖原语）
+- **成本纪律（所有探针，含评审/对抗/敏感性探针）**：嵌套核验（阶梯/扫参/对拍/bootstrap）**先估后跑 + 逐档落盘 + 档间并行**——估算式与缩窗优先级见 `docs/performance.md` §6.1；`--run` 前带 `--budget <秒> --estimate <预估秒>` 预检（超预算会拒绝执行并给缩窗建议）；长任务分档用 `pc.checkpoint_put/get`（kill 后已完成档仍可复用）
 
 ### 5.3 其它复用
 

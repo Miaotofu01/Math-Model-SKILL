@@ -192,6 +192,26 @@ for (const fs0 of FAIL_STAGES) {
   if (!dp.includes(`gates["${k}"]="SKIPPED"`)) fails.push("降级提示词未写明 gates 键与值：" + k)
   if (!dp.includes("**不写** iterations/artifacts")) fails.push("降级提示词未禁写 iterations/artifacts：" + k)
 }
+// 核验成本纪律（第一批）：doc §6.1 + 06/07 判据 + 壳字面注入 + 脚本机械锚点
+const perfDoc = readFileSync(SKILL + "/docs/performance.md", "utf8")
+for (const s of ["6.1 嵌套核验的成本纪律", "先估后跑", "8× 同场生产主体墙钟", "checkpoint_put", "缩窗 → 减档 → 降精度"]) {
+  if (!perfDoc.includes(s)) fails.push("performance.md §6.1 缺：" + s)
+}
+const p06 = readFileSync(PD + "/phase-06-computation.md", "utf8")
+for (const s of ["先估后跑", "costEstimate_s", "checkpoint_put"]) {
+  if (!p06.includes(s)) fails.push("phase-06 未写明核验成本纪律：" + s)
+}
+const p07 = readFileSync(PD + "/phase-07-sanity.md", "utf8")
+if (!p07.includes("costEstimate_s") || !p07.includes("8×")) fails.push("phase-07 未把核验成本账列入核查")
+if (!pc.includes("成本纪律（所有探针")) fails.push("_common §5.2 未加探针成本纪律")
+const wf = readFileSync(SKILL + "/workflows/math-model.js", "utf8")
+if (!wf.includes("COSTLINE") || !wf.includes("--budget")) fails.push("壳未字面注入核验成本纪律")
+const pcsrc = readFileSync(SKILL + "/scripts/probe_cache.py", "utf8")
+if (!pcsrc.includes("BudgetExceeded") || !pcsrc.includes("def checkpoint_put")) fails.push("probe_cache 缺预算预检/分档落盘")
+const ci = calls.indexOf("run:q1.computation")   // REVIEW_STATUS=NEEDS_REVISION 模式在 solve-start 前就 blocked，故仅调度到时断言
+if (ci >= 0 && (!stubPrompts[ci].includes("核验成本纪律") || !stubPrompts[ci].includes("--budget"))) {
+  fails.push("06 阶段提示词未字面注入核验成本纪律（防散文漂移）")
+}
 }
 console.log("阶段调用序列（" + stages.length + "）：")
 console.log("  " + stages.join("\n  "))

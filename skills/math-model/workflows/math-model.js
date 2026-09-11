@@ -60,6 +60,11 @@ function buildAssets(boot) {
   return `可复用资产（先查再用；已有同口径实现禁止重写）：${a}；${c}；${b}；清单/用法见 _common.md §5–6`
 }
 
+// 06/09：核验成本纪律（字面注入，防散文漂移；规则全文见 docs/performance.md §6.1）
+const COSTLINE = s => ["computation", "robustness"].includes(s)
+  ? `核验成本纪律（**必须执行，非建议**）：嵌套核验（阶梯/扫参/对拍/bootstrap）**先估后跑**——用 ≤30 s 标定跑量测出单步价 → 算预估总成本 → 与预算 min(≤15 分钟, 8× 本问生产主体墙钟) 比较；调用带 「--budget <秒> --estimate <预估秒>」（超预算会被拒绝并给缩窗建议）；超预算按 **缩窗（前缀窗优先）→ 减档 → 降精度** 固定顺序缩，窗长/档数变更回写 draft/baseline-registry.md 的预注册条目；**逐档落盘** pc.checkpoint_put(key,"<档名>",payload)、重跑先 pc.checkpoint_get 跳过已完成档（kill 不作废）；档间无依赖时并行；perf 写 costEstimate_s/budget_s/tiers/shrink。规则全文 ${SD}/docs/performance.md §6.1`
+  : ""
+
 // 阶段 glue：模板/状态/依赖 → 执行 → 写产物 → 更新 state+ledger → 返回
 function stagePrompt(q, s, m) {
   const k = q ? q + "." + s : s
@@ -73,6 +78,7 @@ function stagePrompt(q, s, m) {
     `## 阶段 ${k}：一次并列 Read ${PD}/_common.md 与 ${PD}/${m.prompts[s]}（公共纪律 + 本阶段模板）、状态 ${IM}/state.json、依赖 ${deps||"无"}、可复用资产清单 ${MANIFESTS.join("、")}`,
     `执行：按两份模板执行（冲突时以阶段模板 ${m.prompts[s]} 为准）；技能根 ${SD}（规范 ${SD}/docs/、工具 ${SD}/scripts/，用法见 _common.md §6）；产物写 ${IM}/${lay}（mkdir -p）`,
     assetsLine(true),
+    ...(COSTLINE(s) ? [COSTLINE(s)] : []),
     `完成后按 ${PD}/state-schema.md 更新 state.json（artifacts 一律用相对 intermediates/ 路径；就地合并，其余键保留），并追加 ledger 一行 \`${k}: <status> <产物相对路径> <≤50字>\``,
     `${BRIEF}；ctx q=${q||"全题"} mode=${A.mode||"full"} strict=${STRICT} date=${new Date().toISOString().slice(0,10)}`,
     PYLINE(),

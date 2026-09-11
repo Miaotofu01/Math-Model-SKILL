@@ -12,6 +12,10 @@
 - 结果缓存：`<outputDir>/probes/results/<指纹>.json`；**指纹 = 原语版本 + 脚本内容 hash + 输入 + 配置**
   → 探针代码没改、输入没变 ⇒ 直接命中，秒回；改了任何一项 ⇒ 自动失效重算（不会拿到过期结论）
 - `probes/manifest.json`：{用途, 输入, 输出契约, 单次耗时, 依赖原语}（`--register` 追加/更新一条）
+- **分档落盘**：`<outputDir>/probes/partial/<指纹>/<档名>.json`——嵌套核验（阶梯/扫参/对拍）**每档算完即写**
+  （`checkpoint_put`），重跑用 `checkpoint_get` 跳过已完成档 ⇒ **kill/超时不再全废**（实测：41 min 被 kill，已完成 3 档全作废）
+- **成本预算预检**：`--run ... --budget <秒> --estimate <预估秒>`——预估超预算 ⇒ 拒绝执行（退出码 3）并给「缩窗→减档→降精度」建议；
+  给了 `--budget` 时 `--timeout` 自动收敛到 `budget`（单次调用不得超预算）。规则见 `<技能根>/docs/performance.md` §6.1
 
 用法
 ----
@@ -21,7 +25,15 @@
     import probe_cache as pc, primitives as P
 
     def compute(inputs):            # 纯函数：inputs -> 可 JSON 序列化的 dict
-        ...
+        key = pc.checkpoint_key(sys.argv[0], inputs, None, P.VERSION)
+        out = {}
+        for tier in TIERS:                  # 嵌套核验：每档算完即落盘（kill/超时后仍可复用）
+            v = pc.checkpoint_get(key, tier)
+            if v is None:
+                v = run_tier(tier)
+                pc.checkpoint_put(key, tier, v)
+            out[tier] = v
+        return out
 
     if __name__ == "__main__":
         pc.main_with_cache(compute, purpose="边界敏感性扫描", role="adversary",
@@ -30,6 +42,7 @@
 命令行方式（把已有脚本当黑盒跑，命中即跳过执行）：
 
     python3 probe_cache.py --run probes/adversary/cyl.py --inputs '{"R":10}' [--timeout 600]
+    python3 probe_cache.py --run probes/impl/ladder.py --inputs '{...}' --budget 900 --estimate 1500   # 超预算 → 拒绝(rc=3)
     python3 probe_cache.py --list [--show <指纹前缀>] [--clear]
 
 环境变量：`PROBE_CACHE_DIR`（默认 `<cwd>/probes/results`）、`PROBE_MANIFEST`（默认 `<cwd>/probes/manifest.json`）
@@ -58,6 +71,7 @@ from typing import Any, Callable
 
 CACHE_DIR_ENV = "PROBE_CACHE_DIR"
 MANIFEST_ENV = "PROBE_MANIFEST"
+CHECKPOINT_DIR_ENV = "PROBE_CHECKPOINT_DIR"
 
 
 def cache_dir() -> Path:
@@ -145,6 +159,59 @@ def register(purpose: str, role: str = "other", inputs: Any = None, contract: st
     mf.write_text(json.dumps(man, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+class BudgetExceeded(RuntimeError):
+    """预估成本超预算 —— 拒绝执行（按固定顺序缩规模后重试，见 docs/performance.md §6.1）。"""
+
+
+def checkpoint_dir() -> Path:
+    return Path(os.environ.get(CHECKPOINT_DIR_ENV) or (Path.cwd() / "probes" / "partial"))
+
+
+def _tier_name(tier: Any) -> str:
+    return re.sub(r"[^0-9A-Za-z_.\-]", "_", str(tier)) or "tier"
+
+
+def checkpoint_key(script: str | Path | None = None, inputs: Any = None, config: Any = None,
+                   primitives_version: str = "") -> str:
+    """分档落盘的目录名：与结果缓存同源指纹（改脚本/输入 ⇒ 换目录，不会串档）。"""
+    return fingerprint(script, inputs, config, primitives_version)
+
+
+def checkpoint_put(key: str, tier: Any, payload: Any, elapsed_s: float | None = None) -> Path:
+    """把某一档的产出**立即**原子落盘（嵌套核验每档算完就写 ⇒ kill/超时不作废已完成档）。"""
+    d = checkpoint_dir() / str(key)
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / f"{_tier_name(tier)}.json"
+    tmp = f.with_name(f.name + ".tmp")
+    tmp.write_text(json.dumps({"tier": str(tier), "key": str(key), "elapsed_s": elapsed_s,
+                               "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "payload": payload},
+                              ensure_ascii=False, default=str), encoding="utf-8")
+    tmp.replace(f)                       # 原子替换：不会留下半截 JSON
+    return f
+
+
+def checkpoint_get(key: str, tier: Any) -> Any:
+    """读回某一档；不存在或半截 JSON ⇒ None（当作没算过，重算）。"""
+    f = checkpoint_dir() / str(key) / f"{_tier_name(tier)}.json"
+    if not f.is_file():
+        return None
+    try:
+        return json.loads(f.read_text(encoding="utf-8")).get("payload")
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def checkpoint_list(key: str) -> list[str]:
+    d = checkpoint_dir() / str(key)
+    return sorted(f.stem for f in d.glob("*.json")) if d.is_dir() else []
+
+
+def _shrink_hint(estimate: float, budget: float) -> str:
+    return (f"预估 {estimate:.0f}s > 预算 {budget:.0f}s（超 {estimate / max(budget, 1e-9):.1f}×）→ 按固定顺序缩："
+            f"① 窗长（缩到 ≈{100.0 * budget / max(estimate, 1e-9):.0f}% 或更短，前缀窗优先）② 档数 ③ 精度/样本；"
+            f"缩完把窗长/档数回写预注册条目，再带 --estimate 重跑（规则见 docs/performance.md §6.1）")
+
+
 def bootstrap_sys_path(pool_root: str | None = None) -> list[str]:
     """把 outputDir 根与其 pool/ 加进 sys.path，使 `import primitives` / `import pool.primitives` 可用。
 
@@ -188,8 +255,17 @@ def main_with_cache(compute: Callable[[Any], Any], purpose: str, inputs: Any = N
 
 
 def run_script(script: str, inputs: Any = None, config: Any = None, primitives_version: str = "",
-               timeout: float = 600.0, force: bool = False, purpose: str = "", role: str = "other") -> Any:
-    """把已有探针脚本当黑盒跑（脚本须把 JSON 打到 stdout）；命中缓存则不执行。"""
+               timeout: float = 600.0, force: bool = False, purpose: str = "", role: str = "other",
+               budget: float | None = None, estimate: float | None = None) -> Any:
+    """把已有探针脚本当黑盒跑（脚本须把 JSON 打到 stdout）；命中缓存则不执行。
+
+    `estimate` 超 `budget` ⇒ 直接拒绝（`BudgetExceeded`，不再白跑）；给了 `budget` ⇒ `timeout` 收敛到它。
+    超时被 kill 时，脚本已用 `checkpoint_put` 落盘的档仍在 `probes/partial/`，重跑自动跳过。
+    """
+    if budget is not None and estimate is not None and estimate > budget:
+        raise BudgetExceeded(_shrink_hint(float(estimate), float(budget)))
+    if budget is not None:
+        timeout = min(float(timeout), float(budget))
     key = fingerprint(script, inputs, config, primitives_version)
     if not force:
         hit = load(key)
@@ -206,7 +282,13 @@ def run_script(script: str, inputs: Any = None, config: Any = None, primitives_v
     env[CACHE_DIR_ENV] = str(cache_dir())
     env[MANIFEST_ENV] = str(manifest_path())
     t0 = time.perf_counter()
-    proc = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=timeout, env=env)
+    try:
+        proc = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=timeout, env=env)
+    except subprocess.TimeoutExpired as exc:
+        done = checkpoint_list(key)
+        print(f"[probe_cache] 超时（{timeout:.0f}s）被 kill；已完成档保留在 {checkpoint_dir() / key}/："
+              f"{'、'.join(done) or '（无）'}；重跑会自动跳过这些档（重新报 --estimate）", file=sys.stderr)
+        raise exc
     el = round(time.perf_counter() - t0, 3)
     if proc.returncode != 0:
         raise RuntimeError(f"探针脚本失败 rc={proc.returncode}：{proc.stderr.strip()[-500:]}")
@@ -237,6 +319,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--purpose", default="")
     ap.add_argument("--role", default="other")
     ap.add_argument("--timeout", type=float, default=600.0)
+    ap.add_argument("--budget", type=float, default=None, help="单次调用墙钟预算（秒）；见 docs/performance.md §6.1")
+    ap.add_argument("--estimate", type=float, default=None, help="预估成本（秒）= Σ档内步数 × 单步价")
     ap.add_argument("--force", action="store_true", help="忽略缓存强制重算")
     a = ap.parse_args(argv)
 
@@ -283,7 +367,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         run_script(a.run, json.loads(a.inputs), json.loads(a.config), a.primitives_version,
-                   a.timeout, a.force, a.purpose, a.role)
+                   a.timeout, a.force, a.purpose, a.role, budget=a.budget, estimate=a.estimate)
+    except BudgetExceeded as exc:
+        print(f"[预算拒绝] {exc}", file=sys.stderr)
+        return 3
     except (RuntimeError, subprocess.TimeoutExpired) as exc:
         print(f"[错误] {exc}", file=sys.stderr)
         return 1

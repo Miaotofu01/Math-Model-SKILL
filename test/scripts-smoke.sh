@@ -119,6 +119,45 @@ echo "== 14. primitives：--manifest 目标目录不存在时自动创建 =="
 echo "== 15. primitives：--selftest（含空点集边界） =="
 $PY "$SC/primitives.py" --selftest | grep -q "通过" && ok "selftest 全绿" || bad "selftest 失败"
 
+echo "== 16. probe_cache：--budget 预检拒绝（rc=3 + 缩窗建议） =="
+D5="$W/pc2"; mkdir -p "$D5/probes"
+cat > "$D5/probes/tiered.py" <<'EOF'
+import json, os, sys
+sys.path.insert(0, os.environ["PROBE_SC"])
+import probe_cache as pc
+key = pc.checkpoint_key(sys.argv[0], {"a": 1}, {}, "")
+fresh = []
+for t in ("n1", "n2"):
+    v = pc.checkpoint_get(key, t)
+    if v is None:
+        v = {"tier": t}
+        pc.checkpoint_put(key, t, v)
+        fresh.append(t)
+print(json.dumps({"fresh": fresh}))
+EOF
+out=$( cd "$D5" && PROBE_SC="$SC" $PY "$SC/probe_cache.py" --run probes/tiered.py --inputs '{"a":1}' --budget 10 --estimate 100 2>&1 ); rc=$?
+if [ $rc -eq 3 ] && echo "$out" | grep -q "缩到"; then ok "超预算被拒绝（rc=3 + 缩窗比例建议）"; else bad "预算预检未生效（rc=$rc）：$out"; fi
+
+echo "== 17. probe_cache：分档落盘 + 重跑跳过已完成档 =="
+( cd "$D5" && PROBE_SC="$SC" $PY "$SC/probe_cache.py" --run probes/tiered.py --inputs '{"a":1}' --budget 60 >/dev/null 2>&1 )
+n=$(find "$D5/probes/partial" -name '*.json' 2>/dev/null | wc -l)
+rm -f "$D5"/probes/results/*.json
+out2=$( cd "$D5" && PROBE_SC="$SC" $PY "$SC/probe_cache.py" --run probes/tiered.py --inputs '{"a":1}' --budget 60 2>/dev/null )
+if [ "$n" -eq 2 ] && echo "$out2" | grep -q '"fresh": \[\]'; then ok "2 档落盘，删缓存重跑全部命中 checkpoint"; else bad "分档落盘/复用失效（n=$n, out2=$out2）"; fi
+
+echo "== 18. probe_cache：超时被 kill 后已完成档保留并被提示 =="
+cat > "$D5/probes/slow.py" <<'EOF'
+import json, os, sys, time
+sys.path.insert(0, os.environ["PROBE_SC"])
+import probe_cache as pc
+pc.checkpoint_put(pc.checkpoint_key(sys.argv[0], {"b": 1}, {}, ""), "n1", {"tier": "n1"})
+time.sleep(30)
+print(json.dumps({}))
+EOF
+out=$( cd "$D5" && PROBE_SC="$SC" $PY "$SC/probe_cache.py" --run probes/slow.py --inputs '{"b":1}' --timeout 2 2>&1 ); rc=$?
+k=$(find "$D5/probes/partial" -name 'n1.json' 2>/dev/null | wc -l)
+if [ $rc -eq 1 ] && [ "$k" -ge 1 ] && echo "$out" | grep -q "已完成档保留"; then ok "超时保留分档并提示（rc=1）"; else bad "超时不保留分档（rc=$rc, k=$k）：$out"; fi
+
 echo
 echo "结果：通过 $PASS ／ 失败 $FAIL"
 [ $FAIL -eq 0 ] || exit 1
