@@ -295,6 +295,11 @@ for (const s of ["先估后跑", "costEstimate_s", "checkpoint_put"]) {
 const p07 = readFileSync(PD + "/phase-07-sanity.md", "utf8")
 if (!p07.includes("costEstimate_s") || !p07.includes("8×")) fails.push("phase-07 未把核验成本账列入核查")
 if (!pc.includes("成本纪律（所有探针")) fails.push("_common §5.2 未加探针成本纪律")
+// 路径与环境四律（A 项落地）：present/工具调用绝对路径 + 解释器 + 池导入 + 临时目录
+if (!pc.includes("路径与环境四律")) fails.push("_common 未加「路径与环境四律」")
+for (const s of ["绝对路径", "present", "禁止裸 `python3`", "bootstrap_sys_path", ".mm-tmp", "影子目录"]) {
+  if (!pc.includes(s)) fails.push("路径与环境四律缺要素：" + s)
+}
 const wf = readFileSync(SKILL + "/workflows/math-model.js", "utf8")
 if (!wf.includes("COSTLINE") || !wf.includes("--budget")) fails.push("壳未字面注入核验成本纪律")
 const pcsrc = readFileSync(SKILL + "/scripts/probe_cache.py", "utf8")

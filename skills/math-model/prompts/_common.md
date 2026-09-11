@@ -54,7 +54,12 @@
 - 固定位置 `probes/<角色>/<目的>.py`（角色：judge / adversary / application / sanity / robustness / data（02 阶段）/ impl（05 阶段）；其它情形用 `other`）；**禁止**再往 `/tmp` 写一次性脚本后重写（上次 run：53 个一次性脚本 / 231 次写入）
 - 结果缓存：`python <技能根>/scripts/probe_cache.py --run probes/<角色>/<目的>.py --inputs '{...}' --purpose <用途> --role <角色>`；指纹 = 原语版本 + 脚本内容 + 输入 + 配置 → 命中秒回（实测 2.0s → 0.06s），改脚本或改输入自动失效，不会读到过期结论
 - 脚本内用：`import probe_cache as pc` → `pc.main_with_cache(compute, purpose=..., inputs=..., primitives_version=P.VERSION)`（`compute` 是纯函数，返回可 JSON 序列化的 dict）
-- **路径口径（重要）**：探针脚本与缓存都在 **outputDir 根**下（`<outputDir>/probes/…`），而你的 shell cwd 未必是 outputDir → 命令前先 `cd <outputDir>`，或显式设 `PROBE_CACHE_DIR=<outputDir>/probes/results`、`PROBE_MANIFEST=<outputDir>/probes/manifest.json`；`--run` 已自动注入 `PYTHONPATH=<outputDir>:<outputDir>/pool`（探针可直接 `import primitives`），直接 `python probes/…` 时需自行加前缀或调 `pc.bootstrap_sys_path()`
+- **路径与环境四律（硬约束；违反的后果是报错或"静默写到别处"）**——实测口径：某 run 单晚 31 次路径类报错全部落在这四条上：
+  - **① 绝对路径**：本 run 根 = 壳注入的 `<outputDir 绝对路径>`。**一切工具调用**的文件参数（`present` / Read / Write / Edit / Bash 参数）**一律写绝对路径**；**尤其 `present`**——它按**会话 cwd** 解析，而会话 cwd 未必是 run 根（实测 10 次 `Cannot present … file not found` 全是写了 `intermediates/…`、`probes/…` 这类相对路径，文件其实已用绝对路径写成）。**禁止**用相对路径 `mkdir`/写文件（会在会话 cwd 下留**影子目录**，无任何报错）。
+  - **② 解释器**：一律 `"$PY"=<outputDir>/.venv/bin/python`（以 `intermediates/env-report.json` 为准，缺失才退系统 python3）；**禁止裸 `python3`**（实测 11 次 `ModuleNotFoundError: numpy/pandas/openpyxl` 全出在此）。
+  - **③ 池导入**：直接跑脚本时加 `PYTHONPATH=<outputDir>:<outputDir>/pool`，或脚本首行 `import probe_cache as pc; pc.bootstrap_sys_path()`（`probe_cache.py --run` 已自动注入）。撞 `ModuleNotFoundError: problem/properties/probe_cache` **先修路径，禁止把池实现内联抄一份**。
+  - **④ 临时文件**：一律 `<outputDir>/.mm-tmp/`（用完即删）；**不要 `/tmp`**（本环境 `/tmp` 在只读策略下不可写、`/dev/shm` 跨调用重置，实测 3 次"刚写完再读就找不到"）。
+- **探针路径口径**：探针脚本与缓存都在 **outputDir 根**下（`<outputDir>/probes/…`），shell 命令前先 `cd <outputDir>`，或显式设 `PROBE_CACHE_DIR=<outputDir>/probes/results`、`PROBE_MANIFEST=<outputDir>/probes/manifest.json`
 - 探针 **stdout 只输出 JSON**；每跑一次自动登记 `probes/manifest.json`（用途/输入/输出契约/耗时/依赖原语）
 - **探针预算（权威处）**：单探针 ≤2 分钟、整轮验证 ≤10 分钟（评审/修订的验证探针同此限）；确需大计算 → 粗采样/解析核验代替穷举
 - **清单体积纪律**：`probes/manifest.json` 一行一条目、单文件 ≤48 KiB、条目 ≤200（超出自动移入 `probes/manifest.archive.json`）；查复用/查重时**两份都要看**（`artifact_lint` / `reuse_lint` 已把归档条目算作已登记）
