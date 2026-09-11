@@ -104,8 +104,9 @@ async function stub(prompt, opts, label) {
     return JSON.stringify({ status: "PASS", artifact_path: "", summary: "gate ok" })
   }
   if (label.startsWith("review:")) {
-    // 校验：评审提示词必须并列读入 _common.md 与视角模板，且带可复用资产清单（§1.3-4）
+    // 校验：评审提示词必须并列读入 _common.md + _review-common.md（评审通用规则）与视角模板，且带可复用资产清单（§1.3-4）
     if (!prompt.includes("_common.md")) throw new Error("评审提示词未注入 _common.md")
+    if (!prompt.includes("_review-common.md")) throw new Error("评审提示词未注入 _review-common.md（评审通用规则）")
     if (!prompt.includes("可复用资产")) throw new Error("评审提示词未注入可复用资产清单")
     return JSON.stringify({ status: REVIEW_STATUS, artifact_path: "x/review.md", summary: "stub review" })
   }
@@ -114,10 +115,13 @@ async function stub(prompt, opts, label) {
       if (!/依赖 [^\n]*intermediates\/q\d+\/03-assumptions\//.test(prompt)) throw new Error("formulation 依赖未渲染为假设目录")
       if (prompt.includes("assumption-v01")) throw new Error("formulation 依赖仍硬编码 assumption-v01")
     }
+    if (label === "revise" && !prompt.includes("_review-common.md")) throw new Error("修订提示词未注入 _review-common.md（评审通用规则）")
+    if (label === "selfcheck" && prompt.includes("_review-common.md")) throw new Error("自查节点误注入 _review-common.md（评审专用规则只给评审/修订）")
     return JSON.stringify({ status: "PASS", artifact_path: "q/04-formulation/draft.md", summary: label })
   }
   if (label.startsWith("run:") || label.startsWith("degrade:")) {
     if (label.startsWith("run:") && !prompt.includes("_common.md")) throw new Error("阶段提示词未注入 _common.md: " + label)
+    if (label.startsWith("run:") && prompt.includes("_review-common.md")) throw new Error("非评审阶段误注入 _review-common.md: " + label)
     if (label.startsWith("run:") && !prompt.includes(SKILL)) throw new Error("阶段提示词未注入技能根: " + label)
     if (label.startsWith("run:") && !prompt.includes("可复用资产")) throw new Error("阶段提示词未注入可复用资产清单: " + label)
     if (label.startsWith("run:") && !prompt.includes("pool/problem/manifest.json")) throw new Error("阶段提示词未列可复用资产清单路径: " + label)
@@ -210,13 +214,19 @@ for (const s of ["条目ID", "落点", "未处置/留给下游", "机械核验",
 }
 if (!p04.includes("逐条意见原文复述")) fails.push("phase-04 未禁止逐条意见原文复述（L4 瘦身）")
 const pc = readFileSync(PD + "/_common.md", "utf8")
+const prc = readFileSync(PD + "/_review-common.md", "utf8")   // 注入面拆分 3：§9 正文已迁出 _common.md，只注入评审/修订
 if (!pc.includes("必须整体读") || !pc.includes("20KB")) fails.push("_common §3 未写明读入范围（评审对象整体读 / 参考件 >20KB 局部读）")
-// L6 去重：三视角共用规则单源在 _common §9 ⇒ 共用规则断言按「模板 + §9」合并文本判定（规则未删，只是搬家）
-if (!pc.includes("## 9. 评审通用规则")) fails.push("_common 缺 §9 评审通用规则（三视角共用单源）")
+// L6 去重 + 注入面拆分 3：三视角共用规则单源在 _review-common.md §9（只给评审/修订节点）
+// ⇒ 共用规则断言按「模板 + _common.md + _review-common.md」合并文本判定（规则未删，只是搬家 + 收窄注入面）
+if (!prc.includes("## 9. 评审通用规则")) fails.push("_review-common 缺 §9 评审通用规则（三视角共用单源）")
+if (pc.includes("## 9. 评审通用规则")) fails.push("_common 仍留 §9 正文（应已迁出到 _review-common.md）")
+if (!pc.includes("_review-common.md")) fails.push("_common 缺指向 _review-common.md 的指针（§9 已迁出）")
+if (!prc.includes("仅注入") || !prc.includes("其余节点不读")) fails.push("_review-common 未声明「仅注入评审与修订节点 / 其余节点不读」")
 for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversary.md", "formulation-reviewer-application.md"]) {
   const rt = readFileSync(PD + "/" + r, "utf8")
-  const rAll = rt + "\n" + pc
-  if (!rt.includes("_common.md` §9")) fails.push(r + " 未指向 _common.md §9（共用规则单源）")
+  const rAll = rt + "\n" + pc + "\n" + prc
+  if (!rt.includes("_review-common.md` §9")) fails.push(r + " 未指向 _review-common.md §9（共用规则单源）")
+  if (rt.includes("`_common.md` §9")) fails.push(r + " 仍残留失效指针 `_common.md` §9")
   if (!rt.includes("本视角")) fails.push(r + " 未标明本视角特有判据")
   if (!rAll.includes("产物体量与读入范围") || !rAll.includes("可机械复核三件套")) fails.push(r + "（含 §9）未写明评审文件瘦身与读入范围")
   if (!rt.includes("revision-log.md")) fails.push(r + " 未指向 revision-log.md（处置表已移出 draft）")
@@ -327,6 +337,8 @@ if (ri >= 0) {
   const rp = stubPrompts[ri]
   if (!rp.includes("精准手术")) fails.push("修订提示词未要求精准手术（禁整篇重写）")
   if (!rp.includes("revision-log.md")) fails.push("修订提示词未把处置表落到 revision-log.md")
+  // 注入面拆分 3：修订节点与评审节点同受 §9 约束 ⇒ 必须并列读 _review-common.md
+  if (!rp.includes("_review-common.md")) fails.push("修订提示词未注入 _review-common.md（评审通用规则）")
 }
 if (!wf.includes("精准手术")) fails.push("壳未注入精准手术约束")
 const ci = calls.indexOf("run:q1.computation")   // REVIEW_STATUS=NEEDS_REVISION 模式在 solve-start 前就 blocked，故仅调度到时断言
