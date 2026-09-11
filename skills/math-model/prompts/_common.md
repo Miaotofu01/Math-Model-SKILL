@@ -65,6 +65,7 @@
 - 脚本内用：`import probe_cache as pc` → `pc.main_with_cache(compute, purpose=..., inputs=..., primitives_version=P.VERSION)`（`compute` 是纯函数，返回可 JSON 序列化的 dict）
 - **路径口径（重要）**：探针脚本与缓存都在 **outputDir 根**下（`<outputDir>/probes/…`），而你的 shell cwd 未必是 outputDir → 命令前先 `cd <outputDir>`，或显式设 `PROBE_CACHE_DIR=<outputDir>/probes/results`、`PROBE_MANIFEST=<outputDir>/probes/manifest.json`；`--run` 已自动注入 `PYTHONPATH=<outputDir>:<outputDir>/pool`（探针可直接 `import primitives`），直接 `python probes/…` 时需自行加前缀或调 `pc.bootstrap_sys_path()`
 - 探针 **stdout 只输出 JSON**；每跑一次自动登记 `probes/manifest.json`（用途/输入/输出契约/耗时/依赖原语）
+- **探针预算（权威处）**：单探针 ≤2 分钟、整轮验证 ≤10 分钟（评审/修订的验证探针同此限）；确需大计算 → 粗采样/解析核验代替穷举
 - **清单体积纪律**：`probes/manifest.json` 一行一条目、单文件 ≤48 KiB、条目 ≤200（超出自动移入 `probes/manifest.archive.json`）；查复用/查重时**两份都要看**（`artifact_lint` / `reuse_lint` 已把归档条目算作已登记）
 - **成本纪律（所有探针，含评审/对抗/敏感性探针）**：嵌套核验（阶梯/扫参/对拍/bootstrap）**先估后跑 + 逐档落盘 + 档间并行**——估算式与缩窗优先级见 `docs/performance.md` §6.1；`--run` 前带 `--budget <秒> --estimate <预估秒>` 预检（超预算会拒绝执行并给缩窗建议）；长任务分档用 `pc.checkpoint_put/get`（kill 后已完成档仍可复用）
 
@@ -90,7 +91,7 @@
 ## 7. 环境与产物
 
 - 所有 python 执行一律使用调度壳注入的 PYLINE 给出的解释器路径（以 `intermediates/env-report.json` 为准）。
-- 所有相对路径基于 outputDir 根；写文件前 `mkdir -p`。
+- 所有相对路径基于 outputDir 根；写文件前 `mkdir -p`。阶段模板里的 `q{id}` 与 `q1` 均指 ctx 中的小问 ID（run 级阶段 q=null）。
 - state.json 的 artifacts 一律用相对 `intermediates/` 的路径；ledger 行格式：`<key>: <status> <产物> <50字内说明>`。
 
 ## 8. 不编造

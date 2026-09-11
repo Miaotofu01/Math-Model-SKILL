@@ -1,12 +1,12 @@
 # 阶段模板 02：数据探索与需求（data）
 
-> 你是本小问的数据阶段 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根（`intermediates/`、`pool/`、`figures/` 同级）。
+> 你是本小问的数据阶段 agent，本模板定义你要做的全部工作。
 
-> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
+> 公共纪律见 `_common.md`（壳与模板一并注入）。
 
 ## 规范引用
 
-先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：§一-15 外部数据合规（铁律）、§一 数据分析统计工具箱（检验方法）、§二 图表规范（CJK 字体与命名）。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md §6`）。本节相关：§一-15 外部数据合规（铁律）、§一 数据分析统计工具箱（检验方法）、§二 图表规范（CJK 字体与命名）。引用规范，不复制内容。
 
 ## 输入
 
@@ -66,9 +66,6 @@
 - `intermediates/q{id}/02-data/figure-manifest.md`（EDA 图逐图登记 + 出图自检结论；无 EDA 图则不建并在 eda.md 写明理由）
 - `pool/external-data/`（外部数据文件，未收集则为空）
 - `figures/fig_eda_*.png`（outputDir 根；无数据则无）
-- **核心可复用函数**（EDA 中写出的判据/求解器等会被后问复用的实现）：存 `pool/problem/<题>/`（题专用，须登记 manifest）或本问 `02-data/` 下—— 见 `_common.md` §5——后续小问与实现/计算/稳健性/评审必须 import 复用，**禁止各自重写**（同口径才复用；口径不一致须写明差异）
-- **通用原语**：写数值核心前先 `python <技能根>/scripts/primitives.py --list` 查现有条目（技能根只装「库不提供 + 口径敏感 + 领域中立」的原语，不含任何单题内容）；命中同口径 → `cp <技能根>/scripts/primitives.py pool/primitives.py` + `--manifest pool/manifest.json`（含对拍值与耗时），此后一律 import（**路径口径**：`PYTHONPATH=<outputDir>/pool:<outputDir>` 或 `pc.bootstrap_sys_path()`；撞 ModuleNotFoundError 先修路径，禁止内联抄代码），不重复实现；未命中 → 按 `_common.md` §5.1 判据在本问实现，**单题条目写 `pool/problem/<题>/`，不得写进技能根**
-- **EDA 重扫描**：>1s 的扫描/敏感性评估写成 `probes/<角色>/<目的>.py` + `probe_cache.py` 缓存（`_common.md` §5.2）
 
 ## 完成标准
 

@@ -1,14 +1,14 @@
 # 阶段模板 08：可视化（visualization）
 
-> 你是本小问的可视化 agent，本模板定义你要做的全部工作。调度壳已注入：当前小问 ID（ctx 中的 `q`，如 `q1`）、模式（full/quick）、依赖与产物路径。下文路径中 `q{id}` 替换为 ctx 中的小问 ID；所有相对路径基于 outputDir 根。
+> 你是本小问的可视化 agent，本模板定义你要做的全部工作。
 
 > 工具纪律（减回合）：全部图集中为一个绘图脚本、一次 bash 跑完并统一 `ls` 校验，禁止逐图微循环。
 
-> 公共纪律（统一节拍 / 工具纪律 / 数字单一真源 / 复用 / 工具与文档路径）见 `_common.md`——**与本模板同一次并列 Read 读入**。
+> 公共纪律见 `_common.md`（壳与模板一并注入）。
 
 ## 规范引用
 
-先 Read `<技能根>/docs/writing-and-format.md`（`<技能根>` = 阶段指令里给出的技能根；该文件缺失时按技能根向上/向下探测 `docs/`）。本节相关：**§二 图表生成规范**（CJK 字体 §二-1、LaTeX math 单位 §二-2/3、Glyph 验证 §二-5、示意图自绘 §二-6、结果图/示意图分工 §二-7、**结果图硬条款 §二-8、图文件路径口径 §二-9**）；示意图 HTML→PNG 路径另见 `docs/flowchart-drawing.md`。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md §6`）。本节相关：**§二 图表生成规范**（CJK 字体 §二-1、LaTeX math 单位 §二-2/3、Glyph 验证 §二-5、示意图自绘 §二-6、结果图/示意图分工 §二-7、**结果图硬条款 §二-8、图文件路径口径 §二-9**）；示意图 HTML→PNG 路径另见 `docs/flowchart-drawing.md`。引用规范，不复制内容。
 
 ## 输入
 
@@ -31,7 +31,8 @@
 
 ### 3. 自绘示意图
 
-需要而现有图没有的示意图 → **优先用 vendored diagram-design 画**（HTML→PNG，完整配方 Read `docs/flowchart-drawing.md`；**只用** `<技能根>/tools/diagram-design/`，不得用全局 skill）；skill 缺失或渲染失败（重试 1 次后）→ **回退 python3 + matplotlib**（§二-6，dpi=200、bbox_inches='tight'）。两种路径都**禁止留空**：命名 `fig_{q{id}}_示意图_{内容}.png`，保存后 `ls` 确认真实存在；diagram-design 路径**另存同名 `.html` 源文件**，figure-manifest 示意图行加「绘图方式」（diagram-design|matplotlib）。**分工调和**：本阶段按任务书强制自绘示意图（写作阶段可复用，不冲突 writing-and-format.md §二-7 的分工说明——本阶段产出先行，写作阶段负责最终编排）。
+
+需要而现有图没有的示意图 → **优先用 vendored diagram-design 画**（HTML→PNG，完整配方 Read `docs/flowchart-drawing.md`；**只用** `<技能根>/tools/diagram-design/`，不得用全局 skill）；skill 缺失或渲染失败（重试 1 次后）→ **回退 python3 + matplotlib**（§二-6，dpi=200、bbox_inches='tight'）。两种路径都**禁止留空**：命名 `fig_{q{id}}_示意图_{内容}.png`，保存后 `ls` 确认真实存在；diagram-design 路径**另存同名 `.html` 源文件**，figure-manifest 示意图行加「绘图方式」（diagram-design|matplotlib）。
 
 ### 4. 出图自检（两道机械 + 一道视觉，P0 未清零不写 manifest）
 
@@ -43,7 +44,7 @@
      --png intermediates/q{id}/08-visualization/figures/*.png \
      --svg intermediates/q{id}/08-visualization/figures/*.html --render
    ```
-   P0 清零（`<技能根>` 见 `_common.md` §6）。已知历史事故（自查这些模式）：图例压住数据图元且文字被裁、分类轴 30+ 标签竖排、字面下划线符号（应 LaTeX math）、墨迹贴边 0px、刻度千分位逗号、标题/图注承诺的元素不可见。
+   P0 清零（`<技能根>` 见 `_common.md` §6）。
 3. **视觉复核（人眼级，必须有）**：用图像读取工具逐张看 PNG，列出缺陷清单（标签重叠/被裁、图例遮挡图元、尺度不可辨、坐标范围失衡、图-题不符、颜色/标记未进图例）；P0 修完重出并复看。若图像读取工具不可用（报不支持图像输入/权限拒绝）→ 在 manifest 自检节如实记录「视觉复核未执行 + 原因」，并按 §二-8 逐条自查代码，**不得因此 FAIL 或反复重试**。
 4. 自检结论（lint 结果 + 视觉复核缺陷与处置）写入 figure-manifest 的「自检」一节；**禁止在 manifest 里写「self_check 通过」代替上述检查**（上游 self_check 只查无障碍契约，不查本项目纪律）。
 

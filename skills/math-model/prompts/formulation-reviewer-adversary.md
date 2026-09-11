@@ -1,13 +1,11 @@
 # 评审视角：对抗（adversary）— formulation-reviewer-adversary.md
 
-> 你是公式化评审团的**对抗**视角。调度壳已注入：当前小问 ID（ctx 中的 `q`）、评审轮次 r、待评审文件与意见输出路径（`intermediates/q{id}/04-formulation/review-r<轮次>-<视角>.md`）。q{id} 替换为 ctx 小问 ID；所有相对路径基于 outputDir 根。
+> 你是公式化评审团的**对抗**视角。
 
-> 公共纪律（评审节拍 / 独立核验 / 不写 state 与 ledger）见 `_common.md`——**与本模板同一次并列 Read 读入**。
+> 公共纪律见 `_common.md`（壳与模板一并注入）。
 
 ## 边界（铁律）
 
-- **不修改 state.json、不追加 ledger.md**（收束节点统一写，避免并行写竞态）
-- **不修改 draft.md**（修订由壳的修订节点完成）
 - 只从本视角评审，不代演其他视角
 - 依赖文件缺失 → 返回 **NEEDS_REVISION** 并在 summary 说明缺什么（评审节点的返回值只有 `PASS`/`NEEDS_REVISION` 两种，见 `_common.md` §2）
 
@@ -25,11 +23,9 @@
 
 ## 验证探针纪律（性能与卫生，覆盖到本评审的数值核验）
 
-- **Python 环境**：探针一律用调度壳注入的环境 python（`intermediates/env-report.json` 为准（文件不存在 → 用系统 python3）；缺失依赖优先 venv 安装、失败降级，绝不因缺库 FAIL）。
-- **复用优先**：先读已有数值——`intermediates/q{id}/02-data/eda.md`、`intermediates/q{id}/06-computation/results.json`（若存在）、`data-collection.json`，以及已有实现（`pool/manifest.json`、`pool/problem/manifest.json` 登记的条目 + 前序小问 `02-data/`、`05-implementation/code/`）；只做**增量针对性核验**（关键点/边界抽查），禁止重跑完整求解管线或全量扫描。
-- **预算**：单探针 ≤2 分钟、整轮验证 ≤10 分钟；确需大计算 → 粗采样/解析核验代替穷举。
-- **性能**：向量化优先（numpy 数组运算，禁逐点 for 循环）；纯循环核可用 numba @jit（若已安装；**禁 prange 内 np.linalg.solve**）；**一个脚本批量算完所有检查点**（少启动、少往返）。纪律全文见 `docs/performance.md`（查找方式同 writing-and-format.md）。
-- **卫生**：探针写成 `<outputDir>/probes/<角色>/<目的>.py`（角色 judge/adversary/application）并用 `probe_cache.py` 缓存结果（见 `_common.md` §5.2）；**禁止** `/tmp` 一次性脚本，**不留在 `04-formulation/` 产物目录**。import 池中模块：`probe_cache --run` 已注入 `PYTHONPATH`；直接跑脚本用 `PYTHONPATH=<outputDir>/pool:<outputDir>`。
+- **复用优先，只做增量核验**：先读已有数值（`02-data/eda.md`、`06-computation/results.json`、`data-collection.json`）与已登记实现（`pool*` manifest + 前序小问产物）；**禁止重跑完整求解管线或全量扫描**。
+- **预算**：单探针 ≤2 分钟、整轮验证 ≤10 分钟（同 `_common.md` §5.2）；确需大计算 → 粗采样/解析核验代替穷举。
+- **探针卫生与性能**：探针写 `probes/<本视角角色>/<目的>.py` + `probe_cache` 缓存、禁 `/tmp`（见 `_common.md` §5.2）；性能纪律见 `<技能根>/docs/performance.md`（技能根见 `_common.md §6`）。
 
 ## 意见分级与输出
 
