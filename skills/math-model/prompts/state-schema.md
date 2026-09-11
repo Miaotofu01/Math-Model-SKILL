@@ -31,7 +31,7 @@
 | 键 | 谁写 | 值 |
 |---|---|---|
 | `q1.literature` … `q1.localComplete`（每问 10 个阶段） | 该阶段 agent | 自己的返回 status |
-| `q1.formulation` | 公式化**收束节点** | `PASS`（评审全为建议级收敛）\| `NEEDS_REVISION`（轮次用尽仍有必须改）\| `FAIL`（评审全部失败） |
+| `q1.formulation` | 公式化**收束节点** | `PASS`（三视角均无必须改——登记级/建议级不阻塞）\| `NEEDS_REVISION`（轮次用尽仍有必须改）\| `FAIL`（评审全部失败） |
 | `q1.solve-start` / `write-start` / `final-start` | 门禁**专职检查 agent** | `PASS` \| `FAIL` |
 | `crossReview` / `writing` / `finalReview`（运行级 3 阶段） | 该阶段 agent | 自己的返回 status |
 

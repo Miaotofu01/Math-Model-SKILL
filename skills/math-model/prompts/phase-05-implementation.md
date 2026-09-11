@@ -14,6 +14,7 @@
 - `intermediates/q{id}/04-formulation/symbols.json`：符号登记，代码变量必须与之一致
 - `intermediates/q{id}/04-formulation/baseline-registry.md`：baseline 定义与对比指标，代码须按 dual-path 支持
 - `intermediates/q{id}/04-formulation/handoff.md`：**交本阶段的代码级必改项（P0-1…）与检验项**——开写前逐条读，写完逐条核对是否落实
+- `intermediates/q{id}/04-formulation/review-r*-*.md`（**轮次最大的一份**）的 `§登记级` 小节：最后一轮评审判 PASS 时不经修订，其中的登记项（引用键/口径/版本/作废标记）须在此落实——`grep -n -A20 '登记级' <该文件> | tail -40` 取用，**不整读评审文件**
 - `intermediates/q{id}/02-data/eda.md`：数据口径与清洗规则
 - `intermediates/00-problem.json`：领域 domain 与附件清单（附件数据路径只在这里）
 - 附件数据与 `pool/external-data/`：**只读**，禁止写操作

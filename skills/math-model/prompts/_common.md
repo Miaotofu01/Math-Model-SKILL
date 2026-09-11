@@ -16,7 +16,7 @@
 1. 读依赖文件（评审模板、待评审产物，以及上轮同视角评审文件——若存在）
 2. 独立完成本视角工作（self-check 与其它视角意见仅供参考，须独立核验）
 3. 意见/修订写入调度壳指定的路径
-4. 返回 {status:"PASS"|"NEEDS_REVISION", artifact_path, summary≤200字}；**PASS = 没有「必须改」意见**；建议级意见不阻塞
+4. 返回 {status:"PASS"|"NEEDS_REVISION", artifact_path, summary≤200字}；**PASS = 没有「必须改」意见**；登记级/建议级意见不阻塞（公式化三视角的分层判据见 `formulation-reviewer-*.md` §意见分级与输出）
 
 **评审节点**（三个视角并行）**不修改 state.json、不追加 ledger.md**（并行写竞态，收束节点统一写）；**修订节点**（在并行块之后串行执行）**追加 ledger 一行、但不改 state.json**。评审 agent **不直接改 draft.md**（修订由调度壳的修订节点完成），只从本视角评审，不代演其他视角。
 

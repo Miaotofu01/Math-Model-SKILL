@@ -148,7 +148,7 @@ outputDir/
 - Workflow 内 agent 失败 → 降级继续；**不要编辑 `workflow` 脚本**（薄壳只做路由/门禁/收敛，业务逻辑在 `prompts/phase-*.md` 与 `docs/writing-and-format.md`——改这些才生效；Claude 版从 `scriptPath` 加载，改仓库内文件后需同步到 `~/.claude/workflows/`）
 - **中断恢复**：args 加 `resume: true`，壳按 `intermediates/state.json` 的 problemId 匹配续跑（gates∈{PASS, PASS_WITH_WARNING, SKIPPED} 自动跳过）；已无 `resumeFrom`/`skipPhases` 机制
 - **3 处门禁边界**：求解前（`q{id}.solve-start`：该问 04-formulation PASS）／写作前（`write-start`：所有小问 localComplete 且跨问复核 PASS）／终审前（`final-start`：writing 产物完整）；门禁 FAIL → 整体 blocked（含 detail），修正后 resume 续跑
-- **公式化子流程**：formulator → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订（full max3 轮 / quick max2 轮），评审全 PASS 即收束；未收敛 → blocked
+- **公式化子流程**：formulator → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订（full max3 轮 / quick max2 轮），评审全 PASS 即收束（**必须改 = 会改变结论的问题**；登记级/建议级不阻塞；r≥2 新增必须改须负举证责任）；未收敛 → blocked
 - 各阶段中间产物存 `outputDir/intermediates/`；摘要数字需正文出处（终审硬门禁：任一数字无法溯源 → FAIL）
 - **示意图用 vendored diagram-design skill**（本 skill 内 `tools/diagram-design/`，MIT 许可，上游 SHA 见其 `VENDOR.md`）：可视化/写作阶段优先用它画示意图（HTML→PNG，配方 `docs/flowchart-drawing.md`）；skill 缺失自动回退 matplotlib，不阻断
 - **文档即共享**：各阶段落盘的中间文档（各问 `question-summary.md` / `results.json` / `robustness.md`、写作的 `fact-sheet.md` 等）是下游环节的**唯一权威真源**——下游 agent **必须 `Read` 这些文档**拿完整内容，prompt 不再注入摘要备份。落盘须成功并确认（缺失即 FAIL/阻塞）

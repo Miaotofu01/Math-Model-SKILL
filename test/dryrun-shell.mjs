@@ -210,7 +210,14 @@ for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversar
   const rt = readFileSync(PD + "/" + r, "utf8")
   if (!rt.includes("产物体量与读入范围") || !rt.includes("可机械复核三件套")) fails.push(r + " 未写明评审文件瘦身与读入范围")
   if (!rt.includes("revision-log.md")) fails.push(r + " 未指向 revision-log.md（处置表已移出 draft）")
+  // 判定分层（F1）：登记级不阻塞；0 条必须改即 PASS
+  if (!rt.includes("登记级（不阻塞）") || !rt.includes("0 条 → 返回 PASS")) fails.push(r + " 未落地判定分层（登记级不阻塞 / 0 条必须改即 PASS）")
+  // 反棘轮（F3）：r≥2 举证责任 + 沿用原条目号
+  if (!rt.includes("负举证责任") || !rt.includes("回归") || !rt.includes("致命项")) fails.push(r + " 缺 r≥2 举证责任（回归/致命项）")
+  if (!rt.includes("沿用原条目号")) fails.push(r + " 缺 r≥2 逐条闭环沿用原条目号")
 }
+if (!pc.includes("登记级/建议级意见不阻塞")) fails.push("_common §2 未与判定分层对齐")
+{ const p05r = readFileSync(PD + "/phase-05-implementation.md", "utf8"); if (!p05r.includes("§登记级")) fails.push("phase-05 未接管最后一轮评审的登记级清单") }
 {
   const implP = (stubPrompts[calls.indexOf("run:q1.implementation")] || "")
   const litP = (stubPrompts[calls.indexOf("run:q1.literature")] || "")

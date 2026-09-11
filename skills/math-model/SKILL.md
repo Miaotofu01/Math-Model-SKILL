@@ -87,7 +87,7 @@ DSH 的 `workflow` 工具参数为 `meta`（身份数据）+ `script`（纯 JS �
 - Workflow 在前台运行，父级轮次阻塞到结算——**期间不要打断、不要刷新页面**；结束后返回结果
 - **薄壳脚本约 10KB**（旧 244KB 的 1/24）：整个脚本随一次 workflow 调用传入，无分片读取、无大脚本注入主 agent 历史的问题；业务逻辑全在磁盘（`prompts/` 模板 + `docs/` 规范），子代理自行 Read
 - **逐问串行**：每小问跑 10 个 per-question 阶段（文献调研→数据探索→假设定义→公式化→实现→计算→Sanity→可视化→鲁棒性→小问完成），全部小问完成后跑 3 个 run-level 阶段（跨问复核→写作→终审）
-- **公式化子流程**（壳内独立编排）：formulator 产出方案 + baseline 预注册 → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订——full 最多 3 轮 / quick 最多 2 轮，评审全 PASS（无必须改）即收束
+- **公式化子流程**（壳内独立编排）：formulator 产出方案 + baseline 预注册 → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订——full 最多 3 轮 / quick 最多 2 轮，评审全 PASS 即收束；**必须改 = 会改变结论的问题**（数学/假设/可行性/数据，或按字面落码会得到错结论的协议项），登记级（引用键/版本/台账/措辞）与建议级**不阻塞**；r≥2 新增必须改须负举证责任（回归或致命项）
 - **中途中断**：已完成的阶段由 `intermediates/state.json` 记录（门禁/产物/位置）；恢复时 args 加 `resume: true`，壳按 state.json 的 problemId 匹配续跑（不再有 `resumeFrom`/`skipPhases` 机制）
 - **门禁边界**：3 处——求解前（该问 04-formulation PASS）、写作前（所有小问 localComplete 且跨问复核 PASS）、终审前（writing 产物完整）；门禁 FAIL 时整体返回 blocked（含 detail），修正后 `resume: true` 续跑
 - **失败收敛**：阶段连续 2 次失败 → 降级 SKIPPED（整体 status=degraded）；公式化未收敛（full max3 轮 / quick max2 轮）→ blocked
