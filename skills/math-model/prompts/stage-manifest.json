@@ -101,13 +101,16 @@
       "本问 01–09 全部阶段产物"
     ],
     "crossReview": [
-      "全部小问的 10-completed"
+      "全部小问的 10-completed",
+      "各小问 04-formulation/handoff.md（含「未结转项」）"
     ],
     "writing": [
-      "全部产物"
+      "全部产物",
+      "各小问 04-formulation/handoff.md（含「未结转项」）"
     ],
     "finalReview": [
       "12-writing",
+      "各小问 04-formulation/handoff.md（含「未结转项」）",
       "全部产物"
     ]
   },

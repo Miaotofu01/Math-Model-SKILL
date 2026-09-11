@@ -6,7 +6,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.6）。本节相关：§二 图表生成规范（代码内含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§二 图表生成规范（代码内含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
 
 ## 输入
 

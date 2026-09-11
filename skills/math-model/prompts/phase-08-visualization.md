@@ -8,7 +8,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.6）。本节相关：**§二 图表生成规范**（CJK 字体 §二-1、LaTeX math 单位 §二-2/3、Glyph 验证 §二-5、示意图自绘 §二-6、结果图/示意图分工 §二-7、**结果图硬条款 §二-8、图文件路径口径 §二-9**）；示意图 HTML→PNG 路径另见 `docs/flowchart-drawing.md`。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：**§二 图表生成规范**（CJK 字体 §二-1、LaTeX math 单位 §二-2/3、Glyph 验证 §二-5、示意图自绘 §二-6、结果图/示意图分工 §二-7、**结果图硬条款 §二-8、图文件路径口径 §二-9**）；示意图 HTML→PNG 路径另见 `docs/flowchart-drawing.md`。引用规范，不复制内容。
 
 ## 输入
 
@@ -44,7 +44,7 @@
      --png intermediates/q{id}/08-visualization/figures/*.png \
      --svg intermediates/q{id}/08-visualization/figures/*.html --render
    ```
-   P0 清零（`<技能根>` 见 `_common.md` §2.6）。
+   P0 清零（`<技能根>` 见 `_common.md` §2.7）。
 3. **视觉复核（人眼级，必须有）**：用图像读取工具逐张看 PNG，列出缺陷清单（标签重叠/被裁、图例遮挡图元、尺度不可辨、坐标范围失衡、图-题不符、颜色/标记未进图例）；P0 修完重出并复看。若图像读取工具不可用（报不支持图像输入/权限拒绝）→ 在 manifest 自检节如实记录「视觉复核未执行 + 原因」，并按 §二-8 逐条自查代码，**不得因此 FAIL 或反复重试**。
 4. 自检结论（lint 结果 + 视觉复核缺陷与处置）写入 figure-manifest 的「自检」一节；**禁止在 manifest 里写「self_check 通过」代替上述检查**（上游 self_check 只查无障碍契约，不查本项目纪律）。
 

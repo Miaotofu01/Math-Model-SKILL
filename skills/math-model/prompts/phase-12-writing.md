@@ -6,13 +6,14 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.6）。本节相关：§一 论文写作规范（含 **AI 味治理 §一-13/14**、外部数据合规 §一-15）、§二 图表规范（CJK/单位/示意图自绘 §二-1..7）。**引用规范不复制内容**。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§一 论文写作规范（含 **AI 味治理 §一-13/14**、外部数据合规 §一-15）、§二 图表规范（CJK/单位/示意图自绘 §二-1..7）。**引用规范不复制内容**。
 
 ## 输入
 
 - `intermediates/00-problem.json`：题面/论文规则/附件清单/subQuestions（题面 problem.description / 论文规则 paperRules / 附件 attachments / 子问 analysis.subQuestions）
 - `intermediates/11-cross-review/cross-question-report.md`：跨问复核结论（已 PASS，写作须保持其口径）
 - 各小问（q1、q2、…，数量以 00-problem.json 的 subQuestions 为准）：`q{id}/10-completed/question-summary.md`（定稿事实链）、`q{id}/04-formulation/draft.md` + `symbols.json` + `baseline-registry.md`、`q{id}/06-computation/results.json`、`q{id}/08-visualization/figure-manifest.md` + `figures/`、`q{id}/01-literature/literature.md`（引用登记）、`q{id}/03-assumptions/assumption-vNN.md`、`q{id}/07-sanity/sanity-report.md`、`q{id}/09-robustness/robustness.md`、`q{id}/02-data/eda.md` + `data-collection.json`（有外部数据时）、`q{id}/02-data/figure-manifest.md`（EDA 图登记，**存在才读**：无 EDA 图时该文件不建，改看 eda.md 的图表清单）、`q{id}/04-formulation/errata.md`（**作废口径与未决项：论文正文禁止引用其中已作废的结论**）、`q{id}/04-formulation/verification.md`（已核验项与证据键：可直接作为"已验证"依据，不必重算）、`q{id}/01-literature/lit-verify.md`（证据级核验表，**存在才读**：工具缺失可跳过，此时按 literature.md 的证据级字段并在报告注明「未机器核验」）
+- `q{id}/04-formulation/handoff.md`（**含收束结转的「未结转项」**：登记级 + 未闭环必须改 + 去向——写作层须逐条落地或写明去向，禁止静默丢弃）
 - outputDir 根 `figures/`：EDA 图（`fig_eda_*`）与写作阶段兜底自绘示意图（`fig_cross_示意图_*`）所在目录（路径口径见 §二-9）
 
 > ⚠️ 全题级：`q{id}` 指各小问实际目录 q1/、q2/、…（本阶段无占位符替换）；产物写 `intermediates/12-writing/` 前缀。
@@ -63,12 +64,13 @@
 > ⚠️ **分批落盘防上下文触顶**：每章写完立即落盘 `section-<id>.md` 再写下一章（壳每个阶段只发一次调用，**没有"下次会话"**）。若接近上下文上限：把已完成章节留在盘上、把剩余章节清单与口径写进 `narrative-outline.md`，然后返回 `NEEDS_REVISION` —— 壳会带「改策略」重跑本阶段，下一轮从已落盘章节续写。
 
 **关键约束（逐章检查）**：
-- 数字纪律：每个数值必须来自 fact-sheet.md（可溯 sourcePath）；禁编造/推算/跨章不一致；缺失写[待定]。**数字单一真源**：正文/摘要/图表标题与图注都不得另抄来源文件中的数值，一律走 fact-sheet 锚点（见 `_common.md` §3）
+- 数字纪律：每个数值必须来自 fact-sheet.md（可溯 sourcePath）；禁编造/推算/跨章不一致；缺失写[待定]。**数字单一真源**：正文/摘要/图表标题与图注都不得另抄来源文件中的数值，一律走 fact-sheet **锚点引用**（键 + 文件 sourcePath，逐字可溯；见 `_common.md` §3）
 - 引用纪律：`\cite` 支撑的数值锚点必须标明来源性质（同行评审值 / 社区复现值）；证据级 L3 只能作存在性提及、L4 不得进参考文献（以 `q{id}/01-literature/lit-verify.md` 为准）
 - 逐问覆盖：摘要分段；模型/分析/结论章覆盖全部小问（模型→求解→结果）
 - 加粗只加答案（`$\bm{}$`）；禁止「创新点：」等标签（§一-2/3）
 - 图表（**可引用路径只有三处，口径见 §二-9**）：① 各问结果图与示意图 → `q{id}/08-visualization/figures/`（先读 `q{id}/08-visualization/figure-manifest.md` 逐图登记）② EDA 图 → outputDir 根 `figures/fig_eda_*.png`（先读 `q{id}/02-data/figure-manifest.md`）③ 本阶段兜底自绘 → 根 `figures/fig_cross_示意图_*.png`（自绘后追加一行登记）。开写前把两份 manifest + 两个目录列全，**不得靠 `ls` 碰运气**；`\includegraphics{绝对路径}` + 「如图X所示…」解读；**文件必须真实存在，禁止空 figure**；需要示意图而没图 → 优先 vendored diagram-design（`docs/flowchart-drawing.md`），失败回退 matplotlib（§二-6：CJK 字体、dpi=200、bbox_inches='tight'、保存后 ls 确认）；单位 LaTeX math（`cm$^{-1}$`）；图件必须过 §二-8 硬条款，**视觉复核用图像读取工具看**（禁只靠脚本/自述）
 - **AI 味治理**：逐条自查 `<技能根>/docs/writing-and-format.md` §一-13/14（清单不在此复制）。
+- 题面表格（如表 1–6）：网格/行列单位一律以 `00-problem.json#problem.tables` 为准（**禁按 pdftotext 逐格提取的行列顺序解读**）；末行为实际值（如「烘干结束时间」）时不强制落在网格上
 
 ### 5. 交叉审查 ⇄ 统一修复
 
@@ -87,6 +89,7 @@
 10. 术语堆砌/可读性：一段 >3 未解释术语、冗长啰嗦 → P1
 11. 逐问覆盖：问题分析/模型/分析/结论各章覆盖全部小问 → 缺失 P0
 12. AI 味复核：§一-13/14 逐条（路标/标签/凑字腔/加粗过度/示意图）
+13. 数字真源机检：跑 `python <技能根>/scripts/artifact_lint.py --root <outputDir>`（`number.scattered` / `paper.unsourced`），逐条收敛或写明理由（口径见 `_common.md` §3、用法见 §2.7）
 
 **统一修复**：按章节顺序逐章修复：`Read` 全篇文章节 + fact-sheet + 问题列表，只修指出的问题（精准手术，不重写整章）；数字以 fact-sheet 为准；口径：术语堆砌→补解释并精简；只贴公式→补「动机→推导→含义」；啰嗦→删除；内部术语→改写。修复后覆盖写回 section-*.md。
 

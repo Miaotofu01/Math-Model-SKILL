@@ -17,6 +17,7 @@
   - `intermediates/q{id}/06-computation/results.json`：关键参数与结论数值
   - `intermediates/q{id}/09-robustness/robustness.md`：稳健性边界（如有）
   - `intermediates/q{id}/04-formulation/errata.md`：**作废口径与未决项**（核验别问是否引用了已作废口径；文件缺失则该核对项注明"无勘误登记"）
+- `intermediates/q{id}/04-formulation/handoff.md` 的「未结转项」小节（收束结转的登记级 / 未闭环必须改 + 去向）：逐条核验去向是否已闭环，未闭环项列入整改清单
 - `intermediates/state.json`：确认所有小问 `q*.localComplete` 已 PASS（未全过 → 返回 FAIL）
 
 > ⚠️ 全题级约定：本 prompt 中 `q{id}` 指各小问实际目录 q1/、q2/、…，**本阶段不使用占位符替换**；小问清单以 `intermediates/00-problem.json` 的 `problem.analysis.subQuestions[].id` 为准（阶段指令只注入 `ctx q=全题`，不含清单）。
@@ -31,7 +32,7 @@
 
 1. **符号一致**：同名符号跨问是否同义、LaTeX 写法是否一致；发现「同义不同名」或「同名不同义」（如同一量在两问取值不同）→ 不一致
 2. **假设一致**：跨问共用的假设是否取同一版本、同一取值；后问假设与前置小问定稿假设相矛盾 → 不一致
-3. **参数一致**：跨问共用的参数（阈值/系数/权重/时间点/口径）在各问 question-summary、results.json 中的取值是否一致；另跑 `python <技能根>/scripts/artifact_lint.py --root <outputDir>`（见 `_common.md` §2.6）核对关键数字是否有跨问抄写分叉，有 → P1 并列出源头
+3. **参数一致**：跨问共用的参数（阈值/系数/权重/时间点/口径）在各问 question-summary、results.json 中的取值是否一致；另跑 `python <技能根>/scripts/artifact_lint.py --root <outputDir>`（见 `_common.md` §2.7）核对关键数字是否有跨问抄写分叉，有 → P1 并列出源头
 4. **结论引用**：后问结论与前置小问定稿结论是否相互印证（数值、口径、方向）；互相矛盾 → 不一致
 5. **口径一致**：同一数据/同一符号在不同问的描述口径是否一致（如「样本量=清洗后行数」「成本=含税单价×数量」这类口径备注是否全篇统一）
 

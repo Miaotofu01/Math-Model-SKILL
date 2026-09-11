@@ -8,7 +8,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.6）。本节相关：§一-8 灵敏度与稳健性。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖、实验预算）。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§一-8 灵敏度与稳健性。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖、实验预算）。引用规范，不复制内容。
 
 > 公共纪律见 `_common.md`（壳与模板一并注入）。
 

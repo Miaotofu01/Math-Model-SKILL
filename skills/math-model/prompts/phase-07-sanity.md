@@ -4,7 +4,7 @@
 
 ## 数字口径核查（与数值门禁并列）
 
-- 运行 `python <技能根>/scripts/artifact_lint.py --root <outputDir>`（`<技能根>` 见 `_common.md` §2.6）：关键数字在产物中散落 ≥3 处即报口径分叉 → **优先整改报告末尾列出的高发文件**（收敛到 `q{id}/06-computation/results.json`，其余改锚点引用）；本轮无法全部收敛时，把残留项与理由写进 sanity-report.md（不阻塞本阶段）
+- 运行 `python <技能根>/scripts/artifact_lint.py --root <outputDir>`（`<技能根>` 见 `_common.md` §2.7）：关键数字在产物中散落 ≥3 处即报口径分叉 → **优先整改报告末尾列出的高发文件**（收敛到 `q{id}/06-computation/results.json`，其余改锚点引用）；本轮无法全部收敛时，把残留项与理由写进 sanity-report.md（不阻塞本阶段）
 - 核对 results.json 的 keyValues 是否覆盖本问全部结论数字；缺失 → 补登记（不新造数字）
 
 ## 性能与复用核查（不阻塞，只登记）

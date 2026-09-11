@@ -296,6 +296,23 @@ for (const f of ["phase-11-crossReview.md", "phase-12-writing.md", "phase-13-fin
 for (const s of ["implementation", "computation", "sanity", "robustness"]) {
   if (!(manStatic.deps[s] || []).some(d => d.includes("handoff.md"))) fails.push("deps." + s + " 未含 handoff.md（台账移出 draft 后须显式依赖）")
 }
+
+// 写作/终审阶段风险门（未结转项 owner + 锚点引用 + 交付校验）
+{
+  const p11 = readFileSync(PD + "/phase-11-crossReview.md", "utf8")
+  const inp11 = (p11.split("## 输入")[1] || "").split(/\n## /)[0]
+  const inp12 = (p12.split("## 输入")[1] || "").split(/\n## /)[0]
+  const inp13 = (p13.split("## 输入")[1] || "").split(/\n## /)[0]
+  if (!inp11.includes("handoff.md")) fails.push("phase-11 §输入 未接 handoff.md（未结转项无核验入口）")
+  if (!inp12.includes("handoff.md") || !inp12.includes("未结转项")) fails.push("phase-12 §输入 未接 handoff.md 的「未结转项」")
+  if (!p12.includes("锚点引用")) fails.push("phase-12 未要求正文数字锚点引用（键 + 文件）")
+  if (!p12.includes("artifact_lint.py")) fails.push("phase-12 未接 artifact_lint 数字真源机检")
+  if (!inp13.includes("handoff.md") || !inp13.includes("未结转项")) fails.push("phase-13 §输入 未接 handoff.md 的「未结转项」")
+  if (!p13.includes("_delivery_check") || !p13.includes("FAIL=0")) fails.push("phase-13 未接交付校验器（_delivery_check / FAIL=0）")
+  for (const s of ["crossReview", "writing", "finalReview"]) {
+    if (!(manStatic.deps[s] || []).some(x => x.includes("handoff.md"))) fails.push("deps." + s + " 未含 handoff.md")
+  }
+}
 for (const fs0 of FAIL_STAGES) {
   const k = fs0.replace(/^run:/, ""), di = calls.indexOf("degrade:" + k)
   if (di < 0) { fails.push("降级节点未被调度：" + k); continue }

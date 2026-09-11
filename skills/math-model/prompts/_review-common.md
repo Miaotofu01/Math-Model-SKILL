@@ -41,4 +41,4 @@
 
 ### 9.4 评审探针纪律
 
-**复用优先、只做增量核验**（先读 `02-data/eda.md`、`06-computation/results.json`、`data-collection.json` 与 `pool*` manifest/前序产物；**禁止重跑完整求解管线或全量扫描**）；预算与卫生（单探针 ≤2 分钟、整轮 ≤10 分钟；探针写 `probes/<本视角角色>/<目的>.py` + `probe_cache` 缓存、禁 `/tmp`）**见 `_common.md` §4.3 与 §2.6**；性能纪律见 `<技能根>/docs/performance.md`（技能根见 `_common.md` §2.6）。
+**复用优先、只做增量核验**（先读 `02-data/eda.md`、`06-computation/results.json`、`data-collection.json` 与 `pool*` manifest/前序产物；**禁止重跑完整求解管线或全量扫描**）；预算与卫生（单探针 ≤2 分钟、整轮 ≤10 分钟；探针写 `probes/<本视角角色>/<目的>.py` + `probe_cache` 缓存、禁 `/tmp`）**见 `_common.md` §4.3 与 §2.7**；性能纪律见 `<技能根>/docs/performance.md`（技能根见 `_common.md` §2.7）。
