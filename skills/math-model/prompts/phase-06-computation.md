@@ -16,6 +16,8 @@
 - `intermediates/q{id}/04-formulation/draft.md`：求解策略（运行口径复核）
 - `intermediates/q{id}/04-formulation/baseline-registry.md`：**baseline 预注册——同场对比的指标依据**
 - `intermediates/q{id}/04-formulation/symbols.json`：符号（结果字段命名对齐）
+- `intermediates/q{id}/04-formulation/handoff.md`：**交本阶段的检验项与 P0**（预注册的生产配置/验收对象/成本上限）——运行口径与它在冲突时以它为准
+- `intermediates/q{id}/04-formulation/errata.md`：**作废口径与未决项**——不得据已作废口径出数；未决项按其中写明的处理方式执行
 - 附件数据与 `pool/external-data/`：只读
 
 ## 执行步骤

@@ -18,6 +18,7 @@
 - `intermediates/q{id}/04-formulation/draft.md`：模型与参数（扰动对象）
 - `intermediates/q{id}/07-sanity/sanity-report.md`：已核验结论（稳健性实验不得与其矛盾）
 - `intermediates/00-problem.json`：题面约束与边界（problem.description）
+- `intermediates/q{id}/04-formulation/handoff.md`：**交本阶段的检验项**（稳健性要覆盖的边界与禁止事项）
 
 ## 执行步骤
 

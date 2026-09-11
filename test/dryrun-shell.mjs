@@ -223,6 +223,11 @@ if (!p10c.includes("artifact-schemas.md")) fails.push("phase-10 未指向 artifa
 const manRP = JSON.parse(readFileSync(PD + "/stage-manifest.json", "utf8")).retryPolicy
 if (!manRP || manRP.stageAttempts !== 2 || !manRP.formulationRounds) fails.push("stage-manifest 缺 retryPolicy")
 if (!body.includes("RP.formulationRounds")) fails.push("壳未从 retryPolicy 读轮次")
+for (const f of ["phase-05-implementation.md", "phase-06-computation.md", "phase-07-sanity.md", "phase-09-robustness.md"]) {
+  const ft = readFileSync(PD + "/" + f, "utf8")
+  const inp = (ft.split("## 输入")[1] || "").split(/\n## /)[0]
+  if (!inp.includes("handoff.md")) fails.push(f + " §输入 未说明 handoff.md 的角色")
+}
 const p12 = readFileSync(PD + "/phase-12-writing.md", "utf8")
 for (const s of ["q{id}/07-sanity/", "q{id}/09-robustness/", "q{id}/02-data/eda.md", "q{id}/01-literature/lit-verify.md"]) {
   if (!p12.includes(s)) fails.push("phase-12 §输入 缺前缀：" + s)

@@ -37,6 +37,9 @@
 - `intermediates/q{id}/06-computation/results.json`：待核验结果
 - `intermediates/q{id}/04-formulation/draft.md` 与 `symbols.json`：公式与符号基准
 - `intermediates/00-problem.json`：题面（problem.description，硬约束出处）
+- `intermediates/q{id}/04-formulation/handoff.md`：**交本阶段的检验项**（逐条核验是否已由 06 执行并留痕）
+- `intermediates/q{id}/04-formulation/verification.md`：04 侧已核验项与证据键（**避免重算**；本阶段结论与它冲突时以实测为准并记入报告）
+- `intermediates/q{id}/04-formulation/errata.md`：作废口径与未决项（核验时按它排除已作废结论）
 
 ## 执行步骤（逐门禁核验，每条结论必须带证据）
 
