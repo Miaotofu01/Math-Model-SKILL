@@ -9,7 +9,7 @@
 
 ## 性能与复用核查（不阻塞，只登记）
 
-- 读本问 `06-computation/results.json` 的 `perf`（键清单见 `<技能根>/prompts/artifact-schemas.md` §1.1）：字段缺失 → warning（要求计算阶段补齐，不 FAIL）；`wallTime_s > 900`（15 分钟单次预算）**或 > 8× 本问生产主体墙钟**、`costEstimate_s` 缺失、或存在明显重算白付 → warning 写「原因 + 影响 + 建议」；确为嵌套核验（阶梯/扫参）时额外核对 `tiers` 是否逐档落盘与并行（未落盘 ⇒ 记「中断即全废」风险，规则见 `docs/performance.md` §6.1）
+- 读本问 `06-computation/results.json` 的 `perf`（键清单见 `<技能根>/prompts/artifact-schemas.md` §1.1）：字段缺失 → warning（要求计算阶段补齐，不 FAIL）；`wallTime_s > 900`（15 分钟单次预算）**或 > 8× 本问生产主体墙钟**、`costEstimate_s` 缺失、或存在明显重算白付 → warning 写「原因 + 影响 + 建议」；确为嵌套核验（阶梯/扫参）时额外核对 `tiers` 是否逐档落盘与并行（未落盘 ⇒ 记「中断即全废」风险，规则见 `<技能根>/docs/performance.md` §6.1）
 - 核对 `probes/manifest.json`：同一用途/输入的实验是否被重复跑（应命中缓存秒回）→ 重复计算记 warning
 - **重复实现核验**：跑 `python <技能根>/scripts/reuse_lint.py --scan --root <outputDir> --json intermediates/q{id}/07-sanity/reuse-lint.json` → 把**重复组数 / 跨小问组数 / 权威份未登记数**写入 sanity-report.md 的「性能与复用」段（复用率在 run 内唯一可读的数字）；权威份未登记 → 补登记；跨小问重复 → 记 warning 并转入 11 阶段整改清单（**不回改历史小问代码**）
 - **池登记完整性**：`artifact_lint.py` 的「池登记」段会报 `pool/*.py`、`probes/*.py` 未登记或幽灵条目 → 未登记的**立即补登记**（探针重跑一次即自动登记；题专用核心手写 `pool/problem/manifest.json`），否则后问看不见、必然重写

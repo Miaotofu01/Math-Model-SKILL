@@ -8,7 +8,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§三 CUMCM/MCM 格式（摘要页/≤20页/附录/无身份信息）、§四 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §四-5、`$\bm{}$` §四-6、支撑材料清单 §四-7、组装方式与 @占位符见 §四 末段）、§六 内部 Common Mistakes（摘要数字编造等）。**引用规范，不复制内容**。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§3 CUMCM/MCM 格式（摘要页/≤20页/附录/无身份信息）、§4 论文模板要点（摘要 `\section*`、参考文献单标题、附录 A/B/C、代码附录 §4-5、`$\bm{}$` §4-6、支撑材料清单 §4-7、组装方式与 @占位符见 §4 末段）、§6 内部 Common Mistakes（摘要数字编造等）。**引用规范，不复制内容**。
 
 ## 输入
 
@@ -41,15 +41,15 @@
 ### 3. 一致性检查
 
 - 摘要按子问题分段（「对于问题1…」逐问方法+数值）且逐问覆盖；正文问题分析/模型/分析/结论各章覆盖全部小问
-- 内部流程术语扫描（§一-14：「对抗性审查/模型重设计/adversarialFindings/验证器/重设计历史」）→ 出现即 P1 改写
-- 图表反向检查：每个 `\includegraphics` 文件真实存在且属于 §二-9 的三处口径（`q{id}/08-visualization/figures/`、根 `figures/fig_eda_*`、根 `figures/fig_cross_示意图_*`）；无空 figure 环境；CJK 字体无 Glyph 缺失警告（§二-1/5）；对最终图件跑 `python <技能根>/scripts/figure_lint.py --png ... --svg ...`（见 `_common.md` §2.7），P0 清零
+- 内部流程术语扫描（§1-14：「对抗性审查/模型重设计/adversarialFindings/验证器/重设计历史」）→ 出现即 P1 改写
+- 图表反向检查：每个 `\includegraphics` 文件真实存在且属于 §2-9 的三处口径（`q{id}/08-visualization/figures/`、根 `figures/fig_eda_*`、根 `figures/fig_cross_示意图_*`）；无空 figure 环境；CJK 字体无 Glyph 缺失警告（§2-1/5）；对最终图件跑 `python <技能根>/scripts/figure_lint.py --png ... --svg ...`（见 `_common.md` §2.7），P0 清零
 - 交付自检（**`00-problem.json#externalPriors._delivery_check` 存在才做**）：按其中 validator/command 对 `results/result*.xlsx` 逐个跑 `--results <编号>`，**必须 FAIL=0**、报告留档；论文表格网格与「烘干结束时间」行按 `00-problem.json#problem.tables` 逐格核对（规格缺失则注明「无交付规格」）
 - 数字口径：跑 `python <技能根>/scripts/artifact_lint.py --root <outputDir>` 核对关键数字散落 ≥3 处（口径分叉），有则定位并收敛到各问 results.json；正文/摘要数字逐字可溯 fact-sheet
-- 加粗只加答案（§一-2）；无「创新点：」等标签（§一-3）；无调试笔记/文件路径/对账清单残留（§一-12）
+- 加粗只加答案（§1-2）；无「创新点：」等标签（§1-3）；无调试笔记/文件路径/对账清单残留（§1-12）
 
 ### 4. 评委自评（按获奖标准评分）
 
-以评委身份（已读 100 篇同题论文）写 `intermediates/13-final/judge-self-review.md`：按国一/国二/成功参赛三档标准逐维评分（每维 0-10 + 一句理由）：摘要质量、问题分析深度、模型建立与求解、结果与验证、灵敏度与稳健性、创新真实性、写作规范与 AI 味、逐问覆盖、格式合规（§三）。结尾回答：与同题 100 篇比为什么有印象？最大弱点（具体）？修改哪一个最能提升竞争力？
+以评委身份（已读 100 篇同题论文）写 `intermediates/13-final/judge-self-review.md`：按国一/国二/成功参赛三档标准逐维评分（每维 0-10 + 一句理由）：摘要质量、问题分析深度、模型建立与求解、结果与验证、灵敏度与稳健性、创新真实性、写作规范与 AI 味、逐问覆盖、格式合规（§3）。结尾回答：与同题 100 篇比为什么有印象？最大弱点（具体）？修改哪一个最能提升竞争力？
 
 **限 1 轮最小改动修复**：针对评委最大弱点与提升建议，对相关章节做最小改动（只改表述/结构/遗漏的推导；**不得新造或改写数字**——以 fact-sheet 为准）；修复后回到步骤 2 重新溯源、步骤 5 重新编译。
 
@@ -78,7 +78,7 @@
      --materials "\item AI工具使用详情（AI 工具使用详情.pdf，按《全国大学生数学建模竞赛人工智能工具使用规定》第4(2)条要求）" \
      --materials "\item 赛题原始数据由竞赛提供，按规范第十一条不包含在支撑材料中；全部结果可由上述源程序直接复算"
    ```
-   每个小问的每个 .py 一条 `--code-entries`；某问 results.json 含疑似名单/排序表数据 → 提取为 JSON 并追加 `--suspect-json`（无则忽略）；代码文件若含身份信息/绝对路径/Unicode 数学符号（如 θ），按 §四-5 先复制清洗副本再引用（不改原产物）。
+   每个小问的每个 .py 一条 `--code-entries`；某问 results.json 含疑似名单/排序表数据 → 提取为 JSON 并追加 `--suspect-json`（无则忽略）；代码文件若含身份信息/绝对路径/Unicode 数学符号（如 θ），按 §4-5 先复制清洗副本再引用（不改原产物）。
 5. 组装后检查：摘要用 `\section*{摘 要}`（无编号）；`thebibliography` 恰好 1 个；附录从 `\appendix` 开始（A/B/C 编号）；无残留 `@XXX@` 占位符（忽略 %% 注释行）；报「未找到章节」→ 按组装脚本 order 校正 section 名后重跑。
 
 **第 6-7 步 编译**（两遍 xelatex，必须两遍都通过）：
@@ -88,9 +88,9 @@ cd <outputDir> && xelatex -output-directory=intermediates/13-final -interaction=
 ```
 错误 → 读 `intermediates/13-final/compile.log` 修正 .tex 后重试（最多 3 次）。常见：`Undefined control sequence`（命令拼错或缺 usepackage）、`Missing $ inserted`（数学符号出数学模式）、`File not found`（includegraphics 路径错）、中文乱码（ctexart+xelatex）、附录代码 `_ ^ % &` 特殊字符（listings `basicstyle=\ttfamily` 规避）。
 
-**第 8 步 页数与输出**：正文（含摘要）≤20 页（§三；超标优先精简约简非核心段落）；PDF 生成 `intermediates/13-final/final-paper.pdf`；残留 warning（Overfull/未定义引用等）逐条记录。
+**第 8 步 页数与输出**：正文（含摘要）≤20 页（§3；超标优先精简约简非核心段落）；PDF 生成 `intermediates/13-final/final-paper.pdf`；残留 warning（Overfull/未定义引用等）逐条记录。
 
-MCM 说明：若题目包论文规则为 MCM/ICM（英文论文），按 §三 的 MCM 格式执行；CUMCM 模板与组装脚本不适用，走**手动兜底路径**——自拼英文 preamble 后两遍 xelatex 编译（cwd 规则同上），正文各章仍用写作产物。
+MCM 说明：若题目包论文规则为 MCM/ICM（英文论文），按 §3 的 MCM 格式执行；CUMCM 模板与组装脚本不适用，走**手动兜底路径**——自拼英文 preamble 后两遍 xelatex 编译（cwd 规则同上），正文各章仍用写作产物。
 
 ## 产物
 

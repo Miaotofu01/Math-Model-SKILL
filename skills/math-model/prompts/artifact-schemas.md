@@ -38,7 +38,7 @@
 
 ### 1.1 `perf`（阶段 06 写、阶段 07 核验）
 
-`perf: {wallTime_s, method, parallel, costEstimate_s, budget_s, tiers, shrink, notes}` —— 真实测量值；`costEstimate_s/budget_s/tiers/shrink` 见 `docs/performance.md` §6.1。
+`perf: {wallTime_s, method, parallel, costEstimate_s, budget_s, tiers, shrink, notes}` —— 真实测量值；`costEstimate_s/budget_s/tiers/shrink` 见 `<技能根>/docs/performance.md` §6.1。
 
 ### 1.2 阶段 10 的必需字段断言
 

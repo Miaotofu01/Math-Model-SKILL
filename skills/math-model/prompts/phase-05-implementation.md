@@ -6,7 +6,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§二 图表生成规范（代码内含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§2 图表生成规范（代码内含绘图语句时按 §2-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `<技能根>/docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
 
 ## 输入
 
@@ -59,7 +59,7 @@
 2. **符号一致性核对**：代码变量与 symbols.json 逐项核对（同名或给出映射表），关键公式与 draft.md 推导逐式核对；不一致必须改代码或写明原因，输出核对表
 3. 确认 dual-path、数值自检清单、可审计性三项就位
 
-### 5. 性能纪律（按 docs/performance.md，可选加速、禁硬依赖）
+### 5. 性能纪律（按 <技能根>/docs/performance.md，可选加速、禁硬依赖）
 
 1. **向量化优先**：热路径禁止 Python 级 for 循环（用 numpy 数组运算）；能用闭式/解析解就不用迭代求解器（迭代留作交叉核对）。
    - **写完当场查重**：跑 `python <技能根>/scripts/reuse_lint.py --scan --root <outputDir>`；本阶段新增文件与 `pool/`、前序小问同形 → 同口径改 import、口径不同写明差异；改不完 → **返回 `NEEDS_REVISION`**（调度壳会带「改策略」重跑本阶段），禁止放着重复实现进 06。

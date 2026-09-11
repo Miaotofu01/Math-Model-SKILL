@@ -17,10 +17,10 @@ disable-model-invocation: true
 | 阶段 | 你（主 agent）的角色 | 说明 |
 |------|------|------|
 | 阶段一 审题+选题 | **可干预**：并行提纯→审题→选题→等用户选 | 你只编排，机械透传原文/数据，不解读不润色 |
-| 阶段二 执行 Workflow（13 阶段） | **不干预**：用 `workflow` 工具发起，前台阻塞等结算 | 内部 agent 全由脚本编排；调度壳只做路由/门禁/收敛，业务规范在 `prompts/phase-*.md` 与 `docs/writing-and-format.md`。你正常流程不了解内部细节 |
+| 阶段二 执行 Workflow（13 阶段） | **不干预**：用 `workflow` 工具发起，前台阻塞等结算 | 内部 agent 全由脚本编排；调度壳只做路由/门禁/收敛，业务规范在 `prompts/phase-*.md` 与 `<技能根>/docs/writing-and-format.md`。你正常流程不了解内部细节 |
 | 阶段三 汇报+兜底 | **可干预**：汇报、必要时手动兜底 | 见下 |
 
-> **关键**：阶段二 Workflow 运行时你**看不到也管不了**内部 agent。别在 SKILL.md 里去找"该怎么让内部 agent 做 X"——它不读这里。内部执行规范在 `docs/writing-and-format.md`（你仅在**失败手动兜底**或**审查产物**时参考）。
+> **关键**：阶段二 Workflow 运行时你**看不到也管不了**内部 agent。别在 SKILL.md 里去找"该怎么让内部 agent 做 X"——它不读这里。内部执行规范在 `<技能根>/docs/writing-and-format.md`（你仅在**失败手动兜底**或**审查产物**时参考）。
 
 ## 阶段一：审题 + 选题
 
@@ -85,7 +85,7 @@ DSH 的 `workflow` 工具参数为 `meta`（身份数据）+ `script`（纯 JS �
 **运行预期（务必转告用户）：**
 - **耗时 30 分钟 ~ 10 小时不等**，主要看建模评审 loop 与代码求解的时间复杂度，full 模式以小时计
 - Workflow 在前台运行，父级轮次阻塞到结算——**期间不要打断、不要刷新页面**；结束后返回结果
-- **薄壳脚本约 10KB**（旧 244KB 的 1/24）：整个脚本随一次 workflow 调用传入，无分片读取、无大脚本注入主 agent 历史的问题；业务逻辑全在磁盘（`prompts/` 模板 + `docs/` 规范），子代理自行 Read
+- **薄壳脚本约 10KB**（旧 244KB 的 1/24）：整个脚本随一次 workflow 调用传入，无分片读取、无大脚本注入主 agent 历史的问题；业务逻辑全在磁盘（`<技能根>/prompts/` 模板 + `<技能根>/docs/` 规范），子代理自行 Read
 - **逐问串行**：每小问跑 10 个 per-question 阶段（文献调研→数据探索→假设定义→公式化→实现→计算→Sanity→可视化→鲁棒性→小问完成），全部小问完成后跑 3 个 run-level 阶段（跨问复核→写作→终审）
 - **公式化子流程**（壳内独立编排）：formulator 产出方案 + baseline 预注册 → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订——full 最多 3 轮 / quick 最多 2 轮，评审全 PASS 即收束；**必须改 = 会改变结论的问题**（数学/假设/可行性/数据，或按字面落码会得到错结论的协议项），登记级（引用键/版本/台账/措辞）与建议级**不阻塞**；r≥2 新增必须改须负举证责任（回归或致命项）
 - **中途中断**：已完成的阶段由 `intermediates/state.json` 记录（门禁/产物/位置）；恢复时 args 加 `resume: true`，壳按 state.json 的 problemId 匹配续跑（不再有 `resumeFrom`/`skipPhases` 机制）
@@ -96,7 +96,7 @@ DSH 的 `workflow` 工具参数为 `meta`（身份数据）+ `script`（纯 JS �
 
 Workflow 返回后汇报：状态与各阶段产物摘要（artifactSummary）、最近 ledger 行（ledgerTail）、state 路径、PDF 路径、**代码-论文数字对账**（运行最终代码，逐数字对比 stdout；重点：R²、窗口函数、零填充、AIC、不确定度）。
 
-若 Workflow 失败但核心产出已生成，手动兜底：摘要数字溯源→逐问标注检查→把 `intermediates/12-writing/paper-sections/section-*.md` 转成组装脚本读取的 `section-*.json`（首行 `# 章节名` → section，其余 → content；存 `13-final/sections-json/`，不改 12-writing 原产物）→`templates/assemble_from_template.py` 组装→`xelatex` 两遍。**此时按 `docs/writing-and-format.md` 的"论文模板要点/组装方式/内部规范"操作**——这部分内容只在失败手动兜底/审查产物时才需要，平时不用读。
+若 Workflow 失败但核心产出已生成，手动兜底：摘要数字溯源→逐问标注检查→把 `intermediates/12-writing/paper-sections/section-*.md` 转成组装脚本读取的 `section-*.json`（首行 `# 章节名` → section，其余 → content；存 `13-final/sections-json/`，不改 12-writing 原产物）→`templates/assemble_from_template.py` 组装→`xelatex` 两遍。**此时按 `<技能根>/docs/writing-and-format.md` 的"论文模板要点/组装方式/内部规范"操作**——这部分内容只在失败手动兜底/审查产物时才需要，平时不用读。
 
 ## 结果解读（workflow 返回）
 
@@ -113,7 +113,7 @@ Workflow 返回 `{ status, statePath, artifactSummary, ledgerTail, blocked? }`�
 - **degraded**：仅**显式可选**阶段降级 SKIPPED（如鲁棒性不适用）→ 结果可用，汇报时说明；**实质阶段** 2 次失败降级后 localComplete 产物核验 FAIL → write-start 门禁 FAIL → 整体 blocked（不是"仍可用但保守"）
 - **error**：`00-problem.json` 缺失（Stage 1 未落盘）或契约读不到 → 补 Step 5 落盘后重跑
 
-完整错误规范、写作/图表/格式/模板要求、内部 Common Mistakes 全部在 **`docs/writing-and-format.md`**。
+完整错误规范、写作/图表/格式/模板要求、内部 Common Mistakes 全部在 **`<技能根>/docs/writing-and-format.md`**。
 
 ## 输出目录结构
 
@@ -147,13 +147,13 @@ outputDir/
                                 #   + abstract-trace.md / judge-self-review.md / sections-json/
 ```
 
-> 说明：EDA 图存 `outputDir/figures/`（`fig_eda_*`）；求解/示意图在 `q{id}/08-visualization/figures/`；写作阶段按 figure-manifest 反向校验图文件真实存在（空 figure 是 P0 事故，详见 docs §二）。
+> 说明：EDA 图存 `outputDir/figures/`（`fig_eda_*`）；求解/示意图在 `q{id}/08-visualization/figures/`；写作阶段按 figure-manifest 反向校验图文件真实存在（空 figure 是 P0 事故，详见 `<技能根>/docs/writing-and-format.md` §2）。
 
 ## 注意事项
 
 - PDF 用 `pdftotext`，不用 `read` 工具；阶段一等确认，阶段二不打断
-- Workflow 内 agent 失败 → 降级继续；**不要编辑 `workflow` 脚本**（薄壳只做路由/门禁/收敛，业务逻辑在 `prompts/phase-*.md` 与 `docs/writing-and-format.md`——改这些才生效；DSH 运行不吃 SKILL.md）
-- **示意图用 vendored diagram-design skill**（本 skill 内 `tools/diagram-design/`，MIT 许可，上游 SHA 见其 `VENDOR.md`）：可视化/写作阶段优先用它画示意图（HTML→PNG，配方 `docs/flowchart-drawing.md`）；skill 缺失自动回退 matplotlib，不阻断
+- Workflow 内 agent 失败 → 降级继续；**不要编辑 `workflow` 脚本**（薄壳只做路由/门禁/收敛，业务逻辑在 `prompts/phase-*.md` 与 `<技能根>/docs/writing-and-format.md`——改这些才生效；DSH 运行不吃 SKILL.md）
+- **示意图用 vendored diagram-design skill**（本 skill 内 `tools/diagram-design/`，MIT 许可，上游 SHA 见其 `VENDOR.md`）：可视化/写作阶段优先用它画示意图（HTML→PNG，配方 `<技能根>/docs/flowchart-drawing.md`）；skill 缺失自动回退 matplotlib，不阻断
 - **中断恢复**：args 加 `resume: true`，壳按 `intermediates/state.json` 的 problemId 匹配续跑（gates∈{PASS, PASS_WITH_WARNING, SKIPPED} 自动跳过）；已无 `resumeFrom`/`skipPhases` 机制
 - **3 处门禁边界**：求解前（`q{id}.solve-start`：该问 04-formulation PASS）／写作前（`write-start`：所有小问 localComplete 且跨问复核 PASS）／终审前（`final-start`：writing 产物完整）；门禁 FAIL → 整体 blocked（含 detail），修正后 resume 续跑
 - **公式化子流程**：formulator → 三维自查 → 3 视角评审（judge/adversary/application，并行）⇄ 修订（full max3 轮 / quick max2 轮），评审全 PASS 即收束；未收敛 → blocked

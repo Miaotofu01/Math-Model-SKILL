@@ -232,7 +232,7 @@ def register(purpose: str, role: str = "other", inputs: Any = None, contract: st
 
 
 class BudgetExceeded(RuntimeError):
-    """预估成本超预算 —— 拒绝执行（按固定顺序缩规模后重试，见 docs/performance.md §6.1）。"""
+    """预估成本超预算 —— 拒绝执行（按固定顺序缩规模后重试，见 `<技能根>/docs/performance.md` §6.1）。"""
 
 
 def checkpoint_dir() -> Path:
@@ -281,7 +281,7 @@ def checkpoint_list(key: str) -> list[str]:
 def _shrink_hint(estimate: float, budget: float) -> str:
     return (f"预估 {estimate:.0f}s > 预算 {budget:.0f}s（超 {estimate / max(budget, 1e-9):.1f}×）→ 按固定顺序缩："
             f"① 窗长（缩到 ≈{100.0 * budget / max(estimate, 1e-9):.0f}% 或更短，前缀窗优先）② 档数 ③ 精度/样本；"
-            f"缩完把窗长/档数回写预注册条目，再带 --estimate 重跑（规则见 docs/performance.md §6.1）")
+            f"缩完把窗长/档数回写预注册条目，再带 --estimate 重跑（规则见 `<技能根>/docs/performance.md` §6.1）")
 
 
 def bootstrap_sys_path(pool_root: str | None = None) -> list[str]:
@@ -391,7 +391,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--purpose", default="")
     ap.add_argument("--role", default="other")
     ap.add_argument("--timeout", type=float, default=600.0)
-    ap.add_argument("--budget", type=float, default=None, help="单次调用墙钟预算（秒）；见 docs/performance.md §6.1")
+    ap.add_argument("--budget", type=float, default=None, help="单次调用墙钟预算（秒）；见 `<技能根>/docs/performance.md` §6.1")
     ap.add_argument("--estimate", type=float, default=None, help="预估成本（秒）= Σ档内步数 × 单步价")
     ap.add_argument("--force", action="store_true", help="忽略缓存强制重算")
     a = ap.parse_args(argv)

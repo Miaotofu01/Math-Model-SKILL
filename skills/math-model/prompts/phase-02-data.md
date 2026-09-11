@@ -6,7 +6,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§一-15 外部数据合规（铁律）、§一 数据分析统计工具箱（检验方法）、§二 图表规范（CJK 字体与命名）。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§1-15 外部数据合规（铁律）、§1 数据分析统计工具箱（检验方法）、§2 图表规范（CJK 字体与命名）。引用规范，不复制内容。
 
 ## 输入
 
@@ -33,7 +33,7 @@
 3. 读取确认结构（shape/列名/前几行），轻量清洗（去表头杂质、统一列名、utf-8），最终文件留在 pool/external-data/
 4. 记录到 `intermediates/q{id}/02-data/data-collection.json`：每条 {id, purpose, status: OK|NOT_FOUND, filePath, sourceUrl（精确到页面的真实 URL）, sourceTitle, fetchedAt（今天日期）, fields, notes（口径/单位/范围说明）}
 
-合规铁律（writing-and-format.md §一-15，违反会毁掉论文）：
+合规铁律（writing-and-format.md §1-15，违反会毁掉论文）：
 
 - 数据必须真实下载/抓取自可验证来源；**禁止凭空构造、近似、抄写论文示例数字**
 - 找不到可靠来源 → status=NOT_FOUND，写明尝试过哪些源、为什么没有；**绝不伪造数据替代**
@@ -47,9 +47,9 @@
 **必须实际运行 Python 并报告真实结果，禁止只写不跑。**
 
 1. **预处理**：读取全部附件与外部数据，检查 shape/缺失/类型/重复；清洗——缺失（删除/插补，记录数量）、异常值（3σ 或业务规则如负销量/量程外，记录剔除数量）、无关数据剔除（记录规则与数量）、单位/口径统一、多表关联与聚合规则；**每步输出处理规则 + 处理前后数量对比**
-2. **探索性统计分析**：针对题目目标——分布规律（量级与占比）、时间规律（时序趋势、ACF 周期性、必要时分解与 ADF 平稳性）、关系规律（Spearman/偏相关/分组对比，适合时关联规则 FP-Growth/卡方/Fisher 精确检验）、组间差异（t 检验/卡方）。**每个结论给检验方法 + 统计量 + p 值 + 样本量**；用 scipy.stats/statsmodels/mlxtend 库函数，禁止手写统计公式（工具箱见写作规范 §一）
-3. **EDA 图表**：保存到 outputDir 根 `figures/`，命名 `fig_eda_<内容>.png`；CJK 字体与命名规范按写作规范 §二（**结果图硬条款 §二-8 逐条自检**）。每张图回答一个数据问题
-   - **出图自检（P0 未清零不写 manifest）**：① 机械自检（EDA 绘图脚本落盘 `intermediates/q{id}/02-data/plot_eda.py`；命令在 outputDir 下执行）：`python <技能根>/scripts/figure_lint.py --py intermediates/q{id}/02-data/plot_eda.py --png figures/fig_eda_*.png`（`<技能根>` 见 `_common.md` §2.7），P0 清零；② **视觉复核**：用图像读取工具逐张看 PNG，按 §二-8 列缺陷（标签重叠/被裁、图例遮挡图元、尺度不可辨、图-题不符、刻度千分位）；图像读取工具不可用 → 在 manifest 自检行如实记「未执行 + 原因」，不重试不 FAIL；③ 两条结论写入 figure-manifest 的自检行
+2. **探索性统计分析**：针对题目目标——分布规律（量级与占比）、时间规律（时序趋势、ACF 周期性、必要时分解与 ADF 平稳性）、关系规律（Spearman/偏相关/分组对比，适合时关联规则 FP-Growth/卡方/Fisher 精确检验）、组间差异（t 检验/卡方）。**每个结论给检验方法 + 统计量 + p 值 + 样本量**；用 scipy.stats/statsmodels/mlxtend 库函数，禁止手写统计公式（工具箱见写作规范 §1）
+3. **EDA 图表**：保存到 outputDir 根 `figures/`，命名 `fig_eda_<内容>.png`；CJK 字体与命名规范按写作规范 §2（**结果图硬条款 §2-8 逐条自检**）。每张图回答一个数据问题
+   - **出图自检（P0 未清零不写 manifest）**：① 机械自检（EDA 绘图脚本落盘 `intermediates/q{id}/02-data/plot_eda.py`；命令在 outputDir 下执行）：`python <技能根>/scripts/figure_lint.py --py intermediates/q{id}/02-data/plot_eda.py --png figures/fig_eda_*.png`（`<技能根>` 见 `_common.md` §2.7），P0 清零；② **视觉复核**：用图像读取工具逐张看 PNG，按 §2-8 列缺陷（标签重叠/被裁、图例遮挡图元、尺度不可辨、图-题不符、刻度千分位）；图像读取工具不可用 → 在 manifest 自检行如实记「未执行 + 原因」，不重试不 FAIL；③ 两条结论写入 figure-manifest 的自检行
    - **逐图登记** `intermediates/q{id}/02-data/figure-manifest.md`（字段集见 `<技能根>/prompts/artifact-schemas.md` §2；写作阶段据此引用，不得靠 `ls` 碰运气）：字段与 08 对齐 —— 文件名 / 类型 / 一句话作用 / 数据来源 / 绘图方式 / 计划引用位点（数据分析章）
 4. **发现报告**（写入 eda.md）：
    - datasetFacts：各数据集事实（行数、时间范围、缺失/异常/剔除数量）

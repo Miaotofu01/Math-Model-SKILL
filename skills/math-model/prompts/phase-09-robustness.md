@@ -8,7 +8,7 @@
 
 ## 规范引用
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§一-8 灵敏度与稳健性。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖、实验预算）。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§1-8 灵敏度与稳健性。性能纪律见 `<技能根>/docs/performance.md`（可选加速、禁硬依赖、实验预算）。引用规范，不复制内容。
 
 > 公共纪律见 `_common.md`（壳与模板一并注入）。
 
@@ -55,7 +55,7 @@ Bootstrap 置信区间（关键估计值 ± 区间）、样本量是否支撑结
 
 **铁律：只基于真实实验，禁止编造数字或凭空添加扰动实验；某项无信息写「无」。实验失败/报错必须把原因与影响写进 robustness.md 相应小节（计入 robustnessStatements/weakestPoints），禁止用裸 err.log/日志文件留档（不留空日志文件）。**
 
-### 6. 性能与并行（可选，按 docs/performance.md）
+### 6. 性能与并行（可选，按 <技能根>/docs/performance.md）
 
 - 随机性：并行 worker 用从主种子派生的独立子流，结果与串行统计一致；需逐位一致时用「预生成索引 + 分块」。
 - **实验预算**：bootstrap B=500–1000（标准误收敛即可）；敏感性只打关键参数；消融每组件一个变体。

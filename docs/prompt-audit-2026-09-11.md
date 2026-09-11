@@ -417,7 +417,7 @@ EOF
 | 9 | `prompts/phase-04-formulation.md` A5 | 三次真事故都属此类：q1 `V7` 单位漏除、q3 r1 把 C 场 exchange 误取热交换系数 `h`、q4 外表面 Robin 面积因子漏 $R(t)$（差 50–83.5 倍） | 新增/修改的公式/系数/边界项**必须同处给出单位 + 适用域**，缺任一评审按「会得到错结论」处理 |
 | 10 | `prompts/phase-05-implementation.md` 可选加速 | （实测反而慢 5 倍） | **禁止 prange 内调用 `np.linalg.solve`/scipy 求解器**（并行域内 linalg 串行化） |
 | 11 | `prompts/_pool.md` 晋升阶梯 | 背景（勿重演）：上次 run 出现 **4 份同类 `core.py`、6 个核心函数各重复 3 次、同一口径的实现散在 6 个文件 18 处** | **第 2 次需要某口径时不得再写新副本**；进池判据与原位规则不变 |
-| 12 | 三份 `formulation-reviewer-*.md` A5（L6 去重时一并迁出） | （历史三例：单位漏除、场与 exchange 错配、面积因子漏 $R(t)$） | 同 #9（现集中在 `_common.md` §9.3 A5） |
+| 12 | 三份 `formulation-reviewer-*.md` A5（L6 去重时一并迁出） | （历史三例：单位漏除、场与 exchange 错配、面积因子漏 $R(t)$） | 同 #9（现集中在 `prompts/_review-common.md` §9.3 A5） |
 
 **检索备查**：`grep -rn "实测\|上次 run\|历史三例" skills/math-model/prompts/*.md` —— 瘦身后仅剩**工具/产物语义**上的"实测"（`_pool.md` 的 `--manifest` 出对拍值/实测耗时、`artifact-schemas.md`/`phase-06` 的 `perf` 真实测量值、`phase-07` 的"以实测为准"），不再有案例数字。
 
@@ -436,9 +436,11 @@ EOF
 **删掉的是**：逐条意见原文复述（需要时按表内「落点」回读评审文件与 `draft.md` 行号）、§x.3 独立小节（并入表内「落点」列）、历史归档小节。
 **没动的硬要求**：条目 ID 沿用原编号且**只增不改 / 历史轮不删**；**必须改与登记级的计数必须与表内行数一致**；**分级门槛不变（必须改＝改结论才阻塞）**。
 
-### 16.3 L6 三视角去重去向（原文留存于 `_common.md` §9）
+### 16.3 L6 三视角去重去向（原文留存于 `prompts/_review-common.md` §9）
 
-三份 `formulation-reviewer-*.md` 里**逐字相同**的段落已抽到 `_common.md` **§9 评审通用规则（评审/修订节点共用）**，模板只留本视角特有标准 + 指针：
+> **时效（2026-09-12 批 2）**：`§9 评审通用规则` 已随「注入面拆分③」从 `_common.md` 迁至 `prompts/_review-common.md`，编号仍为 §9；本节以下 `§9.x` 均指该文件。上表 16.1/16.2 中写作时点的「`_common` 新增 §9」属审计留痕，保留原样。
+
+三份 `formulation-reviewer-*.md` 里**逐字相同**的段落已抽到 `prompts/_review-common.md` **§9 评审通用规则（评审/修订节点共用）**，模板只留本视角特有标准 + 指针：
 
 | 原共用段落 | 现位置 |
 |---|---|

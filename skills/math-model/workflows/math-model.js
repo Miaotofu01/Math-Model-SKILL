@@ -7,7 +7,7 @@
 const A = typeof args === "object" && args ? args : {}
 const outDir = (A.outputDir || "math-model-output").replace(/^\.\/|\/+$/g, "")
 const IM = outDir + "/intermediates"
-const SD = A.templateDir ? A.templateDir.replace(/\/templates\/?$/, "") : "skills/math-model"   // 技能根：规范 docs/ 与工具 scripts/ 所在处
+const SD = A.templateDir ? A.templateDir.replace(/\/templates\/?$/, "") : "skills/math-model"   // 技能根：规范在 <技能根>/docs/、工具在 <技能根>/scripts/ 的那一级目录
 const PD = SD + "/prompts"
 const STRICT = A.innovationStrictness || "strict"
 let TRY = 2, RND = A.mode === "quick" ? 2 : 3   // 真值见 stage-manifest.json#retryPolicy（载入契约后覆盖）
@@ -30,7 +30,7 @@ async function ca(p, s, l) { try { return await agent(p, s ? { schema: s, label:
 async function rf(path) { const r = await ca(`Read ${path}; 存在输出内容，否则 "NOT_FOUND"。`, null); if (!r) return null; const t = typeof r === "string" ? r.trim() : JSON.stringify(r); return t === "NOT_FOUND" ? null : t }
 // boot 批量读的**摘要契约**：只取字段、不回吐文件正文。
 // 原因（实测）：read 工具单文件 50 KiB、单行 1500 字符硬截断，全量回吐 ⇒ 非 JSON ⇒ 整个 boot「全有或全无」；
-// 该文件集随探针累积单调增长（probes/manifest.json 曾达 148 KB / 116 KB），本项目因此启动失败 6 次（见 docs/pending-changes §4.4）。
+// 该文件集随探针累积单调增长（probes/manifest.json 曾达 148 KB / 116 KB），本项目因此启动失败 6 次（见仓库 `docs/pending-changes.md` §4.4）。
 const BOOT_SPEC = `输出 JSON 对象（**只取字段，禁止回吐文件正文**；任何字段都不得内联文件原文，超 8 KB 的内容一律摘要）：
 {"<完整路径>": <摘要>}
 - 00-problem.json → {"problemId":"<id>","questions":["1","2"]}（questions 取 analysis.subQuestions[].id，缺则取顶层 questions[]；字符串数组，保持原顺序）
@@ -96,7 +96,7 @@ function buildAssets(boot) {
   return `可复用资产（先查再用；已有同口径实现禁止重写）：${a}；${c}；${b}；清单/用法见 _common.md §4、§2.6`
 }
 
-// 06/09：核验成本纪律（字面注入，防散文漂移；规则全文见 docs/performance.md §6.1）
+// 06/09：核验成本纪律（字面注入，防散文漂移；规则全文见 <技能根>/docs/performance.md §6.1）
 const COSTLINE = s => ["computation", "robustness"].includes(s)
   ? `核验成本纪律（**必须执行，非建议**）：嵌套核验（阶梯/扫参/对拍/bootstrap）**先估后跑**——用 ≤30 s 标定跑量测出单步价 → 算预估总成本 → 与预算 min(≤15 分钟, 8× 本问生产主体墙钟) 比较；调用带 「--budget <秒> --estimate <预估秒>」（超预算会被拒绝并给缩窗建议）；超预算按 **缩窗（前缀窗优先）→ 减档 → 降精度** 固定顺序缩，窗长/档数变更回写 draft/baseline-registry.md 的预注册条目；**逐档落盘** pc.checkpoint_put(key,"<档名>",payload)、重跑先 pc.checkpoint_get 跳过已完成档（kill 不作废）；档间无依赖时并行；perf 写 costEstimate_s/budget_s/tiers/shrink。规则全文 ${SD}/docs/performance.md §6.1`
   : ""

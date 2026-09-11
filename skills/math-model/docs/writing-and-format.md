@@ -10,7 +10,7 @@
 
 ---
 
-## §〇 文档即共享（数据流总则）
+## §0 文档即共享（数据流总则）
 
 **Stage 1（提纯/审题/选题，主 agent 编排）** 与 **Stage 2（workflow 13 阶段逐问串行）** 之间的数据流统一为**落盘文档**：
 
@@ -18,11 +18,11 @@
 |---|---|---|---|
 | Stage 1 结构化产物（题目原文/数据画像/论文规则/审题JSON/附件清单） | `intermediates/00-problem.json` | 主 agent（SKILL.md Step 5，预先落盘可审查；**唯一写入方，无兜底**） | workflow 启动只读它（小问列表唯一来源）；缺失即 workflow error，不会自动补写 |
 
-> **为什么 Stage 1 也落盘**：旧设计 Stage 1 产物只存在于 workflow 的 `args.problem` 参数里（内存传参，无文件记录）——无法追溯、中断后无据可查。现改为 `<outputDir>/intermediates/00-problem.json` 为唯一权威（结构见 SKILL.md Step 5），workflow 启动只读它；**无兜底**——主 agent 必须在 Step 5 真实落盘并确认，缺失则 workflow 直接返回 error（不会从 args 补写）。已移除机制（不再存在）：`ensure-stage1-doc`/`load-stage1` 自动补写、`args.problem` fallback、workflow 生成的 `00-problem.md` 全文共享载体——题面一律以 `00-problem.json` 为准。
+> **为什么 Stage 1 也落盘**：设计依据与已移除机制见文末「附录：依据与案例」。
 
 ---
 
-## §一 论文写作规范
+## §1 论文写作规范
 
 1. **摘要按子问题分段**：「对于问题1，…对于问题2，…」每个子问题给出方法+**具体数值结论**（`$\bm{...}$` 加粗）。末段一句话总结。末尾 `\textbf{关键词：}...`。
 2. **加粗只加答案**：只加粗答案关键词和核心数值，不加粗整句叙述。
@@ -44,7 +44,7 @@
     - 数据出处记录在 `intermediates/q{id}/02-data/data-collection.json`（按小问），写作/审查 agent 直接 Read。
 16. **题面文档（文档即共享的"输入"端）**：题目原文 / 附件数据画像 / 论文规则三个"输入"在 Stage 1 由主 agent 落盘到 `intermediates/00-problem.json`（唯一权威，见 SKILL.md Step 5）。此后所有下游 agent **不再内联题面**——凡任务涉及题目细节（题意/数据/规则/结论依据）一律先 `Read 00-problem.json`，与 EDA 报告、稳健性报告等中间产物同一套"文档即共享"机制；写作/审查/兜底时也照此从该文件取题目原文。（旧设计另有 workflow 生成的 `00-problem.md` 全文共享载体，该机制已移除，不再存在。）
 
-### 数据分析统计工具箱（数据题常用）
+### §1.1 数据分析统计工具箱（数据题常用）
 
 数据预处理 / 探索性分析 / 验证里常用（用 `scipy.stats` / `statsmodels` / `mlxtend`，不手写统计公式；每个结论给**检验方法 + 统计量 + p 值 + 样本量**）：
 
@@ -54,19 +54,19 @@
 - **关联规则**：FP-Growth、卡方独立性检验、Fisher 精确检验——看品类/属性间关联。
 - **组间差异**：t 检验、卡方检验——看组间差异是否显著。
 
-## §二 图表生成规范
+## §2 图表生成规范
 
 1. **CJK 字体**：`font.sans-serif = ['Noto Sans CJK SC', 'DejaVu Sans']` + `font.family = 'sans-serif'` + `axes.unicode_minus = False`。测试用中文文本。
 2. **LaTeX math 单位**：`cm$^{-1}$`、`A$_2$/A$_1$`，禁止 Unicode 上下标。
 3. **mathtext 启用**：`mathtext.default = 'regular'`。
 4. **附录浮动体 `[H]`**：附录图表用 `[H]`（`\usepackage{float}`），正文用 `[htbp]`。
 5. **验证**：检查无 `Glyph.*missing from font` 警告。
-6. **示意图由写作阶段按需生成（治「论文无图」）**：图表不只展示数据，更辅助理解——几何示意、方法流程图、方案示意图、结构图、区域划分图等**只有写作阶段才想得出**，写作 agent 若发现本章需要这类图而 `figures/` 没有，**优先用 diagram-design skill 画**（HTML→PNG，图注放图下方小字浅色 12px #6b7280 居中，完整配方 `docs/flowchart-drawing.md`）；skill 缺失或失败 → 回退 python3 + matplotlib 自绘：
+6. **示意图由写作阶段按需生成（治「论文无图」）**：图表不只展示数据，更辅助理解——几何示意、方法流程图、方案示意图、结构图、区域划分图等**只有写作阶段才想得出**，写作 agent 若发现本章需要这类图而 `figures/` 没有，**优先用 diagram-design skill 画**（HTML→PNG，图注放图下方小字浅色 12px #6b7280 居中，完整配方 `<技能根>/docs/flowchart-drawing.md`）；skill 缺失或失败 → 回退 python3 + matplotlib 自绘：
    - 命名：`fig_{子问题ID}_示意图_{内容}.png`（跨问题 `fig_cross_示意图_...`、EDA 章 `fig_eda_...`）；保存 `figures/` 目录，`dpi=200, bbox_inches='tight'`，保存后 `ls` 确认存在；diagram-design 路径另存同名 `.html` 源文件。
    - 文中用绝对路径 `\includegraphics{<outputDir>/figures/fig_xxx.png}` 引用，并配「如图X所示…」的解读句。
    - **禁止空 figure 环境**（有 caption 无图）；每张图必须能被一句话解释作用。
    - 优秀范例（历年论文中的常见类型）：积分区域示意图、方法/流程示意图、时距图——共性是「图本身就是一层解释」，而非数据罗列。
-7. **结果图（代码阶段）与示意图分工**：代码 agent 只负责数据结果图（曲线/对比/分布）；解释思路的示意图优先用 diagram-design skill（`docs/flowchart-drawing.md`），可视化/写作阶段按需补画，二者互不阻塞。
+7. **结果图（代码阶段）与示意图分工**：代码 agent 只负责数据结果图（曲线/对比/分布）；解释思路的示意图优先用 diagram-design skill（`<技能根>/docs/flowchart-drawing.md`），可视化/写作阶段按需补画，二者互不阻塞。
 8. **结果图硬条款（12 条，逐条自检；机械项由 `scripts/figure_lint.py` 检出）**：
    1. **标题**：禁止 `ax.set_title`（图意由图注承担）；确需时只允许一句话，且不得含「问题N」「innov」「域外必查」等内部编号与术语
    2. **图例完整性**：每种颜色/线型/标记/填充区间都必须进图例或在图内标注；禁止只在标题里解释颜色
@@ -86,7 +86,7 @@
    - 写作阶段兜底自绘示意图 → 根 `figures/fig_cross_示意图_*.png`（manifest 追加一行）
    - `05-implementation/code/outputs/figures/`、`06-computation/figures/` 是**工作图**（中间产物，不进论文）；`\includegraphics` 只允许指向上面前三处
 
-## §三 CUMCM 格式
+## §3 CUMCM 格式
 
 - 摘要专用页，**禁止 `\maketitle`**；正文从下页开始，**禁止目录**，≤20页
 - A4/2.5cm 页边距，页码从摘要页阿拉伯数字连续编号，页脚中部
@@ -99,7 +99,7 @@
 - 全文（含 Summary 页）≤25 页；参考文献按 **APA 风格**；**不写关键词**；无身份信息
 - 终审自拼英文 preamble 后两遍 xelatex 编译（正文各章仍用写作产物；步骤见 phase-13-finalReview.md「MCM 说明」）
 
-## §四 论文模板要点（2026-08 实战经验固化）
+## §4 论文模板要点（2026-08 实战经验固化）
 
 **模板文件：** `templates/cumcm-paper.tex` + `templates/assemble_from_template.py`（skill 自带）
 
@@ -116,15 +116,15 @@
 **组装方式：** `python3 templates/assemble_from_template.py --template templates/cumcm-paper.tex --sections <sections目录> --output paper/paper.tex [--references ...] [--suspect-json ...] [--code-dir ...] [--materials ...]`
 占位符：`@TITLE@/@PAPER_TITLE@/@SUBTITLE@/@ABSTRACT@/@BODY@/@REFERENCES@/@MATERIALS@/@SUSPECT_LISTS@/@CODE_ENTRIES@`；模板头部注释中的说明文字**不得含 @ 包裹的占位符**（replace 会污染注释区）。
 
-## §五 创新链条
+## §5 创新链条
 
 > **说明**：以下为**完整 / 非机理题**的链条。**机理/物理题（A 类）通常无文献调研、无 baseline 对比、无刻意"创新点"**——以机理推导 + 逐问分析 + 清晰写作取胜（历年国一机理论文即属此类）。此时可省略 `文献局限→Gap→探索性方案→baseline 对比` 环节，保留主线 `问题分析 → 建模（机理推导+模型检验）→ 写作 → 终审` 即可。
 
 问题分析(逐问机理) → EDA数据发现(数据题) → 文献局限分析 → **Gap 驱动创新** → 建模方案（formulator：方案 + baseline 预注册 + 三维自查）→ **3 视角评审团**（judge/adversary/application）⇄ 修订 loop → baseline 同场对比（数值门禁）→ Sanity 数值门禁 → 鲁棒性（显式可选）→ 小问完成（事实链定稿）→ 跨问复核 → 叙事大纲 → 交叉审查⇄修复 loop → 终审。**每步喂给下一步，创新贯穿始终而非后期硬贴；问题分析与数据发现是"正确性第一"的根基——建模选择必须建立在机理理解和数据证据之上。**
 
-## §六 内部 Common Mistakes（workflow 内部 agent 需避免 / 审查产物时对照）
+## §6 内部 Common Mistakes（workflow 内部 agent 需避免 / 审查产物时对照）
 
-### 致命级
+### §6.1 致命级
 | 失败模式 | 症状 | 防护 |
 |----------|------|------|
 | 内容缺失/结构倒置 | 章节少、空白、"结论"在第1节 | 写作阶段逐轮验证 |
@@ -136,19 +136,25 @@
 | 摘要未按子问题分段 | 评委找不到每个子问题解答 | 摘要 prompt 结构化分段 |
 | 加粗过度 | 大段加粗分不清重点 | 只加粗答案关键词+数值 |
 | 图表CJK字体缺失 | 中文标签渲染为方框 | Noto Sans CJK SC；中文测试字体 |
-| 论文无图/空figure环境 | 只有 caption 没有图，或正文一张图都没有 | 写作阶段自绘示意图（§二-6）；交叉审查反向检查 includegraphics 文件真实存在 |
-| 术语堆砌/无推导链（AI味） | 论文读起来像技术白皮书：堆术语、直接甩公式、啰嗦铺垫 | §一-13 写作范式（动机→推导→含义；一段≤3未解释术语）；交叉审查 9/10 条 |
-| 编造外部数据 | 无附件时建模 agent 自己"构造"数据，评委查来源必挂 | 数据探索阶段（`prompts/phase-02-data.md`）数据收集（真实下载+来源URL+日期）；§一-15；找不到标 NOT_FOUND 明说 |
-| 外部数据无出处 | 论文引用了外部数据但没写来源 | §一-15；data_analysis 章 Read `q{id}/02-data/data-collection.json` 并列出来源 |
+| 论文无图/空figure环境 | 只有 caption 没有图，或正文一张图都没有 | 写作阶段自绘示意图（§2-6）；交叉审查反向检查 includegraphics 文件真实存在 |
+| 术语堆砌/无推导链（AI味） | 论文读起来像技术白皮书：堆术语、直接甩公式、啰嗦铺垫 | §1-13 写作范式（动机→推导→含义；一段≤3未解释术语）；交叉审查 9/10 条 |
+| 编造外部数据 | 无附件时建模 agent 自己"构造"数据，评委查来源必挂 | 数据探索阶段（`prompts/phase-02-data.md`）数据收集（真实下载+来源URL+日期）；§1-15；找不到标 NOT_FOUND 明说 |
+| 外部数据无出处 | 论文引用了外部数据但没写来源 | §1-15；data_analysis 章 Read `q{id}/02-data/data-collection.json` 并列出来源 |
 
-### 严重级
+### §6.2 严重级
 | 失败模式 | 症状 | 防护 |
 |----------|------|------|
 | 求解阶段反复失败 | 同一阶段连续 2 次失败不收敛 | 失败收敛：第 2 次改策略重试（缩小范围/先产最小版），仍失败 → 降级 SKIPPED；实质阶段降级后 localComplete 产物核验 FAIL → write-start 门禁 FAIL → 整体 blocked |
 | 公式化反复失败 | 评审轮次用尽仍不收敛（full max3 轮 / quick max2 轮） | 公式化未收敛 → 整体 blocked；第 2 次起改策略（重写主线/调假设） |
 | 图表未引用 | 生成图但论文没用 | 写作阶段图表引用检查 |
-| 创新未在正文呼应 | Gap/评审确认的创新没进正文各章 | 写作按 fact-sheet/draft 取材；交叉审查第 4 条创新呼应；创新自然融入描述（§一-3/13 禁标签） |
+| 创新未在正文呼应 | Gap/评审确认的创新没进正文各章 | 写作按 fact-sheet/draft 取材；交叉审查第 4 条创新呼应；创新自然融入描述（§1-3/13 禁标签） |
 | 标签式强调 | 「创新点：」等使论文像技术报告 | 禁止标签；创新自然融入描述 |
-| 内部流程字样泄漏 | 正文出现「对抗性审查/模型重设计/adversarialFindings」 | §一-14；交叉审查第 8 条（→P1 改写为论文语言） |
+| 内部流程字样泄漏 | 正文出现「对抗性审查/模型重设计/adversarialFindings」 | §1-14；交叉审查第 8 条（→P1 改写为论文语言） |
 | 图表Unicode上下标 | `cm⁻¹` 渲染方框 | LaTeX math: `cm$^{-1}$` |
 | 附录浮动体堆积 | 图片消失/堆积末尾 | 附录 `[H]`，正文 `[htbp]` |
+
+## 附录：依据与案例
+
+### 依据：Stage 1 也落盘的原因与已移除机制（原 §0）
+
+> **为什么 Stage 1 也落盘**：旧设计 Stage 1 产物只存在于 workflow 的 `args.problem` 参数里（内存传参，无文件记录）——无法追溯、中断后无据可查。现改为 `<outputDir>/intermediates/00-problem.json` 为唯一权威（结构见 SKILL.md Step 5），workflow 启动只读它；**无兜底**——主 agent 必须在 Step 5 真实落盘并确认，缺失则 workflow 直接返回 error（不会从 args 补写）。已移除机制（不再存在）：`ensure-stage1-doc`/`load-stage1` 自动补写、`args.problem` fallback、workflow 生成的 `00-problem.md` 全文共享载体——题面一律以 `00-problem.json` 为准。

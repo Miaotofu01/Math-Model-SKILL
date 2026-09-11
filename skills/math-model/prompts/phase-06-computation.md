@@ -8,7 +8,7 @@
 
 先 Read `<技能根>/prompts/artifact-schemas.md`（results.json 契约，本阶段产物按它写）。
 
-规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§二 图表生成规范（代码含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
+规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md` §2.7）。本节相关：§2 图表生成规范（代码含绘图语句时按 §2-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `<技能根>/docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
 
 ## 输入
 
@@ -40,8 +40,7 @@
 （**schema 见 `<技能根>/prompts/artifact-schemas.md` §1**——本阶段按该契约写；字段名/结构以那份为准）
 ```
 
-### 5. 性能与耗时记录（按 docs/performance.md，可选加速）
-### 5. 性能与耗时记录（按 docs/performance.md，可选加速）
+### 5. 性能与耗时记录（按 <技能根>/docs/performance.md，可选加速）
 
 - 运行前探测可用加速（numba/joblib/cupy/torch，**可选**；缺失自动回退纯 numpy/scipy，绝不因依赖缺失 FAIL）。
 - **单次求解/核验预算**：≤15 分钟**且** ≤8× 本问生产主体墙钟（取小）；**先估后跑**（估算式 + ≤30 s 标定片段见 `<技能根>/docs/performance.md` §6.1），预估超预算 → 按 **缩窗 → 减档 → 降精度** 固定顺序缩，禁止「先跑再看」；确实超时 → 如实记录（不伪造、不无限等待）。

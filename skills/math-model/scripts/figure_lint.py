@@ -3,9 +3,9 @@
 """figure_lint —— 数模竞赛产物图机械自检（单文件；仅 stdlib + 可选 PIL/numpy）
 
 用途：检查 math-model skill 的两类产物图是否符合内部规范——
-  示意图/流程图（diagram-design 的 同名 .html（内联 svg）+ 2x PNG）→ docs/flowchart-drawing.md：
+  示意图/流程图（diagram-design 的 同名 .html（内联 svg）+ 2x PNG）→ <技能根>/docs/flowchart-drawing.md：
   §2 皮肤 token / §3 4px 网格·正交连线·标签遮罩间隙 6-10px / §4 图注 12px #6b7280 居中 /
-  §5 字体 / §7 Chrome 2x 截图；matplotlib 结果图（plot_q*.py 的 PNG）→ docs/writing-and-format.md §二。
+  §5 字体 / §7 Chrome 2x 截图；matplotlib 结果图（plot_q*.py 的 PNG）→ <技能根>/docs/writing-and-format.md §2。
 
 用法：
   /usr/bin/python3 skills/math-model/scripts/figure_lint.py \\
