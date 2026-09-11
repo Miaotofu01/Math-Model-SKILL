@@ -194,7 +194,7 @@ else {
   if (!fp.includes("q1.formulation.finalize")) fails.push("收束提示词未给出固定 ledger 键")
 }
 // 阶段/评审模板的边界口径（静态）：draft 只覆盖本小问、假设只认最新版、评审不要求跨问展开
-const p04 = readFileSync(PD + "/phase-04-formulation.md", "utf8")
+const p04xs = readFileSync(PD + "/phase-04-formulation.md", "utf8")
 if (!p04.includes("只做本小问")) fails.push("phase-04 未声明「只做本小问」边界")
 if (!p04.includes("禁止据旧版建模")) fails.push("phase-04 未写明假设只认最新版")
 const pj = readFileSync(PD + "/formulation-reviewer-judge.md", "utf8")
@@ -295,12 +295,26 @@ for (const s of ["先估后跑", "costEstimate_s", "checkpoint_put"]) {
 const p07 = readFileSync(PD + "/phase-07-sanity.md", "utf8")
 if (!p07.includes("costEstimate_s") || !p07.includes("8×")) fails.push("phase-07 未把核验成本账列入核查")
 if (!pc.includes("成本纪律（所有探针")) fails.push("_common §5.2 未加探针成本纪律")
+
 // 路径与环境四律（A 项落地）：present/工具调用绝对路径 + 解释器 + 池导入 + 临时目录
 if (!pc.includes("路径与环境四律")) fails.push("_common 未加「路径与环境四律」")
 for (const s of ["绝对路径", "present", "禁止裸 `python3`", "bootstrap_sys_path", ".mm-tmp", "影子目录"]) {
   if (!pc.includes(s)) fails.push("路径与环境四律缺要素：" + s)
 }
 const wf = readFileSync(SKILL + "/workflows/math-model.js", "utf8")
+// 该严/该松六项落地（A2/A5/B1/B2/B4 + B3）：静态断言
+const p04xs = readFileSync(PD + "/phase-04-formulation.md", "utf8")
+const prjxs = readFileSync(PD + "/formulation-reviewer-judge.md", "utf8")
+for (const [where, txt, kws] of [
+  ["_common 路径四律", pc, ["路径与环境四律"]],
+  ["phase-04 A2 结转", p04xs, ["未结转项", "finalize"]],
+  ["phase-04 A5 量纲", p04xs, ["量纲与作用域随公式声明", "适用域"]],
+  ["reviewer B2 最短复现路径", prjxs, ["最短复现路径"]],
+  ["reviewer B4 精读", prjxs, ["r≥2 的读法", "跨节一致性抽查"]],
+  ["reviewer A5 检查项", prjxs, ["量纲/作用域检查"]],
+  ["壳 A2 结转", wf, ["未结转项", "结转条数"]],
+  ["壳 B1 重写例外", wf, ["整节或整篇重写"]],
+]) for (const k of kws) if (!txt.includes(k)) fails.push(`该严/该松六项：${where} 缺 ${k}`)
 if (!wf.includes("COSTLINE") || !wf.includes("--budget")) fails.push("壳未字面注入核验成本纪律")
 const pcsrc = readFileSync(SKILL + "/scripts/probe_cache.py", "utf8")
 if (!pcsrc.includes("BudgetExceeded") || !pcsrc.includes("def checkpoint_put")) fails.push("probe_cache 缺预算预检/分档落盘")

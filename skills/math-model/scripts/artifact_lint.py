@@ -15,6 +15,9 @@
   与 `intermediates/12-writing/fact-sheet.md`（全篇唯一数字来源）。
 - 关键数字 = 有效数字 ≥5 位，或 ≥4 位整数（年份除外）。
 - 同一关键数字在**其它产物**中出现 ≥3 处 → P0（口径分叉，必须收敛到 results.json，改锚点引用）。
+  - **B3 收窄（结论量 vs 结构性数字）**：仅当该数字的来源键属**结论量**（时长/温度/浓度/误差/偏差/阈值/余量/最大最小/占比…）才判 P0；
+    **网格/步长/单元数/步数/配置（`n_cells`/`n_internal_steps`/`max_substeps`/`dt_*`…）与单位换算常数（60/3600/86400…）只判 P1**。
+    依据：这些结构性数字曾被长期挂 8 条 P0（1024/2446/4000/3600/12960…）而无人整改 ⇒ 告警疲劳，反而掩盖真分叉。
 - 降级模式（找不到任何 results.json）：对所有产物做同样的散落统计，剔除题面给定常量（`00-problem.json` 内出现过的数字）。
 
 额外检查
@@ -121,6 +124,56 @@ def is_key_number(n: str) -> bool:
 
 def is_year(n: str) -> bool:
     return "." not in n and len(n) == 4 and 1900 <= int(n) <= 2100
+
+
+# ---- B3：结论数字 vs 结构性数字（收窄 number.scattered 的 P0 范围）----
+CONCLUSION_HINTS = ("t_dry", "t_cross", "dryness", "duration", "err", "rel", "loss", "margin",
+                    "target", "threshold", "C_max", "C_min", "T_max", "T_min", "temperature", "concentration",
+                    "温度", "浓度", "时长", "误差", "偏差", "阈值", "余量", "达标", "均值", "平台", "°c")
+GENERIC_KEYS = {"value", "values", "note", "notes", "detail", "details", "label", "labels", "text",
+                "desc", "description", "summary", "comment", "keyvalues", "purpose", "reason", "reasons"}
+CONFIG_HINTS = ("n_cells", "n_internal_steps", "n_steps", "internal_steps", "substeps", "max_substeps",
+                "dt_", "dr_", "dxi", "picard", "iterations", "bytes", "rows", "n_rows", "n_dist", "cols",
+                "cells", "steps", "version",
+                "网格", "单元", "步长", "步数", "行数", "列数", "分辨率", "区间", "窗口")
+UNIT_CONSTANTS = {"60", "100", "1000", "1800", "3600", "14400", "43200", "86400", "259200"}
+
+
+def _has_hint(blob: str, hints) -> bool:
+    for h in hints:
+        if re.search(r"[A-Za-z]", h):
+            if re.search(r"(?<![a-z0-9_])" + re.escape(h) + r"(?![a-z0-9])", blob):
+                return True
+        elif h in blob:
+            return True
+    return False
+
+
+def collect_number_contexts(root: Path, single_paths: list) -> dict:
+    """数字 → 上下文：**优先来源键名**（`"key":`），无键名时才退回整行文本。
+
+    只用键名可避免「同一行既有配置键又有结论词」把结构数字误判成结论量 —— 这是 B3 收窄的关键。
+    """
+    out: dict = defaultdict(set)
+    for rel in single_paths:
+        for line in read_text(root / rel).splitlines():
+            ks = {k.lower() for k in re.findall(r'"([A-Za-z_][A-Za-z0-9_]{1,40})"\s*:', line)}
+            sig = ks - GENERIC_KEYS          # 只认有信息量的键名；`"value"/"note"` 之类退回整行
+            for n in numbers_with_lines(line):
+                out[n] |= sig
+                if not sig:
+                    out[n].add(line.lower())
+    return out
+
+
+def classify_number(n: str, ctx) -> tuple:
+    """B3：返回 (level, note)。结论量 → P0；结构性/换算类 → P1（只提示，不阻塞）。"""
+    if n in UNIT_CONSTANTS:
+        return "P1", "（单位换算常数，非结论量）"
+    blob = " ".join(ctx)
+    if _has_hint(blob, CONFIG_HINTS) and not _has_hint(blob, CONCLUSION_HINTS):
+        return "P1", "（结构性数字：网格/步长/步数/配置，非结论量——仅提示）"
+    return "P0", ""
 
 
 def iter_files(root: Path):
@@ -355,6 +408,7 @@ def main(argv: list[str] | None = None) -> int:
     scan_root = inter if inter.is_dir() else root
 
     single_keys, single_paths = collect_single_source(scan_root)
+    num_ctx = collect_number_contexts(scan_root, single_paths)
     givens = collect_problem_givens(scan_root)
     keys = single_keys - givens  # 题面给定常量不算「关键结果数字」；无真源时退化为全量扫描
     mode = "真源模式" if keys else "降级模式（未找到可用真源数值）"
@@ -379,14 +433,15 @@ def main(argv: list[str] | None = None) -> int:
     for n, locs in sorted(places.items(), key=lambda kv: (-len(kv[1]), kv[0])):
         files = sorted({f for f, _ in locs})
         if len(locs) >= args.min_places:
+            level, note = classify_number(n, num_ctx.get(n, set()))
             findings.append({
-                "level": "P0",
+                "level": level,
                 "check": "number.scattered",
                 "number": n,
                 "places": len(locs),
                 "files": files,
                 "locations": [f"{f}:{ln}" for f, ln in locs],
-                "detail": f"关键数字 {n} 在 {len(files)} 份产物 / {len(locs)} 处出现（唯一真源应为 results.json，其余改锚点引用）",
+                "detail": f"关键数字 {n} 在 {len(files)} 份产物 / {len(locs)} 处出现（唯一真源应为 results.json，其余改锚点引用）{note}",
             })
 
     # 正文数字是否有源（仅真源模式，P1）
