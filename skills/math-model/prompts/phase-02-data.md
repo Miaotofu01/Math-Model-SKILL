@@ -50,7 +50,7 @@
 2. **探索性统计分析**：针对题目目标——分布规律（量级与占比）、时间规律（时序趋势、ACF 周期性、必要时分解与 ADF 平稳性）、关系规律（Spearman/偏相关/分组对比，适合时关联规则 FP-Growth/卡方/Fisher 精确检验）、组间差异（t 检验/卡方）。**每个结论给检验方法 + 统计量 + p 值 + 样本量**；用 scipy.stats/statsmodels/mlxtend 库函数，禁止手写统计公式（工具箱见写作规范 §一）
 3. **EDA 图表**：保存到 outputDir 根 `figures/`，命名 `fig_eda_<内容>.png`；CJK 字体与命名规范按写作规范 §二（**结果图硬条款 §二-8 逐条自检**）。每张图回答一个数据问题
    - **出图自检（P0 未清零不写 manifest）**：① 机械自检（EDA 绘图脚本落盘 `intermediates/q{id}/02-data/plot_eda.py`；命令在 outputDir 下执行）：`python <技能根>/scripts/figure_lint.py --py intermediates/q{id}/02-data/plot_eda.py --png figures/fig_eda_*.png`（`<技能根>` 见 `_common.md` §6），P0 清零；② **视觉复核**：用图像读取工具逐张看 PNG，按 §二-8 列缺陷（标签重叠/被裁、图例遮挡图元、尺度不可辨、图-题不符、刻度千分位）；图像读取工具不可用 → 在 manifest 自检行如实记「未执行 + 原因」，不重试不 FAIL；③ 两条结论写入 figure-manifest 的自检行
-   - **逐图登记** `intermediates/q{id}/02-data/figure-manifest.md`（写作阶段据此引用，不得靠 `ls` 碰运气）：字段与 08 对齐 —— 文件名 / 类型 / 一句话作用 / 数据来源 / 绘图方式 / 计划引用位点（数据分析章）
+   - **逐图登记** `intermediates/q{id}/02-data/figure-manifest.md`（字段集见 `<技能根>/prompts/artifact-schemas.md` §2；写作阶段据此引用，不得靠 `ls` 碰运气）：字段与 08 对齐 —— 文件名 / 类型 / 一句话作用 / 数据来源 / 绘图方式 / 计划引用位点（数据分析章）
 4. **发现报告**（写入 eda.md）：
    - datasetFacts：各数据集事实（行数、时间范围、缺失/异常/剔除数量）
    - cleaningDecisions：清洗决策列表（step / rule / removedCount / rationale）

@@ -210,6 +210,19 @@ for (const r of ["formulation-reviewer-judge.md", "formulation-reviewer-adversar
   if (!rt.includes("产物体量与读入范围") || !rt.includes("可机械复核三件套")) fails.push(r + " 未写明评审文件瘦身与读入范围")
   if (!rt.includes("revision-log.md")) fails.push(r + " 未指向 revision-log.md（处置表已移出 draft）")
 }
+{
+  const implP = (stubPrompts[calls.indexOf("run:q1.implementation")] || "")
+  const litP = (stubPrompts[calls.indexOf("run:q1.literature")] || "")
+  if (calls.indexOf("run:q1.implementation") >= 0 && !implP.includes("_pool.md")) fails.push("写代码阶段未注入 _pool.md")
+  if (calls.indexOf("run:q1.literature") >= 0 && litP.includes("_pool.md")) fails.push("非代码阶段误注入 _pool.md")
+}
+const p06c = readFileSync(PD + "/phase-06-computation.md", "utf8")
+if (!p06c.includes("artifact-schemas.md")) fails.push("phase-06 未指向 artifact-schemas.md 契约")
+const p10c = readFileSync(PD + "/phase-10-localComplete.md", "utf8")
+if (!p10c.includes("artifact-schemas.md")) fails.push("phase-10 未指向 artifact-schemas.md 契约")
+const manRP = JSON.parse(readFileSync(PD + "/stage-manifest.json", "utf8")).retryPolicy
+if (!manRP || manRP.stageAttempts !== 2 || !manRP.formulationRounds) fails.push("stage-manifest 缺 retryPolicy")
+if (!body.includes("RP.formulationRounds")) fails.push("壳未从 retryPolicy 读轮次")
 const p12 = readFileSync(PD + "/phase-12-writing.md", "utf8")
 for (const s of ["q{id}/07-sanity/", "q{id}/09-robustness/", "q{id}/02-data/eda.md", "q{id}/01-literature/lit-verify.md"]) {
   if (!p12.includes(s)) fails.push("phase-12 §输入 缺前缀：" + s)

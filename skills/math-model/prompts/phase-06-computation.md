@@ -6,6 +6,8 @@
 
 ## 规范引用
 
+先 Read `<技能根>/prompts/artifact-schemas.md`（results.json 契约，本阶段产物按它写）。
+
 规范引用：先 Read `<技能根>/docs/writing-and-format.md`（技能根见 `_common.md §6`）。本节相关：§二 图表生成规范（代码含绘图语句时按 §二-1/2/3/5 配置 CJK 字体与单位写法）。性能纪律见 `docs/performance.md`（可选加速、禁硬依赖）。引用规范，不复制内容。
 
 ## 输入
@@ -24,7 +26,7 @@
 
 ### 2. 运行错误 → 迭代修复循环
 
-报错 → 读错误信息 → 修改代码（code/ 下写新版本 `solution_v2.py`…，保留版本链）→ 重跑，直到跑通；每轮错误与修复记入 results.json 的 fixHistory。修复轮数上限：full 3 轮 / quick 1 轮；仍失败 → 返回 FAIL 写明原因，**不伪造结果**。
+报错 → 读错误信息 → 修改代码（code/ 下写新版本 `solution_v2.py`…，保留版本链）→ 重跑，直到跑通；每轮错误与修复记入 results.json 的 fixHistory。修复轮数上限见 `stage-manifest.json#retryPolicy.repairRounds`（当前由你在单次调用内自行控制，壳不强制）；仍失败 → 返回 FAIL 写明原因，**不伪造结果**。
 
 ### 3. baseline 同场计算（必须）
 
@@ -33,34 +35,10 @@
 ### 4. 结果落盘 intermediates/q{id}/06-computation/results.json
 
 ```json
-{
-  "runs": {"finalScript": "<本次最终实际执行的脚本文件名>", "mode": "<ctx 的 full|quick，按实际填>"},
-  "results": {
-    "<分点>": {
-      "summary": "具体数值结论（禁「待实现」「见代码」）",
-      "keyValues": [{"label": "...", "value": "..."}]
-    }
-  },
-  "solver": {"status": "...", "iterations": 123, "mip_gap": null,
-             "constraintResiduals": {}, "timeLimitHit": false},
-  "seeds": {"randomState": 42, "numpySeed": "...", "pythonSeed": "..."},
-  "baselineComparison": {
-    "metrics": [{"name": "RMSE", "baseline": "0.047", "improved": "0.023",
-                 "improvement": "51.1% ↓", "isLowerIsBetter": true}],
-    "summary": "一句话总结创新提升（供摘要）",
-    "significance": "high|medium|low|marginal",
-    "weaknessExposed": "对比暴露的弱点（诚实，论文也要讨论）"
-  },
-  "fixHistory": [{"round": 1, "error": "...", "fix": "..."}]
-}
+（**schema 见 `<技能根>/prompts/artifact-schemas.md` §1**——本阶段按该契约写；字段名/结构以那份为准）
 ```
 
-- `results`：按本问各分点组织，summary 必须含具体数值；keyValues 含关键中间值（可审计）
-- `solver`：求解器状态/迭代数；MILP 求解器给出 mip_gap；约束残差（硬约束违反量）；达时限标记
-- `seeds`：固定并记录全部随机种子；未固定 → 如实记录缺失（sanity 阶段核验）
-- `baselineComparison`：≥3 个对比维度（精度/效率/稳定性等）；每指标给 baseline 值、improved 值、improvement 百分比、isLowerIsBetter；summary 一句话总结提升；significance 显著程度；weaknessExposed 诚实写弱点
-- 代码含绘图语句 → 图保存到 `intermediates/q{id}/06-computation/figures/`（结果图原始输出，可视化阶段复用/重画），本阶段不要求出图
-
+### 5. 性能与耗时记录（按 docs/performance.md，可选加速）
 ### 5. 性能与耗时记录（按 docs/performance.md，可选加速）
 
 - 运行前探测可用加速（numba/joblib/cupy/torch，**可选**；缺失自动回退纯 numpy/scipy，绝不因依赖缺失 FAIL）。

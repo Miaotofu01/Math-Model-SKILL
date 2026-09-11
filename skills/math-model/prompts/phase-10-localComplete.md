@@ -21,7 +21,7 @@
 | 03 | `intermediates/q{id}/03-assumptions/assumption-vNN.md` | 最新版本文件 |
 | 04 | `intermediates/q{id}/04-formulation/draft.md`、`baseline-registry.md`、`symbols.json`、`revision-log.md`、`handoff.md` | 5 个文件（与阶段 04 完成标准的「4 台账」对齐） |
 | 05 | `intermediates/q{id}/05-implementation/code/` | 目录含 .py |
-| 06 | `intermediates/q{id}/06-computation/results.json` | 文件且含 results/solver/seeds |
+| 06 | `intermediates/q{id}/06-computation/results.json` | 文件且字段齐（断言见 `prompts/artifact-schemas.md` §1.2） |
 | 07 | `intermediates/q{id}/07-sanity/sanity-report.md` | 文件 |
 | 08 | `intermediates/q{id}/08-visualization/figure-manifest.md` + `figures/` | 2 项 |
 | 09 | `intermediates/q{id}/09-robustness/robustness.md` | 文件（SKIPPED 也须有理由文件） |

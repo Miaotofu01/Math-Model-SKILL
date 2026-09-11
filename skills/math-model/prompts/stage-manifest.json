@@ -32,6 +32,14 @@
     "writing": "phase-12-writing.md",
     "finalReview": "phase-13-finalReview.md"
   },
+  "retryPolicy": {
+    "stageAttempts": 2,
+    "formulationRounds": {"full": 3, "quick": 2},
+    "assumptionVersions": 5,
+    "repairRounds": {"full": 3, "quick": 1},
+    "crossReviewRounds": {"full": 3, "quick": 1},
+    "_note": "壳强制的只有 stageAttempts 与 formulationRounds；其余三条当前由该阶段在单次调用内自行控制，改这里即改口径"
+  },
   "deps": {
     "literature": [
       "00-problem.json",

@@ -72,7 +72,7 @@
 
 ### 5. 交叉审查 ⇄ 统一修复
 
-全部章节写完后进入交叉审查 loop（full 3 轮 / quick 1 轮；连续 2 轮无新问题收敛）。
+全部章节写完后进入交叉审查 loop（轮数见 `stage-manifest.json#retryPolicy.crossReviewRounds`；连续 2 轮无新问题收敛）。
 
 **每轮交叉审查**（写 `intermediates/12-writing/cross-review-r<N>.md`，逐项 `[P0/P1/P2] [章节] 问题`）：
 1. 符号统一：重述→模型→结果符号一致（对照 fact-sheet symbols）

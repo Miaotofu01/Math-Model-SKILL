@@ -7,7 +7,7 @@ const IM = outDir + "/intermediates"
 const SD = A.templateDir ? A.templateDir.replace(/\/templates\/?$/, "") : "skills/math-model"   // 技能根：规范 docs/ 与工具 scripts/ 所在处
 const PD = SD + "/prompts"
 const STRICT = A.innovationStrictness || "strict"
-const TRY = 2, RND = A.mode === "quick" ? 2 : 3
+let TRY = 2, RND = A.mode === "quick" ? 2 : 3   // 真值见 stage-manifest.json#retryPolicy（载入契约后覆盖）
 const T = { literature: "文献调研", data: "数据探索", assumption: "假设定义", formulation: "公式化", implementation: "实现", computation: "计算", sanity: "Sanity", visualization: "可视化", robustness: "鲁棒性", localComplete: "小问完成", crossReview: "跨问复核", writing: "写作", finalReview: "终审" }
 const PERS = ["judge", "adversary", "application"]
 const BRIEF = "返回{status,artifact_path,summary}；status∈PASS/DRAFT/NEEDS_REVISION/FAIL/SKIPPED/PASS_WITH_WARNING；≤200字"
@@ -55,6 +55,7 @@ async function rfMany(paths, label) {
 // 可复用资产清单（§1.3-4/5）：启动时随 boot 批量读入 manifest → 注入每个阶段/评审/修订提示词
 // 目的：让"复用"成为阻力最小的路径（看得见 + selftest 一条命令 + 探针缓存命中秒回），而不是靠门禁强制
 const MANIFESTS = ["pool/manifest.json", "pool/problem/manifest.json", "probes/manifest.json"]
+const POOL_STAGES = ["data", "formulation", "implementation", "computation", "sanity", "visualization", "robustness"]   // 会写代码的阶段才注入 _pool.md
 let ASSETS = ""
 function assetsLine(live) {
   return ASSETS + (live
@@ -105,7 +106,7 @@ function stagePrompt(q, s, m) {
     return IM + "/" + p                                                       // 路径型依赖补 intermediates/ 前缀
   }).join("，")
   return [
-    `## 阶段 ${k}：一次并列 Read ${PD}/_common.md 与 ${PD}/${m.prompts[s]}（公共纪律 + 本阶段模板；**每轮必读，不得凭记忆或沿用上轮的印象**）、状态 ${IM}/state.json、依赖 ${deps||"无"}、可复用资产清单 ${MANIFESTS.join("、")}`,
+    `## 阶段 ${k}：一次并列 Read ${PD}/_common.md 与 ${PD}/${m.prompts[s]}${POOL_STAGES.includes(s) ? "、" + PD + "/_pool.md（代码池手册）" : ""}（公共纪律 + 本阶段模板；**每轮必读，不得凭记忆或沿用上轮的印象**）、状态 ${IM}/state.json、依赖 ${deps||"无"}、可复用资产清单 ${MANIFESTS.join("、")}`,
     `执行：按两份模板执行（冲突时以阶段模板 ${m.prompts[s]} 为准）；技能根 ${SD}（规范 ${SD}/docs/、工具 ${SD}/scripts/，用法见 _common.md §6）；产物写 ${IM}/${lay}（mkdir -p）`,
     assetsLine(true),
     ...(COSTLINE(s) ? [COSTLINE(s)] : []),
@@ -273,6 +274,9 @@ const bail = async b => { phase("收束"); return { status: "blocked", statePath
 const C = await loadContracts()
 if (!C) return err("契约读取失败（prompts/stage-manifest/response-schema.json）")
 const m = C.manifest, sc = C.responseSchema
+const RP = m.retryPolicy || {}, MKEY = A.mode === "quick" ? "quick" : "full"
+TRY = RP.stageAttempts || TRY
+RND = (RP.formulationRounds || {})[MKEY] || RND
 // 批量读启动文件（一个 agent 会话，替代微型会话；解析健壮：围栏/语言行由 parseAny 处理）
 // 三份 manifest 只在 resume 时随 boot 读：全新 run 里它们必然不存在（pool/problem/manifest.json 更是 run 中途才产生），
 // 读到的只会是 NOT_FOUND。资产发现不依赖这里——每个阶段的提示词都要求并列 Read 这三份清单（以文件为权威）。

@@ -28,7 +28,7 @@
 
 ### 2. 版本化与自检循环
 
-- 版本文件 `intermediates/q{id}/03-assumptions/assumption-vNN.md`（从 v01 起），**绝不覆盖已存在的版本文件**；最多 5 个版本（v01-v05）
+- 版本文件 `intermediates/q{id}/03-assumptions/assumption-vNN.md`（从 v01 起），**绝不覆盖已存在的版本文件**；最多 5 个版本（`stage-manifest.json#retryPolicy.assumptionVersions`）（v01-v05）
 - 每版写完做自检：逐条过 ①题面一致性 ②数据一致性 ③支撑度 ④必要性。全过 → 定稿；任一不过 → 在文件内记录拒绝原因，写下一版本
 - **连续 3 次自检拒绝** → 假设的支撑基础不足：针对缺失支撑的主题做一次补充检索（WebSearch，可优化检索词），把新结果**追加**到 `pool/literature-pool.md`，再继续草拟
 - v05 仍不过 → 如实返回 NEEDS_REVISION（或 FAIL）并总结卡点，不硬凑、不放水

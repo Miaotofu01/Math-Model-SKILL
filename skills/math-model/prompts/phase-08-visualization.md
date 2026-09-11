@@ -51,7 +51,7 @@
 ### 5. 产出 figure-manifest.md 与图文件
 
 - 图文件保存到 `intermediates/q{id}/08-visualization/figures/`
-- `intermediates/q{id}/08-visualization/figure-manifest.md`（主产物），每张图一行：文件名 / 类型（结果|示意图）/ 一句话作用 / 数据来源（results.json 字段名，**不抄数值**）/ 绘图方式 / 计划引用位点（论文章节与位置）；另设「自检」一节记录 §4 的两道机械 + 一道视觉结论
+- `intermediates/q{id}/08-visualization/figure-manifest.md`（主产物；字段集见 `<技能根>/prompts/artifact-schemas.md` §2），每张图一行：文件名 / 类型（结果|示意图）/ 一句话作用 / 数据来源（results.json 字段名，**不抄数值**）/ 绘图方式 / 计划引用位点（论文章节与位置）；另设「自检」一节记录 §4 的两道机械 + 一道视觉结论
 - **反向校验（P0）**：manifest 每条引用必须对应 figures/ 真实存在的文件；**空 figure 环境（有 caption 无图）是 P0 事故**——本阶段宁画示意图也不留空
 
 ## 产物
