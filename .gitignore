@@ -16,6 +16,8 @@ __pycache__/
 .litcache/
 **/.litcache/
 .qc_tmp/
+# 图表版式修订的沙箱（影子树/逐页渲染/旧 PDF 备份；见 docs/figure-layout-plan.md）
+.mm-tmp/
 # venv 环境目录
 .venv/
 **/.venv/
