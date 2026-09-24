@@ -74,12 +74,12 @@
 一次运行要跑 5~20 小时，机制层做了五件事让时间可控、换机器不崩：
 
 - **项目级 venv 自动环境**：运行启动时自动创建专属 Python 环境并补齐常用科学计算库（numpy/scipy/pandas/statsmodels/matplotlib/joblib/numba），缺库优先自动装、装不上自动降级回系统 Python，**绝不因环境问题中断**；环境状态写入 `intermediates/env-report.json` 供全程审计。
-- **复用核心、禁止重写**：同一物理/算法核心只实现一次（题专用核心存 `pool/problem/<题>/` 并登记 manifest），后续小问必须 import 复用并**核对作用域一致**（如单机核心不得用于多机题），禁止各自重写慢副本——实测重写会让单段计算从 3 秒级变成 18 分钟。
+- **复用核心、禁止重写**：同一物理/算法核心只实现一次（题专用核心存 `pool/problem/<题>/` 并登记 manifest），后续小问必须 import 复用并**核对作用域一致**（如单机核心不得用于多机题），禁止各自重写慢副本——实测重写造成的单步耗时劣化可达 **1079 秒（约 18 分钟）**，见 `skills/math-model/docs/performance.md`。
 - **性能纪律**：向量化优先、闭式解优先、单次求解 ≤15 分钟预算、可选 numba/joblib/GPU 加速（缺库自动回退纯 numpy，绝不因缺库失败）。
 - **批量工具调用**：一次并列读多个文件、一个脚本跑完所有检查，减少 AI 回合往返（agent 会话耗时主因）。
 - **评审探针预算**：建模评审的数值验证必须复用已有结果、限量限时、一次批量算完，探针不污染产物目录。
 
-实测（24 核机器）：向量化 231×、numba 196×；把纯 Python 核心重写为纯 numpy 后 6.5×（无新依赖）、numba 版 500×。详见 `skills/math-model/docs/performance.md` 与 `test/perf/`。
+实测（24 核机器，`test/perf/`）：原实现 0.247 s → 向量化 0.0011 s（**231×**）、numba 0.0013 s（**196×**），四路实现共用同一随机流、输出逐元素一致（atol=1e-12）。详见 `test/perf/README.md` 与 `skills/math-model/docs/performance.md`。
 
 ---
 

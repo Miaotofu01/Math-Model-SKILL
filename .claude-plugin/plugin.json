@@ -1,7 +1,7 @@
 {
   "name": "math-model",
   "description": "数学建模国赛/美赛全流程 AI 编排技能（DeepSeek Harness + Claude Code 双平台）：两阶段架构——阶段一主 agent 纯编排(输入提纯→并行审题→选题推荐)，阶段二 Workflow 确定性执行(文献→数据→假设→Gap公式化+3视角评审团⇄修订→求解→六条数值硬门禁→事实源表顺序主编写作+交叉审查→摘要数字溯源+代码对账+评委意见修复+LaTeX)。正确性第一+数据说话。",
-  "version": "2.5.1",
+  "version": "3.1.0",
   "author": {
     "name": "红豆",
     "email": "wsy20050511@gmail.com"
